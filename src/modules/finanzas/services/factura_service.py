@@ -16,10 +16,13 @@ class FacturaService:
 
     @staticmethod
     def _generar_numero(session) -> str:
-        """Generate next invoice number using timestamp (avoids race conditions)."""
-        from datetime import datetime
+        """Generate next invoice number using timestamp (avoids race conditions).
+
+        Microseconds are included so two invoices created within the same
+        second still get distinct numbers (the ``numero`` column is UNIQUE).
+        """
         now = datetime.now()
-        return f"FAC-{now.strftime('%Y%m%d%H%M%S')}"
+        return f"FAC-{now.strftime('%Y%m%d%H%M%S%f')}"
 
     @staticmethod
     def listar_facturas(

@@ -29,7 +29,8 @@ class Factura(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int] = mapped_column(
-        ForeignKey("cliente.id", ondelete="RESTRICT"), index=True
+        ForeignKey("cliente.id", ondelete="RESTRICT"),
+        comment="Index creado explícitamente en __table_args__ (ix_facturas_cliente_id)",
     )
     numero: Mapped[str] = mapped_column(String(50), unique=True)
     fecha_emision: Mapped[datetime] = mapped_column(

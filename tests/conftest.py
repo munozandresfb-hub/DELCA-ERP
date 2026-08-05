@@ -13,6 +13,34 @@ from src.modules.usuarios.models.usuario_model import Usuario
 from src.modules.usuarios.services.auth_service import AuthService
 
 
+@pytest.fixture
+def service_db(monkeypatch, tmp_path):
+    """Bind get_session() services to a temp SQLite DB with full schema.
+
+    Services (LlantaService, FacturaService, ReporteService, ...) obtain
+    sessions via ``get_session()`` from ``src.database.engine``, which calls
+    the module-level ``SessionLocal`` at call time. Monkeypatching that
+    attribute redirects every service to an isolated, throwaway database.
+    """
+    import src.database.registry  # noqa: F401  — registers ALL models
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    db_path = tmp_path / "service_test.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(engine)
+
+    test_session = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        expire_on_commit=False,
+        bind=engine,
+    )
+    monkeypatch.setattr("src.database.engine.SessionLocal", test_session)
+    yield engine
+    engine.dispose()
+
+
 @pytest.fixture(scope="function")
 def db_session() -> Iterator[Session]:
     """Create a fresh in-memory SQLite database for each test."""
