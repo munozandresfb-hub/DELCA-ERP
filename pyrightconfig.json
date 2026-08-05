@@ -1,0 +1,19 @@
+{
+  "venv": ".venv",
+  "venvPath": ".",
+  "pythonVersion": "3.14",
+  "extraPaths": ["C:/Users/andre/OneDrive/Escritorio/DELCA/Programacion DELCA v2/.venv/Lib/site-packages"],
+  "reportAssignmentType": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportMissingImports": true,
+  "reportOptionalMemberAccess": "none",
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnannotatedClassAttribute": false,
+  "reportMissingParameterType": false,
+  "reportImplicitStringConcatenation": false,
+  "reportUntypedBaseClass": false,
+  "reportUnusedVariable": false
+}

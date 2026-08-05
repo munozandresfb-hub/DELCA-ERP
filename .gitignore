@@ -1,0 +1,51 @@
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.basedpyright/
+
+# ── Entorno virtual ─────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Base de datos (datos de producción, NO se versionan) ────────
+delca.db
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# ── Build / dist (PyInstaller) ──────────────────────────────────
+build/
+dist/
+*.spec.bak
+
+# ── Backups locales (artefactos generados) ──────────────────────
+backups/
+
+# ── Planes/estado local de agentes ──────────────────────────────
+.omo/
+
+# ── Logs ────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Entorno / secretos ──────────────────────────────────────────
+.env
+
+# ── Residuos ────────────────────────────────────────────────────
+error_output.txt
+pyrightconfig.json.bak
+
+# ── IDE ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ── Sistema ─────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini

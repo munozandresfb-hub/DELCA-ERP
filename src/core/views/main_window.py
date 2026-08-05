@@ -1,0 +1,236 @@
+from collections.abc import Callable
+
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QMainWindow,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.core.views.dashboard_view import DashboardView
+from src.modules.clientes.views.clientes_view import ClientesView
+from src.modules.finanzas.views.cartera_view import CarteraView
+from src.modules.finanzas.views.facturacion_view import FacturacionView
+from src.modules.inventario.views.inventario_view import InventarioView
+from src.modules.inventario.views.kardex_view import KardexView
+from src.modules.automatizacion.views.automatizacion_view import (
+    AutomatizacionView,
+)
+from src.modules.reportes.views.reportes_view import ReportesView
+from src.modules.llantas.views.llantas_view import LlantasView
+from src.modules.llantas.views.produccion_view import ProduccionView
+from src.modules.llantas.views.planta_view import PlantaView
+from src.modules.llantas.views.catalogos_view import CatalogosPage
+from src.core.views.backup_view import BackupView
+from src.modules.usuarios.views.usuarios_view import UsuariosView
+
+# ─── Session tracking for inactivity timeout ─────────────────────────
+from PySide6.QtCore import QTimer, QEvent
+from src.core.services.session_service import get_session_manager
+
+# ─── RBAC ────────────────────────────────────────────────────────────
+from src.modules.usuarios.services.permiso_service import tiene_permiso_por_usuario
+
+
+class PlaceholderPage(QWidget):
+    """Placeholder for unimplemented or errored pages."""
+
+    def __init__(self, title: str, error: str = "") -> None:
+        super().__init__()
+        layout = QVBoxLayout()
+        label = QLabel(f"Módulo {title}")
+        label.setStyleSheet(
+            "font-size: 18px; font-weight: bold; padding: 20px; color: #999;"
+        )
+        layout.addWidget(label)
+        if error:
+            err_lbl = QLabel(f"Error al cargar:\n{error}")
+            err_lbl.setStyleSheet(
+                "font-size: 13px; padding: 10px; color: #e74c3c; "
+                "background: #fdf0ef; border-radius: 4px;"
+            )
+            err_lbl.setWordWrap(True)
+            layout.addWidget(err_lbl)
+        else:
+            coming = QLabel("Próximamente...")
+            coming.setStyleSheet("font-size: 14px; padding: 10px; color: #bbb;")
+            layout.addWidget(coming)
+        layout.addStretch()
+        self.setLayout(layout)
+
+
+class MainWindow(QMainWindow):
+    """Main application window with sidebar navigation."""
+
+    def __init__(self, user) -> None:
+        super().__init__()
+
+        self.user = user
+        self._session = get_session_manager()
+        self._session.set_user(user)
+
+        self.setWindowTitle(f"DELCA ERP - {user.nombre}")
+        self.resize(1200, 700)
+
+        self.setup_ui()
+        self._setup_inactivity_timer()
+
+    def setup_ui(self) -> None:
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Main layout
+        main_layout = QHBoxLayout()
+
+        # =========================
+        # SIDEBAR — filtered by RBAC
+        # =========================
+        # (label, permission_codigo, view_factory)
+        self._sidebar_items: list[tuple[str, str, Callable]] = [
+            ("Dashboard", "dashboard.ver", lambda: DashboardView(self.user)),
+            ("Clientes", "clientes.ver", lambda: ClientesView(self.user)),
+            ("Llantas", "llantas.ver", lambda: LlantasView()),
+            ("Producción", "produccion.ver", lambda: ProduccionView()),
+            ("Planta", "planta.ver", lambda: PlantaView()),
+            ("Catálogos", "llantas.ver", lambda: CatalogosPage()),
+            ("Facturación", "facturacion.ver", lambda: FacturacionView()),
+            ("Cartera", "cartera.ver", lambda: CarteraView(self.user)),
+            ("Inventario", "inventario.ver", lambda: InventarioView()),
+            ("Kardex", "kardex.ver", lambda: KardexView()),
+            ("Reportes", "reportes.ver", lambda: ReportesView()),
+            ("Automatización", "automatizacion.ver", lambda: AutomatizacionView()),
+            ("Usuarios", "usuarios.gestionar", lambda: UsuariosView(self.user)),
+            ("Backup", "backup.gestionar", lambda: BackupView()),
+        ]
+
+        # Filter by user permissions
+        self.sidebar = QListWidget()
+        self._visible_indices: list[int] = []
+        for idx, (label, perm, factory) in enumerate(self._sidebar_items):
+            if tiene_permiso_por_usuario(self.user, perm):
+                self._visible_indices.append(idx)
+                self.sidebar.addItem(label)
+        self.sidebar.setMaximumWidth(200)
+        self.sidebar.setMinimumWidth(180)
+        self.sidebar.setStyleSheet(
+            """
+            QListWidget {
+                background-color: #2c3e50;
+                color: white;
+                font-size: 14px;
+                padding: 10px;
+                border: none;
+            }
+            QListWidget::item {
+                padding: 12px 15px;
+                border-radius: 5px;
+            }
+            QListWidget::item:selected {
+                background-color: #3498db;
+            }
+            QListWidget::item:hover {
+                background-color: #34495e;
+            }
+            """
+        )
+
+        self.sidebar.currentRowChanged.connect(self.change_page)
+
+        # =========================
+        # STACK — only authorized pages
+        # =========================
+        self.stack = QStackedWidget()
+        self._idx_to_widget: dict[int, QWidget] = {}
+        for real_idx in self._visible_indices:
+            label, perm, factory = self._sidebar_items[real_idx]
+            try:
+                widget = factory()
+            except Exception as e:
+                print(f"[MainWindow] Error cargando '{label}': {e}")
+                widget = PlaceholderPage(label, str(e))
+            self._idx_to_widget[real_idx] = widget
+            self.stack.addWidget(widget)
+
+        # Initial selection
+        self.sidebar.setCurrentRow(0)
+
+        # Add to layout
+        main_layout.addWidget(self.sidebar)
+        main_layout.addWidget(self.stack)
+
+        central_widget.setLayout(main_layout)
+
+    def change_page(self, visible_index: int) -> None:
+        """Map the visible sidebar row to the actual backend page."""
+        if 0 <= visible_index < len(self._visible_indices):
+            real_idx = self._visible_indices[visible_index]
+            widget = self._idx_to_widget.get(real_idx)
+            if widget:
+                self.stack.setCurrentWidget(widget)
+                self._recargar_vista(widget)
+
+    def _recargar_vista(self, widget: QWidget) -> None:
+        """Recarga los datos de la vista entrante para reflejar cambios
+        hechos desde otros módulos sin pulsar 'Actualizar'."""
+        for nombre in (
+            "_cargar_datos",
+            "_refresh_all",
+            "_load_data",
+            "_refresh_backup_list",
+        ):
+            metodo = getattr(widget, nombre, None)
+            if callable(metodo):
+                try:
+                    metodo()
+                except Exception as e:
+                    print(
+                        f"[MainWindow] Error recargando '{type(widget).__name__}': {e}"
+                    )
+                return
+
+    # ── Inactivity timeout ────────────────────────────────────────────
+
+    def _setup_inactivity_timer(self) -> None:
+        """Check every 30s if session expired."""
+        # Operador no tiene cierre por inactividad
+        if hasattr(self.user, "rol") and self.user.rol.nombre == "Operador":
+            return
+
+        self._inactivity_timer = QTimer(self)
+        self._inactivity_timer.timeout.connect(self._check_inactivity)
+        self._inactivity_timer.start(30_000)
+
+        # Track user activity via event filter
+        self.centralWidget().installEventFilter(self)
+
+        # Also track on sidebar clicks
+        self.sidebar.currentRowChanged.connect(
+            lambda _: self._session.update_activity()
+        )
+
+    def eventFilter(self, obj, event) -> bool:
+        """Reset inactivity timer on mouse/keyboard events."""
+        if event.type() in (QEvent.MouseButtonPress, QEvent.KeyPress,
+                            QEvent.MouseMove, QEvent.Wheel):
+            self._session.update_activity()
+        return super().eventFilter(obj, event)
+
+    def _check_inactivity(self) -> None:
+        """Lock UI if session expired."""
+        if self._session.is_session_expired():
+            self._session.lock()
+            # Show a simple lock message
+            from PySide6.QtWidgets import QMessageBox
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Sesión Expirada")
+            msg.setText(
+                "Su sesión ha expirado por inactividad.\n"
+                "Por favor, cierre y vuelva a iniciar sesión."
+            )
+            msg.exec()
+            self.close()

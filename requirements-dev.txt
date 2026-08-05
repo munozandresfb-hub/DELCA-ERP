@@ -1,0 +1,16 @@
+# Dependencias de desarrollo / build (NO se instalan en producción)
+# Instalar con: pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# Testing
+pytest==9.1.1
+pytest-cov==7.1.0
+coverage==7.14.3
+
+# Tipado estático
+basedpyright==1.39.9
+
+# Empaquetado EXE
+pyinstaller==6.21.0
+pyinstaller-hooks-contrib==2026.6
