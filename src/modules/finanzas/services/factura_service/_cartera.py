@@ -1,285 +1,17 @@
+from collections import defaultdict
 from datetime import datetime
-from decimal import Decimal
 
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_model import Factura
-from src.modules.finanzas.models.factura_llanta_model import FacturaLlanta
 from src.modules.finanzas.models.pago_model import Pago
-from src.modules.llantas.models.llanta_model import Llanta
 
-class FacturaService:
-    """Business logic for invoice (factura) management."""
 
-    @staticmethod
-    def _generar_numero(session) -> str:
-        """Generate next invoice number using timestamp (avoids race conditions).
-
-        Microseconds are included so two invoices created within the same
-        second still get distinct numbers (the ``numero`` column is UNIQUE).
-        """
-        now = datetime.now()
-        return f"FAC-{now.strftime('%Y%m%d%H%M%S%f')}"
-
-    @staticmethod
-    def listar_facturas(
-        estado: str | None = None,
-        cliente_id: int | None = None,
-    ) -> list[Factura]:
-        with get_session() as session:
-            q = session.query(Factura).options(
-                joinedload(Factura.cliente)
-            )
-            if estado:
-                q = q.filter(Factura.estado == estado)
-            if cliente_id:
-                q = q.filter(Factura.cliente_id == cliente_id)
-            facturas = q.order_by(Factura.fecha_emision.desc()).all()
-            for f in facturas:
-                session.expunge(f)
-            return facturas
-
-    @staticmethod
-    def buscar(
-        termino: str = "",
-        cliente_id: int | None = None,
-        estado: str | None = None,
-        fecha_desde=None,
-        fecha_hasta=None,
-    ) -> list[Factura]:
-        """Search invoices by term (client name/NIT/phone), client, estado, or date range."""
-        with get_session() as session:
-            q = session.query(Factura).options(
-                joinedload(Factura.cliente)
-            )
-
-            if termino:
-                pattern = f"%{termino}%"
-                q = q.outerjoin(Cliente, Factura.cliente_id == Cliente.id).filter(
-                    Cliente.nombre.ilike(pattern)
-                    | Cliente.nit.ilike(pattern)
-                    | Cliente.celular.ilike(pattern)
-                    | Cliente.telefono.ilike(pattern)
-                )
-
-            if cliente_id:
-                q = q.filter(Factura.cliente_id == cliente_id)
-
-            if estado:
-                q = q.filter(Factura.estado == estado)
-
-            if fecha_desde:
-                q = q.filter(Factura.fecha_emision >= fecha_desde)
-            if fecha_hasta:
-                q = q.filter(Factura.fecha_emision <= fecha_hasta)
-
-            facturas = q.order_by(Factura.fecha_emision.desc()).all()
-            for f in facturas:
-                session.expunge(f)
-            return facturas
-
-    @staticmethod
-    def obtener_por_id(factura_id: int) -> Factura | None:
-        with get_session() as session:
-            factura = (
-                session.query(Factura)
-                .options(
-                    joinedload(Factura.cliente),
-                    joinedload(Factura.llantas_detalle).joinedload(
-                        FacturaLlanta.llanta
-                    ),
-                )
-                .filter(Factura.id == factura_id)
-                .first()
-            )
-            if factura:
-                session.expunge(factura)
-            return factura
-
-    @staticmethod
-    def listar_llantas_facturables() -> list[Llanta]:
-        """Tires that are not yet linked to any active (non-voided) invoice.
-
-        Used by the invoice form to offer tires whose precio_venta pre-fills
-        the line price. Tires already billed in a PENDIENTE/PARCIAL/PAGADA
-        invoice are excluded so each tire is billed once.
-        """
-        with get_session() as session:
-            facturadas = (
-                session.query(FacturaLlanta.llanta_id)
-                .join(Factura, FacturaLlanta.factura_id == Factura.id)
-                .filter(Factura.estado != "ANULADA")
-            )
-            llantas = (
-                session.query(Llanta)
-                .filter(Llanta.id.notin_(facturadas))
-                .order_by(Llanta.tiquete)
-                .all()
-            )
-            for l in llantas:
-                session.expunge(l)
-            return llantas
-
-    @staticmethod
-    def crear(
-        cliente_id: int,
-        total: Decimal,
-        observaciones: str | None = None,
-        plazo_dias: int = 30,
-        items: list[dict] | None = None,
-    ) -> tuple[bool, str | Factura]:
-        if not cliente_id:
-            return False, "Debe seleccionar un cliente"
-        if not total or total <= 0:
-            return False, "El total debe ser mayor a cero"
-
-        with get_session() as session:
-            cliente = (
-                session.query(Cliente)
-                .filter(Cliente.id == cliente_id)
-                .first()
-            )
-            if not cliente:
-                return False, "Cliente no encontrado"
-
-            # Validate tires exist before creating the invoice
-            items = items or []
-            llanta_ids = [it.get("llanta_id") for it in items]
-            llanta_ids = [i for i in llanta_ids if i is not None]
-            if len(llanta_ids) != len(set(llanta_ids)):
-                return False, "La misma llanta no puede facturarse dos veces"
-            llantas = (
-                session.query(Llanta)
-                .filter(Llanta.id.in_(llanta_ids))
-                .all()
-            ) if llanta_ids else []
-            if len(llantas) != len(llanta_ids):
-                return False, "Una o más llantas no existen"
-
-            numero = FacturaService._generar_numero(session)
-
-            factura = Factura(
-                cliente_id=cliente_id,
-                numero=numero,
-                fecha_emision=datetime.now(),
-                total=total,
-                saldo=total,
-                estado="PENDIENTE",
-                observaciones=observaciones.strip()
-                if observaciones
-                else None,
-                plazo_dias=plazo_dias,
-            )
-            session.add(factura)
-            session.flush()
-
-            for it in items:
-                session.add(
-                    FacturaLlanta(
-                        factura_id=factura.id,
-                        llanta_id=it["llanta_id"],
-                        precio_unitario=Decimal(str(it.get("precio_unitario", 0))),
-                    )
-                )
-
-            # Update client saldo
-            cliente.saldo = (cliente.saldo or 0) + total
-            session.expunge(factura)
-            return True, factura
-
-    @staticmethod
-    def registrar_pago(
-        factura_id: int,
-        valor: Decimal,
-        metodo_pago: str = "EFECTIVO",
-        referencia: str | None = None,
-    ) -> tuple[bool, str]:
-        if valor <= 0:
-            return False, "El valor del pago debe ser mayor a cero"
-
-        with get_session() as session:
-            factura = (
-                session.query(Factura)
-                .filter(Factura.id == factura_id)
-                .first()
-            )
-            if not factura:
-                return False, "Factura no encontrada"
-            if factura.estado == "ANULADA":
-                return False, "No se pueden registrar pagos en facturas anuladas"
-            if factura.estado == "PAGADA":
-                return False, "La factura ya está pagada"
-            if valor > factura.saldo:
-                restante = factura.saldo
-                return (
-                    False,
-                    f"El pago ({valor}) supera el saldo pendiente ({restante})",
-                )
-
-            pago = Pago(
-                factura_id=factura_id,
-                valor=valor,
-                metodo_pago=metodo_pago,
-                referencia=referencia.strip() if referencia else None,
-                fecha=datetime.now(),
-            )
-            session.add(pago)
-
-            factura.saldo -= valor
-            if factura.saldo == 0:
-                factura.estado = "PAGADA"
-
-            # Update client saldo
-            cliente = (
-                session.query(Cliente)
-                .filter(Cliente.id == factura.cliente_id)
-                .first()
-            )
-            if cliente:
-                cliente.saldo = (cliente.saldo or 0) - valor
-
-            return True, f"Pago registrado. Saldo restante: {factura.saldo}"
-
-    @staticmethod
-    def anular(factura_id: int) -> tuple[bool, str]:
-        with get_session() as session:
-            factura = (
-                session.query(Factura)
-                .filter(Factura.id == factura_id)
-                .first()
-            )
-            if not factura:
-                return False, "Factura no encontrada"
-            if factura.estado == "ANULADA":
-                return False, "La factura ya está anulada"
-            if factura.estado == "PAGADA":
-                return False, "No se puede anular una factura pagada"
-
-            factura.estado = "ANULADA"
-
-            # Revert client saldo
-            cliente = (
-                session.query(Cliente)
-                .filter(Cliente.id == factura.cliente_id)
-                .first()
-            )
-            if cliente:
-                cliente.saldo = (cliente.saldo or 0) - factura.saldo
-
-            return True, "Factura anulada"
-
-    @staticmethod
-    def obtener_pagos(factura_id: int) -> list[Pago]:
-        with get_session() as session:
-            return (
-                session.query(Pago)
-                .filter(Pago.factura_id == factura_id)
-                .order_by(Pago.fecha.desc())
-                .all()
-            )
+class _CarteraMixin:
+    """Cartera de clientes: saldos pendientes, antigüedad y exportación."""
 
     @staticmethod
     def obtener_cartera_clientes() -> list[dict]:
@@ -395,12 +127,12 @@ class FacturaService:
             return False, "openpyxl no instalado. Ejecute: pip install openpyxl"
 
         from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, numbers
+        from openpyxl.styles import Font, PatternFill, Alignment
         from openpyxl.utils import get_column_letter
 
         try:
-            cartera = FacturaService.obtener_cartera_clientes()
-            aging = FacturaService.obtener_antiguedad_saldos()
+            cartera = _CarteraMixin.obtener_cartera_clientes()
+            aging = _CarteraMixin.obtener_antiguedad_saldos()
 
             wb = Workbook()
 
@@ -517,7 +249,6 @@ class FacturaService:
                 cell.font = header_font_white
                 cell.fill = header_fill
 
-            from collections import defaultdict
             rangos = defaultdict(lambda: {"total": 0.0, "count": 0})
             for a in aging:
                 rangos[a["rango"]]["total"] += a["saldo"]
