@@ -1,8 +1,7 @@
 import json
-from datetime import datetime
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -10,7 +9,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
-    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -22,28 +20,17 @@ from src.modules.automatizacion.forms.rule_form_dialog import RuleFormDialog
 from src.modules.automatizacion.services.automatizacion_service import (
     AutomatizacionService,
 )
-
-# ── Color palette ─────────────────────────────────────────────
-COLOR_CRITICAL = "#e74c3c"
-COLOR_WARNING = "#f39c12"
-COLOR_INFO = "#3498db"
-COLOR_SUCCESS = "#27ae60"
-COLOR_BG_CARD = "#ffffff"
-COLOR_BG_PRIMARY = "#2c3e50"
-COLOR_TEXT_SECONDARY = "#7f8c8d"
-COLOR_BORDER = "#e0e0e0"
-
-NIVEL_COLORS = {
-    "CRITICAL": COLOR_CRITICAL,
-    "WARNING": COLOR_WARNING,
-    "INFO": COLOR_INFO,
-}
-
-NIVEL_BG = {
-    "CRITICAL": "#fdecea",
-    "WARNING": "#fef9e7",
-    "INFO": "#ebf5fb",
-}
+from src.modules.automatizacion.views.automatizacion_view._constantes import (
+    COLOR_BG_PRIMARY,
+    COLOR_BORDER,
+    COLOR_BG_CARD,
+    COLOR_CRITICAL,
+    COLOR_INFO,
+    COLOR_SUCCESS,
+    COLOR_TEXT_SECONDARY,
+    NIVEL_BG,
+    NIVEL_COLORS,
+)
 
 
 class AutomatizacionView(QWidget):
