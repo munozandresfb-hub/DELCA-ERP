@@ -111,6 +111,69 @@ class TestCrearFactura:
             assert cliente.saldo == Decimal("1000")
 
 
+class TestCrearFacturaLlantaNueva:
+    """FacturaService.crear — manual 'llanta nueva' items (descripcion sin llanta_id)."""
+
+    def test_crear_con_llanta_nueva_manual(self):
+        cliente_id = _crear_cliente()
+        ok, res = FacturaService.crear(
+            cliente_id=cliente_id,
+            total=Decimal("1500"),
+            items=[
+                {"descripcion": "Goodyear 295/80 R22.5 nueva", "precio_unitario": Decimal("1500")}
+            ],
+        )
+        assert ok, f"crear factura falló: {res}"
+        factura = FacturaService.obtener_por_id(res.id)
+        assert factura is not None
+        assert len(factura.llantas_detalle) == 1
+        item = factura.llantas_detalle[0]
+        assert item.llanta_id is None
+        assert item.descripcion == "Goodyear 295/80 R22.5 nueva"
+        assert item.precio_unitario == Decimal("1500")
+
+    def test_crear_mixto_reencauchada_y_nueva(self):
+        cliente_id = _crear_cliente()
+        llanta_id = _crear_llanta()
+        ok, res = FacturaService.crear(
+            cliente_id=cliente_id,
+            total=Decimal("2500"),
+            items=[
+                {"llanta_id": llanta_id, "precio_unitario": Decimal("1000")},
+                {"descripcion": "Michelin 315/80 R22.5 nueva", "precio_unitario": Decimal("1500")},
+            ],
+        )
+        assert ok, f"crear factura falló: {res}"
+        factura = FacturaService.obtener_por_id(res.id)
+        assert factura is not None
+        assert len(factura.llantas_detalle) == 2
+        tipos = {(it.llanta_id, it.descripcion) for it in factura.llantas_detalle}
+        assert (llanta_id, None) in tipos
+        assert (None, "Michelin 315/80 R22.5 nueva") in tipos
+
+    def test_item_sin_llanta_ni_descripcion_rechazado(self):
+        cliente_id = _crear_cliente()
+        ok, msg = FacturaService.crear(
+            cliente_id=cliente_id,
+            total=Decimal("1000"),
+            items=[{"precio_unitario": Decimal("1000")}],
+        )
+        assert not ok
+        assert isinstance(msg, str)
+        assert "descripción" in msg
+
+    def test_descripcion_vacia_rechazada(self):
+        cliente_id = _crear_cliente()
+        ok, msg = FacturaService.crear(
+            cliente_id=cliente_id,
+            total=Decimal("1000"),
+            items=[{"descripcion": "   ", "precio_unitario": Decimal("1000")}],
+        )
+        assert not ok
+        assert isinstance(msg, str)
+        assert "descripción" in msg
+
+
 class TestLlantasFacturables:
     """FacturaService.listar_llantas_facturables — once-billed rule."""
 

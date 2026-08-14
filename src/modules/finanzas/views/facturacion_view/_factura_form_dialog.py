@@ -71,24 +71,33 @@ class FacturaFormDialog(QDialog):
         self._cargar_llantas_disponibles()
         picker_row.addWidget(self.llanta_combo, 1)
 
-        add_btn = QPushButton("+ Agregar Llanta")
-        add_btn.setStyleSheet(
+        reencauchada_btn = QPushButton("Reencauchada")
+        reencauchada_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
             "padding: 6px 14px; border-radius: 4px; border: none; }"
             "QPushButton:hover { background-color: #219a52; }"
         )
-        add_btn.clicked.connect(self._agregar_llanta)
-        picker_row.addWidget(add_btn)
+        reencauchada_btn.clicked.connect(self._agregar_llanta)
+        picker_row.addWidget(reencauchada_btn)
+
+        llanta_nueva_btn = QPushButton("Llanta nueva")
+        llanta_nueva_btn.setStyleSheet(
+            "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
+            "padding: 6px 14px; border-radius: 4px; border: none; }"
+            "QPushButton:hover { background-color: #219a52; }"
+        )
+        llanta_nueva_btn.clicked.connect(self._agregar_llanta_nueva)
+        picker_row.addWidget(llanta_nueva_btn)
         form.addRow(picker_row)
 
-        # Items table: Tiquete | Dimensión | Diseño | Precio | Acción
+        # Items table: Tipo | Tiquete | Dimensión | Diseño | Precio | Acción
         self.items_table = QTableWidget()
-        self.items_table.setColumnCount(5)
+        self.items_table.setColumnCount(6)
         self.items_table.setHorizontalHeaderLabels(
-            ["Tiquete", "Dimensión", "Diseño", "Precio", ""]
+            ["Tipo", "Tiquete", "Dimensión", "Diseño", "Precio", ""]
         )
         self.items_table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
+            0, QHeaderView.ResizeMode.ResizeToContents
         )
         self.items_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
@@ -96,8 +105,11 @@ class FacturaFormDialog(QDialog):
         self.items_table.horizontalHeader().setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
         )
-        self.items_table.setColumnWidth(3, 130)
-        self.items_table.setColumnWidth(4, 60)
+        self.items_table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+        self.items_table.setColumnWidth(4, 130)
+        self.items_table.setColumnWidth(5, 60)
         self.items_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
@@ -173,7 +185,7 @@ class FacturaFormDialog(QDialog):
             self.llanta_combo.addItem(label, l.id)
 
     def _agregar_llanta(self) -> None:
-        """Add the selected tire as a line item, pre-filling precio_venta."""
+        """Add the selected re-treaded tire as a line item, pre-filling precio_venta."""
         llanta_id = self.llanta_combo.currentData()
         if not llanta_id:
             QMessageBox.warning(self, "Validación", "Seleccione una llanta")
@@ -190,7 +202,9 @@ class FacturaFormDialog(QDialog):
         precio = float(llanta.precio_venta or 0)
         self._items.append(
             {
+                "tipo": "Reencauchada",
                 "llanta_id": llanta_id,
+                "descripcion": None,
                 "tiquete": llanta.tiquete or "",
                 "dimension": (
                     llanta.dimension_obj.display
@@ -208,12 +222,75 @@ class FacturaFormDialog(QDialog):
         if idx >= 0:
             self.llanta_combo.removeItem(idx)
 
+    def _agregar_llanta_nueva(self) -> None:
+        """Add a NEW tire (no re-tread record) as a free-text manual line item."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Llanta nueva")
+        dialog.setModal(True)
+        layout = QVBoxLayout()
+
+        form = QFormLayout()
+        input_style = "font-size: 14px; padding: 6px;"
+        label_style = "font-size: 14px; font-weight: 600;"
+
+        desc_label = QLabel("Descripción *:")
+        desc_label.setStyleSheet(label_style)
+        desc_input = QLineEdit()
+        desc_input.setPlaceholderText("Ej: Goodyear 295/80 R22.5 nueva")
+        desc_input.setStyleSheet(input_style)
+        form.addRow(desc_label, desc_input)
+
+        precio_label = QLabel("Precio *:")
+        precio_label.setStyleSheet(label_style)
+        precio_spin = QDoubleSpinBox()
+        precio_spin.setRange(0, 9999999)
+        precio_spin.setPrefix("$ ")
+        precio_spin.setDecimals(2)
+        precio_spin.setStyleSheet(input_style)
+        form.addRow(precio_label, precio_spin)
+
+        layout.addLayout(form)
+
+        btn_layout = QHBoxLayout()
+        aceptar_btn = QPushButton("Agregar")
+        aceptar_btn.clicked.connect(dialog.accept)
+        cancelar_btn = QPushButton("Cancelar")
+        cancelar_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(aceptar_btn)
+        btn_layout.addWidget(cancelar_btn)
+        layout.addLayout(btn_layout)
+
+        dialog.setLayout(layout)
+        desc_input.setFocus()
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        descripcion = desc_input.text().strip()
+        if not descripcion:
+            QMessageBox.warning(self, "Validación", "La descripción es obligatoria")
+            return
+
+        self._items.append(
+            {
+                "tipo": "Llanta nueva",
+                "llanta_id": None,
+                "descripcion": descripcion,
+                "tiquete": "—",
+                "dimension": "—",
+                "diseno": "—",
+                "precio": precio_spin.value(),
+            }
+        )
+        self._refrescar_tabla_items()
+
     def _refrescar_tabla_items(self) -> None:
         self.items_table.setRowCount(len(self._items))
         for row, it in enumerate(self._items):
-            self.items_table.setItem(row, 0, QTableWidgetItem(it["tiquete"]))
-            self.items_table.setItem(row, 1, QTableWidgetItem(it["dimension"]))
-            self.items_table.setItem(row, 2, QTableWidgetItem(it["diseno"]))
+            self.items_table.setItem(row, 0, QTableWidgetItem(it["tipo"]))
+            self.items_table.setItem(row, 1, QTableWidgetItem(it["tiquete"]))
+            self.items_table.setItem(row, 2, QTableWidgetItem(it["dimension"]))
+            self.items_table.setItem(row, 3, QTableWidgetItem(it["diseno"]))
             precio_spin = QDoubleSpinBox()
             precio_spin.setRange(0, 9999999)
             precio_spin.setPrefix("$ ")
@@ -222,7 +299,7 @@ class FacturaFormDialog(QDialog):
             precio_spin.valueChanged.connect(
                 lambda value, r=row: self._on_precio_cambiado(r, value)
             )
-            self.items_table.setCellWidget(row, 3, precio_spin)
+            self.items_table.setCellWidget(row, 4, precio_spin)
             quitar_btn = QPushButton("✕")
             quitar_btn.setToolTip("Quitar llanta")
             quitar_btn.setStyleSheet(
@@ -231,7 +308,7 @@ class FacturaFormDialog(QDialog):
             quitar_btn.clicked.connect(
                 lambda _=False, r=row: self._quitar_llanta(r)
             )
-            self.items_table.setCellWidget(row, 4, quitar_btn)
+            self.items_table.setCellWidget(row, 5, quitar_btn)
         self._recalcular_total()
 
     def _on_precio_cambiado(self, row: int, value: float) -> None:
@@ -243,17 +320,18 @@ class FacturaFormDialog(QDialog):
         if 0 <= row < len(self._items):
             item = self._items.pop(row)
             self._refrescar_tabla_items()
-            # Re-add tire to picker
-            llanta = self._llantas_dict.get(item["llanta_id"])
-            if llanta:
-                marca = llanta.marca_obj.nombre if llanta.marca_obj else (llanta.marca or "")
-                dim = (
-                    llanta.dimension_obj.display
-                    if llanta.dimension_obj
-                    else (llanta.dimension or "")
-                )
-                label = f"{llanta.tiquete} — {marca} {dim}".strip(" —")
-                self.llanta_combo.addItem(label, llanta.id)
+            # Re-add tire to picker (only re-treaded tires came from the picker)
+            if item.get("llanta_id"):
+                llanta = self._llantas_dict.get(item["llanta_id"])
+                if llanta:
+                    marca = llanta.marca_obj.nombre if llanta.marca_obj else (llanta.marca or "")
+                    dim = (
+                        llanta.dimension_obj.display
+                        if llanta.dimension_obj
+                        else (llanta.dimension or "")
+                    )
+                    label = f"{llanta.tiquete} — {marca} {dim}".strip(" —")
+                    self.llanta_combo.addItem(label, llanta.id)
 
     def _recalcular_total(self) -> None:
         total = sum(it["precio"] for it in self._items)
@@ -295,6 +373,7 @@ class FacturaFormDialog(QDialog):
         items = [
             {
                 "llanta_id": it["llanta_id"],
+                "descripcion": it.get("descripcion"),
                 "precio_unitario": it["precio"],
             }
             for it in self._items

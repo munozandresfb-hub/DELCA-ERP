@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.base import Base
@@ -16,6 +16,10 @@ class FacturaLlanta(Base):
     tire at invoice time (precio_unitario). The invoice total is the sum of
     its items, but the total field on Factura is editable so the charged
     amount may differ from the sum (manual adjustments).
+
+    ``llanta_id`` is NULL for "llanta nueva" (new tire sold without a
+    re-tread process record); in that case ``descripcion`` holds the free-text
+    tire description entered manually at invoice time.
     """
 
     __tablename__ = "factura_llantas"
@@ -29,8 +33,16 @@ class FacturaLlanta(Base):
     factura_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("facturas.id", ondelete="CASCADE")
     )
-    llanta_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("llantas.id", ondelete="RESTRICT")
+    llanta_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("llantas.id", ondelete="RESTRICT"),
+        nullable=True,
+        comment="NULL cuando el item es una llanta nueva manual (solo descripcion)",
+    )
+    descripcion: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="Descripcion libre de llanta nueva (sin registro en llantas)",
     )
     precio_unitario: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), default=Decimal("0"), comment="Precio de cobro de la llanta en la factura"

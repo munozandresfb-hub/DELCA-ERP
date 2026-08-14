@@ -144,12 +144,16 @@ class _FacturasMixin:
             if not cliente:
                 return False, "Cliente no encontrado"
 
-            # Validate tires exist before creating the invoice
+            # Validate tires exist before creating the invoice.
+            # Items may be either: {"llanta_id": N, ...} (reencauchada) or
+            # {"descripcion": "...", ...} (llanta nueva manual, sin llanta_id).
             items = items or []
-            llanta_ids = [it.get("llanta_id") for it in items]
-            llanta_ids = [i for i in llanta_ids if i is not None]
+            llanta_ids = [it.get("llanta_id") for it in items if it.get("llanta_id")]
             if len(llanta_ids) != len(set(llanta_ids)):
                 return False, "La misma llanta no puede facturarse dos veces"
+            for it in items:
+                if not it.get("llanta_id") and not (it.get("descripcion") or "").strip():
+                    return False, "Cada item debe tener una llanta o una descripción"
             llantas = (
                 session.query(Llanta)
                 .filter(Llanta.id.in_(llanta_ids))
@@ -179,7 +183,10 @@ class _FacturasMixin:
                 session.add(
                     FacturaLlanta(
                         factura_id=factura.id,
-                        llanta_id=it["llanta_id"],
+                        llanta_id=it.get("llanta_id"),
+                        descripcion=(
+                            (it.get("descripcion") or "").strip() or None
+                        ),
                         precio_unitario=Decimal(str(it.get("precio_unitario", 0))),
                     )
                 )
