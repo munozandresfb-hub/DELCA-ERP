@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from src.modules.usuarios.viewmodels.login_viewmodel import LoginViewModel
-from src.core.views.main_window import MainWindow
 
 
 class PasswordChangeDialog(QDialog):
@@ -176,6 +175,10 @@ class LoginWindow(QWidget):
         self.open_dashboard(user)
 
     def open_dashboard(self, user):
+        # Import lazy: MainWindow arrastra todas las vistas del sistema.
+        # Cargarlo aquí evita ralentizar la aparición del login.
+        from src.core.views.main_window import MainWindow
+
         self.main_window = MainWindow(user)
         self.main_window.show()
         self.close()
