@@ -50,6 +50,18 @@ def _crear_factura(cliente_id: int, llanta_id: int, total: str = "1000") -> int:
     return res.id
 
 
+def _crear_factura_nueva(cliente_id: int, total: str = "1500") -> int:
+    ok, res = FacturaService.crear(
+        cliente_id=cliente_id,
+        total=Decimal(total),
+        items=[
+            {"descripcion": "Goodyear 295/80 R22.5 nueva", "precio_unitario": Decimal(total)}
+        ],
+    )
+    assert ok, f"crear factura con llanta nueva falló: {res}"
+    return res.id
+
+
 class TestMayorSaldoDetalle:
     """Regression: clientes_con_mayor_saldo_detalle must include 'id'."""
 
@@ -170,3 +182,44 @@ class TestExportarExcel:
         assert ok
         assert ruta.exists()
         assert ruta.stat().st_size > 0
+
+
+class TestDetalleFinancieroLlantas:
+    """ReporteService.detalle_financiero_llantas — distingue Reencauchada vs Llanta nueva."""
+
+    def test_reencauchada_incluye_tipo(self):
+        cliente_id = _crear_cliente(nombre="Taller Reencauchado", nit="901234574")
+        llanta_id = _crear_llanta(tiquete="RPT-DET-1")
+        _crear_factura(cliente_id, llanta_id, total="1000")
+        rows = ReporteService.detalle_financiero_llantas()
+        assert len(rows) == 1
+        assert rows[0]["tipo"] == "Reencauchada"
+        assert rows[0]["id"] == llanta_id
+
+    def test_llanta_nueva_incluye_descripcion(self):
+        cliente_id = _crear_cliente(nombre="Comprador Nuevo", nit="901234575")
+        _crear_factura_nueva(cliente_id, total="1500")
+        rows = ReporteService.detalle_financiero_llantas()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["tipo"] == "Llanta nueva"
+        assert row["id"] is None
+        assert row["tiquete"] == "Goodyear 295/80 R22.5 nueva"
+        assert row["precio_venta"] == 1500.0
+
+    def test_mixto_reencauchada_y_nueva(self):
+        cliente_id = _crear_cliente(nombre="Cliente Mixto", nit="901234576")
+        llanta_id = _crear_llanta(tiquete="RPT-DET-2")
+        _crear_factura(cliente_id, llanta_id, total="1000")
+        _crear_factura_nueva(cliente_id, total="1500")
+        rows = ReporteService.detalle_financiero_llantas()
+        assert len(rows) == 2
+        tipos = {r["tipo"] for r in rows}
+        assert tipos == {"Reencauchada", "Llanta nueva"}
+
+    def test_factura_anulada_excluye_llanta_nueva(self):
+        cliente_id = _crear_cliente(nombre="Anulador SA", nit="901234577")
+        factura_id = _crear_factura_nueva(cliente_id, total="1500")
+        FacturaService.anular(factura_id)
+        rows = ReporteService.detalle_financiero_llantas()
+        assert rows == []

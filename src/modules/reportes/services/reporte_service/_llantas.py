@@ -6,6 +6,8 @@ from sqlalchemy import func
 
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
+from src.modules.finanzas.models.factura_llanta_model import FacturaLlanta
+from src.modules.finanzas.models.factura_model import Factura
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.services.llanta_service import UBICACIONES_DISPLAY
@@ -167,7 +169,13 @@ class _LlantasReports:
 
     @staticmethod
     def detalle_financiero_llantas() -> list[dict]:
-        """Detailed tire financial report with status, location, client."""
+        """Detailed tire financial report with status, location, client.
+
+        Includes both re-treaded tires (from ``llantas``) and manual
+        "llanta nueva" items billed on invoices (``factura_llantas`` rows
+        with NULL ``llanta_id``). Each row carries a ``tipo`` field:
+        "Reencauchada" or "Llanta nueva".
+        """
         from sqlalchemy import desc
 
         with get_session() as session:
@@ -207,6 +215,7 @@ class _LlantasReports:
             for l, ubicacion, cliente_nombre, cliente_nit in llantas:
                 result.append(
                     {
+                        "tipo": "Reencauchada",
                         "id": l.id,
                         "tiquete": l.tiquete or "",
                         "marca": l.marca or "",
@@ -217,6 +226,41 @@ class _LlantasReports:
                         "nit": cliente_nit or "",
                         "costo_produccion": l.costo_produccion or 0,
                         "precio_venta": l.precio_venta or 0,
+                    }
+                )
+
+            # Llantas nuevas vendidas manualmente (sin registro en llantas).
+            # Se unen a su factura (para cliente/NIT) y se excluyen ANULADAS.
+            nuevas = (
+                session.query(
+                    FacturaLlanta.descripcion,
+                    FacturaLlanta.precio_unitario,
+                    Cliente.nombre,
+                    Cliente.nit,
+                )
+                .join(Factura, FacturaLlanta.factura_id == Factura.id)
+                .outerjoin(Cliente, Factura.cliente_id == Cliente.id)
+                .filter(
+                    FacturaLlanta.llanta_id.is_(None),
+                    Factura.estado != "ANULADA",
+                )
+                .order_by(FacturaLlanta.id.desc())
+                .all()
+            )
+            for descripcion, precio, cliente_nombre, cliente_nit in nuevas:
+                result.append(
+                    {
+                        "tipo": "Llanta nueva",
+                        "id": None,
+                        "tiquete": descripcion or "—",
+                        "marca": "",
+                        "dimension": "",
+                        "estado": "NUEVA",
+                        "ubicacion": "FACTURADA",
+                        "cliente": cliente_nombre or "Sin cliente",
+                        "nit": cliente_nit or "",
+                        "costo_produccion": 0,
+                        "precio_venta": float(precio or 0),
                     }
                 )
             return result

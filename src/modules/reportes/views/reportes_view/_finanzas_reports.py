@@ -79,7 +79,7 @@ class _FinanzasReportView:
         llantas_toolbar.addWidget(QLabel("Buscar:"))
         self._fin_llantas_busqueda = QLineEdit()
         self._fin_llantas_busqueda.setPlaceholderText(
-            "Tiquete, marca o dimensión..."
+            "Tipo, tiquete, marca o dimensión..."
         )
         self._fin_llantas_busqueda.textChanged.connect(
             self._refresh_detalle_llantas
@@ -92,7 +92,7 @@ class _FinanzasReportView:
         tab4_layout.addLayout(llantas_toolbar)
         self._tab_detalle_llantas = _ReportTab("Detalle Llantas")
         self._tab_detalle_llantas.set_columns([
-            "Tiquete", "Marca", "Dimensión", "Estado",
+            "Tipo", "Tiquete/Descripción", "Marca", "Dimensión", "Estado",
             "Ubicación", "Cliente", "NIT",
             "Costo", "Precio Venta",
         ])
@@ -180,14 +180,23 @@ class _FinanzasReportView:
         self._tab_detalle_llantas.clear_rows()
         total_costo = 0.0
         total_venta = 0.0
+        cont_reencauchadas = 0
+        cont_nuevas = 0
         for r in data:
             if busqueda:
+                tipo = str(r.get("tipo", "")).lower()
                 tiquete = str(r.get("tiquete", "")).lower()
                 mar = str(r.get("marca", "")).lower()
                 med = str(r.get("dimension", "")).lower()
-                if busqueda not in tiquete and busqueda not in mar and busqueda not in med:
+                if (
+                    busqueda not in tipo
+                    and busqueda not in tiquete
+                    and busqueda not in mar
+                    and busqueda not in med
+                ):
                     continue
             self._tab_detalle_llantas.add_row([
+                r["tipo"],
                 r["tiquete"],
                 r["marca"],
                 r["dimension"],
@@ -198,6 +207,10 @@ class _FinanzasReportView:
                 f"${r['costo_produccion']:,.2f}" if r["costo_produccion"] else "$0",
                 f"${r['precio_venta']:,.2f}" if r["precio_venta"] else "$0",
             ])
+            if r["tipo"] == "Llanta nueva":
+                cont_nuevas += 1
+            else:
+                cont_reencauchadas += 1
             total_costo += r["costo_produccion"] or 0
             total_venta += r["precio_venta"] or 0
         if data:
@@ -210,11 +223,12 @@ class _FinanzasReportView:
                 color="#2c3e50",
             )
             self._tab_detalle_llantas.add_summary(
-                f"Mostrando: {self._tab_detalle_llantas.table.rowCount()} llantas",
+                f"Mostrando: {self._tab_detalle_llantas.table.rowCount()} llantas "
+                f"({cont_reencauchadas} reencauchadas · {cont_nuevas} nuevas)",
                 color="#27ae60",
             )
         else:
-            self._tab_detalle_llantas.add_row(["(sin datos)"] * 9)
+            self._tab_detalle_llantas.add_row(["(sin datos)"] * 10)
 
     def _exportar_por_mes(self) -> None:
         self._exportar_tabla(self._tab_por_mes, "facturas_por_mes")
