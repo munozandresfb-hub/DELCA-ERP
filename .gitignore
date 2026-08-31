@@ -25,8 +25,9 @@ build/
 dist/
 *.spec.bak
 
-# ── Backups locales (artefactos generados) ──────────────────────
+# ── Backups locales (artefactos generados, NO se versionan) ────────
 backups/
+*.bak
 
 # ── Planes/estado local de agentes ──────────────────────────────
 .omo/
