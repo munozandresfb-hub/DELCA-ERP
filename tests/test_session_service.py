@@ -27,11 +27,11 @@ class TestSessionManager:
         assert sm.get_user_id() == 1
         assert sm.get_username() == "test"
 
-    def test_clear_session(self):
+    def test_clear_session(self, db_session):
         sm = SessionManager()
         mock_user = type("User", (), {"id": 1, "username": "test"})()
         sm.set_user(mock_user)
-        sm.clear_session()
+        sm.clear_session(session=db_session)
         assert sm.get_user() is None
         assert sm.get_username() == ""
 
@@ -54,9 +54,9 @@ class TestSessionManager:
         sm.update_activity()
         assert not sm.is_session_expired()
 
-    def test_remaining_seconds_no_user(self):
+    def test_remaining_seconds_no_user(self, db_session):
         sm = SessionManager()
-        sm.clear_session()  # ensure clean state for singleton
+        sm.clear_session(session=db_session)  # ensure clean state for singleton
         assert sm.get_remaining_seconds() == 0
 
     def test_lock_unlock(self):
