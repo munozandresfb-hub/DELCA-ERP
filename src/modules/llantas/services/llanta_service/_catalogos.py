@@ -77,28 +77,44 @@ class _CatalogosMixin:
     # ── CRUD Dimensiones ─────────────────────────────────────────────
 
     @staticmethod
-    def crear_dimension(ancho: int, perfil: int | None, rin: int | float | None) -> tuple[bool, str]:
-        if ancho <= 0 or (perfil is not None and perfil <= 0) or (isinstance(rin, (int, float)) and rin <= 0):
+    def crear_dimension(
+        ancho: int | float | None,
+        perfil: int | None,
+        rin: int | float | None,
+        sufijo: str = "",
+    ) -> tuple[bool, str]:
+        if (
+            ancho is not None and ancho <= 0
+        ) or (perfil is not None and perfil <= 0) or (isinstance(rin, (int, float)) and rin <= 0):
             return False, "Ancho y rin deben ser positivos; perfil (si se indica) debe ser mayor que 0"
         from src.modules.llantas.models.dimension_llanta_model import DimensionLlanta
-        display = DimensionLlanta(ancho=ancho, perfil=perfil, rin=rin).display  # noqa
+        display = DimensionLlanta(ancho=ancho, perfil=perfil, rin=rin, sufijo=sufijo).display  # noqa
         with get_session() as session:
             existe = session.query(DimensionLlanta).filter(
                 DimensionLlanta.ancho == ancho,
                 DimensionLlanta.perfil == perfil,
                 DimensionLlanta.rin == rin,
+                DimensionLlanta.sufijo == sufijo,
             ).first()
             if existe:
                 return False, f"La dimensión {display} ya existe"
-            session.add(DimensionLlanta(ancho=ancho, perfil=perfil, rin=rin))
+            session.add(DimensionLlanta(ancho=ancho, perfil=perfil, rin=rin, sufijo=sufijo))
             return True, f"Dimensión {display} creada"
 
     @staticmethod
-    def actualizar_dimension(dimension_id: int, ancho: int, perfil: int | None, rin: int | float | None) -> tuple[bool, str]:
-        if ancho <= 0 or (perfil is not None and perfil <= 0) or (isinstance(rin, (int, float)) and rin <= 0):
+    def actualizar_dimension(
+        dimension_id: int,
+        ancho: int | float | None,
+        perfil: int | None,
+        rin: int | float | None,
+        sufijo: str = "",
+    ) -> tuple[bool, str]:
+        if (
+            ancho is not None and ancho <= 0
+        ) or (perfil is not None and perfil <= 0) or (isinstance(rin, (int, float)) and rin <= 0):
             return False, "Ancho y rin deben ser positivos; perfil (si se indica) debe ser mayor que 0"
         from src.modules.llantas.models.dimension_llanta_model import DimensionLlanta
-        display = DimensionLlanta(ancho=ancho, perfil=perfil, rin=rin).display  # noqa
+        display = DimensionLlanta(ancho=ancho, perfil=perfil, rin=rin, sufijo=sufijo).display  # noqa
         with get_session() as session:
             dimension = session.query(DimensionLlanta).filter(DimensionLlanta.id == dimension_id).first()
             if not dimension:
@@ -107,6 +123,7 @@ class _CatalogosMixin:
                 DimensionLlanta.ancho == ancho,
                 DimensionLlanta.perfil == perfil,
                 DimensionLlanta.rin == rin,
+                DimensionLlanta.sufijo == sufijo,
                 DimensionLlanta.id != dimension_id,
             ).first()
             if duplicado:
@@ -114,6 +131,7 @@ class _CatalogosMixin:
             dimension.ancho = ancho
             dimension.perfil = perfil
             dimension.rin = rin
+            dimension.sufijo = sufijo
             return True, "Dimensión actualizada"
 
     @staticmethod

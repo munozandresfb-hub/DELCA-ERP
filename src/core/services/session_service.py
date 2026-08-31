@@ -6,7 +6,7 @@ Tracks user session, inactivity timeout, and provides session locking.
 
 import time
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from src.core.services.audit_service import registrar_logout
 
@@ -26,6 +26,7 @@ class SessionManager:
     # Timeout por rol (segundos). None = nunca expira.
     ROLE_TIMEOUTS = {
         "Administrador": 1800,   # 30 min
+        "ADMIN": 1800,           # 30 min (rol real en la BD)
         "Gerencia": 10800,       # 3 horas
         "Operador": None,        # sin cierre
     }
@@ -86,9 +87,15 @@ class SessionManager:
 
     # ── Activity tracking ──────────────────────────────────────────
 
+    # Mínimo intervalo (s) entre actualizaciones para no saturar con MouseMove.
+    MIN_ACTIVITY_INTERVAL_SECONDS = 2.0
+
     def update_activity(self) -> None:
-        """Reset the inactivity timer."""
-        self._last_activity = time.time()
+        """Reset the inactivity timer (throttled)."""
+        now = time.time()
+        if now - self._last_activity < self.MIN_ACTIVITY_INTERVAL_SECONDS:
+            return
+        self._last_activity = now
 
     def get_last_activity(self) -> float:
         """Return timestamp of last activity."""

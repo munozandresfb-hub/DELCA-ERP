@@ -15,59 +15,85 @@ class _CarteraMixin:
 
     @staticmethod
     def obtener_cartera_clientes() -> list[dict]:
-        """Get client balances with pending amounts, contact info, and payment history."""
+        """Get client balances with pending amounts, contact info, and payment history.
+
+        Uses aggregated subqueries (no N+1) for performance with many clients.
+        """
         with get_session() as session:
             hoy = datetime.now()
-            clientes = (
-                session.query(Cliente)
-                .filter(Cliente.activo.is_(True))
+
+            # Saldo pendiente por cliente (facturas PENDIENTE)
+            saldo_sub = (
+                session.query(
+                    Factura.cliente_id,
+                    func.coalesce(func.sum(Factura.saldo), 0).label("total_pendiente"),
+                )
+                .filter(Factura.estado.in_(["PENDIENTE"]))
+                .group_by(Factura.cliente_id)
+                .subquery()
+            )
+            # Fecha de la última factura (no anulada) por cliente
+            fecha_sub = (
+                session.query(
+                    Factura.cliente_id,
+                    func.max(Factura.fecha_emision).label("ultima_factura"),
+                )
+                .filter(Factura.estado.notin_(["ANULADA"]))
+                .group_by(Factura.cliente_id)
+                .subquery()
+            )
+            # Total abonado por cliente (suma de pagos en sus facturas)
+            pagos_sub = (
+                session.query(
+                    Factura.cliente_id,
+                    func.coalesce(func.sum(Pago.valor), 0).label("total_abonado"),
+                )
+                .join(Factura, Pago.factura_id == Factura.id)
+                .group_by(Factura.cliente_id)
+                .subquery()
+            )
+
+            resultados = (
+                session.query(
+                    Cliente.id,
+                    Cliente.nombre,
+                    Cliente.nit,
+                    Cliente.celular,
+                    saldo_sub.c.total_pendiente,
+                    fecha_sub.c.ultima_factura,
+                    pagos_sub.c.total_abonado,
+                )
+                .outerjoin(saldo_sub, Cliente.id == saldo_sub.c.cliente_id)
+                .outerjoin(fecha_sub, Cliente.id == fecha_sub.c.cliente_id)
+                .outerjoin(pagos_sub, Cliente.id == pagos_sub.c.cliente_id)
+                .filter(
+                    Cliente.activo.is_(True),
+                    func.coalesce(saldo_sub.c.total_pendiente, 0) > 0,
+                )
                 .order_by(Cliente.nombre)
                 .all()
             )
+
             cartera = []
-            for c in clientes:
-                total_pendiente = (
-                    session.query(func.coalesce(func.sum(Factura.saldo), 0))
-                    .filter(
-                        Factura.cliente_id == c.id,
-                        Factura.estado.in_(["PENDIENTE"]),
-                    )
-                    .scalar()
+            for r in resultados:
+                total_pendiente = float(r[4] or 0)
+                ultima_factura = r[5]
+                total_abonado = float(r[6] or 0)
+                dias_ultima = (hoy - ultima_factura).days if ultima_factura else 999
+                cartera.append(
+                    {
+                        "cliente_id": r[0],
+                        "cliente_nombre": r[1],
+                        "cliente_nit": r[2],
+                        "cliente_celular": r[3] or "",
+                        "saldo_pendiente": total_pendiente,
+                        "fecha_ultima_factura": (
+                            ultima_factura.strftime("%Y-%m-%d") if ultima_factura else ""
+                        ),
+                        "total_abonado": total_abonado,
+                        "dias_ultima_factura": dias_ultima,
+                    }
                 )
-                if total_pendiente > 0:
-                    # Ultima fecha de factura
-                    ultima_factura = (
-                        session.query(func.max(Factura.fecha_emision))
-                        .filter(
-                            Factura.cliente_id == c.id,
-                            Factura.estado.notin_(["ANULADA"]),
-                        )
-                        .scalar()
-                    )
-                    # Total abonado (suma de pagos en facturas de este cliente)
-                    total_abonado = (
-                        session.query(func.coalesce(func.sum(Pago.valor), 0))
-                        .join(Factura, Pago.factura_id == Factura.id)
-                        .filter(Factura.cliente_id == c.id)
-                        .scalar()
-                    )
-                    dias_ultima = (hoy - ultima_factura).days if ultima_factura else 999
-                    cartera.append(
-                        {
-                            "cliente_id": c.id,
-                            "cliente_nombre": c.nombre,
-                            "cliente_nit": c.nit,
-                            "cliente_celular": c.celular or "",
-                            "saldo_pendiente": float(total_pendiente),
-                            "fecha_ultima_factura": (
-                                ultima_factura.strftime("%Y-%m-%d")
-                                if ultima_factura
-                                else ""
-                            ),
-                            "total_abonado": float(total_abonado),
-                            "dias_ultima_factura": dias_ultima,
-                        }
-                    )
             return cartera
 
     @staticmethod

@@ -13,7 +13,7 @@ class EstadoLlanta(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('PENDIENTE','APTA','RECHAZADA','REENCAUCHADA','REPARADA')"
+            "estado IN ('PENDIENTE','APTA','RECHAZADA','REENCAUCHADA','REPARADA','REPROCESO')"
         ),
     )
 

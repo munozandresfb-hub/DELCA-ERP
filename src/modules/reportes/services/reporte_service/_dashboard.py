@@ -13,8 +13,7 @@ from src.modules.inventario.models.movimiento_inventario_model import (
 )
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.llantas.models.llanta_model import Llanta
-
-ESTADOS_EN_PLANTA = ("PENDIENTE", "APTA", "RECHAZADA", "REPARADA")
+from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
 
 
 class _DashboardReports:
@@ -29,6 +28,8 @@ class _DashboardReports:
             clientes_inactivos = session.query(Cliente).filter(Cliente.activo.is_(False)).count()
             llantas_planta = session.query(Llanta).filter(
                 Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                (Llanta.ubicacion_actual.is_(None))
+                | (Llanta.ubicacion_actual != "CLIENTE"),
             ).count()
             total_llantas = session.query(Llanta).count()
             total_facturas = session.query(Factura).count()

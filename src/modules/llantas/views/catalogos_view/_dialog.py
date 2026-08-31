@@ -162,12 +162,6 @@ class CatalogoMaestroDialog(QDialog):
     # ── Dimensiones CRUD ─────────────────────────────────────────────
 
     @staticmethod
-    def _parse_rin(text: str) -> int | float:
-        """Parse rin text — return float if it contains '.', else int."""
-        cleaned = text.strip()
-        return float(cleaned) if "." in cleaned else int(cleaned)
-
-    @staticmethod
     def _perfil_form(dlg: _DimensionForm) -> int | None:
         """Perfil del formulario.
 

@@ -278,40 +278,6 @@ class UsuarioService:
                 session.close()
 
     @staticmethod
-    def obtener_usuario(
-        usuario_id: int,
-        session: Session | None = None,
-    ) -> dict[str, Any] | None:
-        """Get a single user details."""
-        close = False
-        if session is None:
-            session = SessionLocal()
-            close = True
-        try:
-            u = session.query(Usuario).filter(Usuario.id == usuario_id).first()
-            if not u:
-                return None
-            return {
-                "id": u.id,
-                "nombre": u.nombre,
-                "username": u.username,
-                "rol_id": u.rol_id,
-                "rol_nombre": u.rol.nombre if u.rol else "Sin rol",
-                "requires_password_change": u.requires_password_change,
-                "ultimo_acceso": (
-                    u.last_login.strftime("%Y-%m-%d %H:%M")
-                    if u.last_login else "Nunca"
-                ),
-                "bloqueado": (
-                    u.locked_until is not None
-                    and u.locked_until > datetime.now()
-                ),
-            }
-        finally:
-            if close:
-                session.close()
-
-    @staticmethod
     def buscar_usuarios(
         termino: str,
         session: Session | None = None,

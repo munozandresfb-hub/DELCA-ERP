@@ -7,6 +7,218 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.7.6] — 2026-08-31 — Tiquete sin prefijo "J" en toda la app
+
+### Changed
+- **Tiquetes visibles SIN el prefijo "J" de la serie en toda la aplicación**: el campo `tiquete` almacena el identificador completo (ej. "J24537", prefijo fijo en los 24,451 registros); ahora TODAS las vistas lo muestran solo con el número ("24537")
+- **Nuevo helper central** `formatear_tiquete()` en `llanta_service/_core.py` (presentación pura — NO modifica la BD)
+- **Aplicado en**: tablas de Llantas, Producción, Planta, Inventario (llantas terminadas), Reportes (3 vistas), y facturación (combo, tabla de ítems y labels)
+- **Búsquedas por tiquete normalizadas** (Producción y Planta): aceptan "24537" o "J24537" — si el texto no lleva el prefijo, se busca con "J" (la BD lo guarda con prefijo)
+
+### Verification
+- **Imports verificados**: todos los módulos modificados importan correctamente
+- **`formatear_tiquete` probado**: "J24537"→"24537", "24537"→"24537", None→""
+- **Suite de tests**: 151 passed (27.1 s)
+- **EXE recompilado** (66.3 MB)
+
+---
+
+## [2.7.5] — 2026-08-31 — Impresión de la Hoja de Proceso (formato aprobado)
+
+### Fixed
+- **Impresión del tiquete salía en BLANCO**: `tiquete_printer.py` usaba `doc.drawContents()` con `setPageSize` en puntos (1/72") sobre un `QPainter` de 1200 dpi → el contenido se comprimía en ~4.4×6.3 mm (invisible). Además, `setPageOrientation(Landscape)` con tamaño explícito intercambiaba el MediaBox del PDF (distorsión al renderizar). Corregido: se eliminó el HTML genérico y el renderizado manual
+
+### Changed
+- **Impresión por overlay sobre el formato aprobado**: la "Hoja de Proceso de Reencauche" escaneada (formato inmodificable, aprobado por acreditación, 1152×423 mm) se imprime como FONDO y los datos de la llanta se superponen en los espacios en blanco
+- **Fondo pre-renderizado**: `assets/hoja_proceso_reencauche.png` (150 dpi) — evita dependencia de QtPdf en runtime; empaquetado en el EXE (`build_exe.spec` incluye assets/)
+- **Campos superpuestos (texto horizontal, como el llenado manual)**: Cliente, N° Tiquete, Dimensión, Diseño, O.S. (número de orden) y Serie (= DOT, según confirmación del usuario) — en los DOS bloques del formato (talón y cuerpo)
+- **N° Tiquete sin prefijo "J"**: los 24,451 tiquetes de la serie llevan el prefijo fijo "J" (J24537); al imprimir se elimina (`removeprefix("J")`) → solo el número (24537)
+- **`build_exe.spec`**: añadidos `assets/hoja_proceso_reencauche.png` y `assets/delca.ico`
+
+### Verification
+- **Overlay verificado objetivamente** (diferencia de píxeles fondo vs fondo+datos): texto presente en 11/11 celdas del panel izquierdo (27-44% de píxeles cambiados por celda), 0.0% en zonas de control (nada fuera de lugar)
+- **MediaBox corregido** (3266×1199 pt landscape, sin distorsión)
+- **Suite de tests**: 151 passed
+- **EXE recompilado** (66.3 MB, incluye el fondo del formato)
+
+---
+
+## [2.7.4] — 2026-08-29 — Fix crash al maximizar + ventana maximizada
+
+### Fixed
+- **Crash nativo al maximizar la ventana (0xC0000005 en Qt6Widgets.dll `0x3e1543`)**: `DashboardView._delete_old_chart()` eliminaba el **chart interno por defecto del QChartView** (existe incluso sin `setChart`) vía `deleteLater()`. Con la BD sin facturas (0 resultados tras la limpieza v2.7.2), `_render_bar_chart` hacía `return` temprano sin setear un chart nuevo → el QChartView quedaba con su scene dañada (item raíz eliminado) → al maximizar, `QGraphicsView` repintaba usando el chart liberado → **use-after-free → access violation** (mismo offset que los crashes WER del usuario: `Qt6Widgets.dll 0x3e1543`)
+- **Fix**: `_delete_old_chart()` ahora elimina SOLO el chart creado por el dashboard (tracking con `self._chart_owned`), nunca el default del view. Aplicado también de forma preventiva en `kpi_historico_dialog.py` (mismo patrón)
+
+### Changed
+- **La ventana principal abre MAXIMIZADA** (`showMaximized()` tras el login): aprovecha toda la pantalla. Antes abría a 1200×700 (≈78% del ancho en pantallas con DPI 125%), lo que el usuario percibía como "tamaño reducido"
+
+### Verification
+- **Repro exacto** (fuente, login real + maximizar): antes crash inmediato (`Fatal Python error: Aborted` / 0xC000041D); después proceso vivo 45 s, exit 0
+- **Repro mínimo aislado**: QChartView sin setChart + deleteLater(chart interno) + maximizar → crash confirmado; sin el deleteLater → vivo. Mecanismo 100% aislado
+- **Bisección por vistas**: crash solo con DashboardView real; chart aislado no crashea → interacción `_delete_old_chart` + maximize confirmada
+- **Navegación completa 14 páginas** (ventana maximizada): sin crash, exit 0
+- **Suite de tests**: 151 passed (27.4 s)
+- **EXE recompilado y validado** (login real vía UI Automation): ventana abre MAXIMIZADA (1920×991), proceso vivo tras 15 s en la ventana crítica, 0 eventos WER nuevos
+
+---
+
+## [2.7.3] — 2026-08-28 — Fix crash nativo al iniciar (0xC000041D)
+
+### Fixed
+- **Crash nativo al abrir la app (0xC000041D / access violation en Qt6Widgets.dll)**: el botón "🧾 Nuevo Producto" de la vista Inventario tenía un **QSS malformado** — `QPushButton { background: ... border: none; }}` con llave de cierre duplicada. Causa: la primera línea del f-string escapaba `{{` → `{` sin cerrar, y la segunda línea (string normal, sin escape) producía `}}` literal → stylesheet desbalanceado. Qt no podía parsearlo y `QStyleSheetStyle` crasheaba al pintar el primer render (~9 s después del login, exactamente el patrón del usuario). Reproducido con main.py real + login real + faulthandler: antes `Windows fatal exception: access violation` (exit -1073740771); después exit 0, 90 s sin crash, 0 warnings Qt
+- **Mismo bug latente corregido en 7 botones más** (QSS con `}}` duplicado por concatenación f-string + string normal): `inventario_view/_widgets.py` (3 botones), `precios_view.py` (3 botones) y `inventario_view/_documento_dialogs.py` (1 botón)
+- **Propiedades QSS inválidas eliminadas** (`opacity` no existe en Qt Style Sheets → warnings "Unknown property"): `kpi_historico_dialog.py` (hover) y `automatizacion_view/_view.py` (hover/pressed)
+
+### Verification
+- **Repro exacto** (main.py real + login real + dashboard, sin navegar): antes 3× "Could not parse stylesheet of object QPushButton" + crash nativo; después 0 warnings, 0 excepciones, proceso vivo 90 s, exit 0
+- **Navegación completa por las 14 páginas** del sidebar sin crash (incluye Usuarios, donde el repro anterior crasheaba)
+- **Análisis AST de todo el proyecto**: 1,222 concatenaciones de strings revisadas, 0 con llaves desbalanceadas
+- **Suite de tests**: 151 passed (32.9 s)
+- **EXE recompilado** (`pyinstaller build_exe.spec --clean -y`, `dist/DELCA ERP.exe` 61.3 MB) y validado: arranque OK, proceso vivo a los 25 s, 0 eventos WER nuevos, cierre limpio
+- **EXE + login real automatizado** (UI Automation): credenciales `test_repro2`/`Test1234!` en la ventana nativa → login OK (ventana cerrada, MainWindow "DELCA ERP - T2" renderizado), proceso vivo 25 s después del login (ventana crítica: el usuario crasheaba ~9 s tras el login), 0 eventos WER nuevos, `last_login` actualizado en BD
+
+---
+
+## [2.7.2] — 2026-08-28 — Limpieza de facturas de prueba + fix cartera
+
+### Fixed
+- **Cartera pendiente excluye facturas ANULADAS**: la query `SUM(saldo)` ahora filtra `estado != 'ANULADA'` (antes incluía la FAC-0003 anulada, sobreestimando la cartera)
+
+### Removed
+- **Eliminadas las 13 facturas legacy de prueba** (FAC-0001 a FAC-0013) creadas en desarrollo, junto con sus 11 pagos y vínculos (`factura_llantas`). Estas facturas inflaban la cartera ($4,166,000) y el gráfico de facturación mensual con datos que no corresponden a operación real
+- **KPI histórico legacy eliminado** (julio $4,068,000) — el sistema regenera el mes actual al abrir el dashboard
+- Nuevo script `scripts/limpiar_facturas_prueba.py` (dry-run/ejecutar con backup)
+
+### Resultado
+- **Cartera pendiente: $0** · **Facturación del mes: $0** · **Gráfico mensual: sin barras legacy** — el dashboard refleja la realidad (aún no hay facturación con las llantas migradas)
+
+---
+
+## [2.7.1] — 2026-08-27 — Dashboard: clientes activos reales
+
+### Changed
+- **Card "Clientes" del dashboard ahora muestra activos reales / totales** (`316 / 5,239`): la métrica cuenta clientes con ≥1 llanta en planta (no entregada) en el último año, en lugar de usar el campo `activo` del catálogo legacy (que marcaba 1 para todos los migrados). El dato se calcula dinámicamente desde la BD en cada carga del dashboard.
+
+---
+
+## [2.7.0] — 2026-08-27 — Optimización de rendimiento
+
+### Performance
+- **Paginación en módulos de llantas**: LlantasView, PlantaView y ProduccionView cargan 500 llantas por página con controles "← Anterior / Siguiente →" y contador. **Apertura de módulos: ~3 s → <100 ms** (38-43x más rápido), memoria 80-130 MB → ~2 MB
+- **`listar_llantas()`/`buscar()` paginados**: retornan `(llantas, total)` con `limite`/`offset` en SQL
+- **Lazy loading de relaciones**: `lazy="joined"` → `lazy="selectin"` en `llanta_model` (cliente, marca, dimensión, diseño)
+- **`reporte_llantas()` optimizado**: KPIs calculados con SQL agregado (`COUNT`/`SUM`/`CASE`) sobre el total; filas detalladas paginables (`limite`/`offset`); la vista limita a 2,000 filas en la tabla manteniendo KPIs del total
+- Nuevo test: paginación sin duplicados entre páginas
+
+---
+
+## [2.6.4] — 2026-08-27 — Corrección de fechas de historiales
+
+### Fixed
+- **Dashboard "Entregadas del mes" distorsionado**: el importador creaba historiales con fecha de migración (25/08), inflando la métrica a 16,382. Ahora los historiales iniciales usan la `fecha_ingreso` real de cada llanta → la métrica muestra 26 (datos reales de agosto 2026)
+- **`importar_llantas_csv.py`**: historiales iniciales usan `fecha_ingreso` (para futuras migraciones)
+- **`corregir_historiales_fechas.py`**: script SQL masivo que corrige historiales existentes (24,451 estados + 24,451 ubicaciones) y crea índices faltantes (`ix_estados_llanta_llanta_id`, `ix_ubicaciones_llanta_llanta_id`)
+
+---
+
+## [2.6.3] — 2026-08-27 — Limpieza de código muerto
+
+### Removed
+- **22 elementos de código muerto eliminados** (verificación cruzada con vulture + grep fino de referencias):
+  - `cliente_service`: `clasificacion_abc`
+  - `documento_service`: `crear_documento`, `agregar_movimiento`, `eliminar_documento`
+  - `inventario_config_service`: `listar_costos`, `obtener_costo`, `guardar_costo`, `eliminar_costo`, `obtener_precio`, `listar_recetas`, `guardar_receta`, `eliminar_receta`
+  - `inventario_kpi_service`: `margen_bruto_operacion`
+  - `producto_service`: `obtener_kardex`, `obtener_resumen_stock`, `listar_categorias`
+  - `llanta_repository`: `get_by_estado`, `update_cliente`, `get_all_disenos`
+  - `catalogos_view/_dialog`: `_parse_rin`
+  - `_documento_dialogs`: clase `_LineaProductoDialog`
+  - `usuario_service`: `obtener_usuario`
+  - `config`: property `is_postgres`
+  - `session_service`: import `Optional` sin usar
+- Verificación: 150 tests passing, imports de módulos afectados OK, exe recompilado y arrancando
+
+---
+
+## [2.6.2] — 2026-08-25 — Unificación de diseños duplicados
+
+### Added
+- **`scripts/unificar_disenos.py`**: detecta y unifica diseños duplicados por normalización de nombre (guiones) — canónico = nombre sin guion, duplicado = con guion
+
+### Changed
+- **Unificados 3 duplicados** (1,672 llantas reasignadas): `DV-RT4 → DVRT4` (1,514), `DV-RT2 → DVRT2` (145), `PBT14-W → PBT14W` (13)
+- Tras la unificación, **1,287 precios adicionales aplicados** (DVRT4 295/80R22.5 = 960,000 confirmado) — total 9,002 llantas con precio
+- **`formato precios a cargar.xlsx` actualizado**: 4 hojas (Precios top 25, Pendientes 359 combinaciones/9,894 llantas, Ya con precio 97, Instrucciones)
+
+---
+
+## [2.6.1] — 2026-08-25 — Precios aplicados a llantas terminadas
+
+### Added
+- **`scripts/aplicar_precios.py`**: copia `precio_normal` de `precios_producto` → `llantas.precio_venta` para llantas REENCAUCHADA/REPARADA con cobertura (dry-run/ejecutar con backup; solo pisa precios vacíos)
+- **`PrecioProductoService.aplicar_precios(llanta_id=None)`**: método reutilizable e idempotente (desde UI o script)
+- Reportes: `precios faltantes.csv` (por llanta), `combinaciones sin precio.csv` + `docs/reporte_precios_sin_cobertura.txt` (362 combinaciones, 11,181 llantas sin cobertura)
+- Tests de `aplicar_precios()` (4 nuevos: copia, sin cobertura, no pisa existente, idempotente)
+
+### Changed
+- **7,712 llantas recibieron precio** (`precio_normal`); 11,181 quedan sin precio (sin cobertura en `precios_producto` — pendiente cargar desde Excel de precios)
+- Suite de tests: 150 passing
+
+---
+
+## [2.6.0] — 2026-08-25 — Dimensiones: ancho FLOAT + sufijo visible
+
+### Added
+- **Dimensión de llanta ampliada**: `ancho` pasa de INTEGER a FLOAT (soporta `9.5`, `7.50`, `8.25`) y nueva columna `sufijo` (visible: `215/75R16C`, `295/80R22.5U`); UNIQUE ahora incluye el sufijo
+- **Parser ampliado** (`parsear_dimension`): ancho decimal, sufijos de letra, métrico con guion (`215/75-15`), rin decimal en convencional (`12-22.5`), flotación (`31X10.50R15`), especial sin ancho (`H78-15`)
+- **Script `resolver_dimensiones.py`**: re-vincula las llantas con `dimension_id IS NULL` (dry-run/ejecutar con backup)
+- Migración BD v2.6.0 + tests (14 nuevos: parser y servicio de dimensión)
+
+### Changed
+- **1,637 llantas vinculadas** a catálogo (0 pendientes); 13 dimensiones nuevas creadas (9.5R17.5, 7.5R16, 215/75R16C, etc.)
+
+---
+
+## [2.5.0] — 2026-08-24 — Modelo "flujo correcto 2"
+
+### Added (Nuevas Funcionalidades)
+
+#### Modelo de estados y ubicaciones
+- Nuevo estado `REPROCESO` (6 estados totales) según "flujo correcto 2"
+- Matriz de transiciones centralizada en `_constantes.py` (`TRANSICIONES_VALIDAS`)
+- `VEREDICTO_UBICACION` centralizado (APTA→PRODUCCION, REENCAUCHADA/REPARADA/RECHAZADA→PLANTA, REPROCESO→PRODUCCION)
+- `COMBINACIONES_VALIDAS` (R1-R6): validación de combinaciones estado↔ubicación
+- Regla R5: estado `REPARADA` solo con diseño de banda `REP`
+- `crear()` asigna ubicación inicial `PLANTA` + historial inicial
+- Eliminado bypass `LlantaRepository.update_estado()`
+
+#### UI
+- Botón **INSPECCIÓN FINAL** en módulo Producción: veredicto rápido por tiquete con veredictos alcanzables desde el estado actual
+- Botón **CAMBIO DE UBICACIÓN** en módulo Planta: movimiento validado por combinaciones estado↔ubicación
+- Dropdowns de reportes ahora usan `ESTADOS_PROCESO`/`UBICACIONES_PLANTA` (sin hardcode)
+
+#### Reportes/KPIs
+- Centralizadas las copias de `ESTADOS_EN_PLANTA` (dashboard, reportes, clientes)
+- Nueva constante `ESTADOS_EN_PRODUCCION` (APTA + REPROCESO) para KPIs de producción
+- Nueva constante `ESTADOS_TERMINADAS` (REENCAUCHADA + REPARADA) para inventario
+- KPI "en producción" cuenta por ubicación `PRODUCCION` (fuente de verdad)
+
+### Changed
+- Migración BD v2.5.0: CHECK constraints de 6 estados en `llantas` y `estados_llanta`; DEFAULT `PLANTA` en `ubicacion_actual`
+- Corrección de datos: PENDIENTE+PRODUCCION → APTA/PLANTA; ubicaciones NULL → PLANTA
+- `config.py`: resolución de ruta unificada — el exe usa la BD del proyecto cuando está en `dist/`, o crea la suya propia si es portable; respeta `.env` (`DATABASE_URL`)
+- Registro de migración v2.5.0 en `_migrations` vía `run_migration()` idempotente + `main.py`
+- **Instalación limpia auto-inicializante**: en primera ejecución, el exe crea la BD con migraciones, admin (`admin/admin123`), datos maestros (marcas/medidas/diseños/productos/precios/causas/recetas) y reglas de automatización — no requiere copiar `delca.db`
+- `src/database/registry.py`: añadidos `Permiso`/`rol_permiso` (faltaban para instalaciones limpias)
+- `installer.iss`: onefile `DELCA ERP.exe` (v2.5.0), sin copia de BD
+- **Fix backup automático**: `was_backup_done_today()` comparaba `YYYY-MM-DD` contra el nombre `YYYYMMDD` → nunca detectaba el backup del día → creaba backups duplicados en cada apertura. Ahora genera la clave con el formato correcto (1 backup diario)
+- **Scheduler de backup robusto**: crea el backup del día **al arrancar la app** (no solo recordatorio) + timer de 6h como red de seguridad para el cambio de día; avisa solo si falla
+- **Veredictos fijos de inspección final**: el diálogo INSPECCIÓN FINAL muestra siempre las 4 opciones `REENCAUCHADA | RECHAZADA | REPARADA | REPROCESO`; `APTA → RECHAZADA` añadido a la matriz de transiciones (nueva constante `VEREDICTOS_INSPECCION_FINAL`)
+- **Ubicaciones fijas de cambio manual**: el diálogo CAMBIO DE UBICACIÓN (módulo Planta) muestra siempre las 2 opciones `CLIENTE | PLANTA` (nueva constante `UBICACIONES_CAMBIO_MANUAL`); la validación según el estado la sigue haciendo el servicio
+- **Migración principal de llantas**: cargadas **24,451 llantas** desde `Llantas 18-08.csv` (ETL MAE_PROD.DBF) — el importador rechaza combinaciones estado+ubicación inválidas (reglas R1-R6) y las registra en `llantas no migradas.csv` (79 llantas: 56 REENCAUCHADA+PRODUCCION, 12 APTA+CLIENTE, 9 REPARADA+PRODUCCION, 2 PENDIENTE+CLIENTE); crea catálogos faltantes automáticamente (25 marcas, 54 dimensiones, 29 diseños)
+
+---
+
 ## [1.0.0] — 2026-06-24 — Hardening de Producción
 
 ### Added (Nuevas Funcionalidades)

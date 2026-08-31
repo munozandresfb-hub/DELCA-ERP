@@ -83,6 +83,61 @@ class PrecioProductoService:
             session.delete(r)
             return True, "Precio eliminado"
 
+    @staticmethod
+    def aplicar_precios(llanta_id: int | None = None) -> tuple[bool, str]:
+        """Copia precio_normal de precios_producto a llantas.precio_venta.
+
+        Idempotente y no destructivo: SOLO pisa llantas cuyo precio_venta
+        está vacío. Aplica a llantas terminadas (REENCAUCHADA/REPARADA)
+        con dimension_id + diseno_id con cobertura en la lista de precios.
+
+        Args:
+            llanta_id: si se indica, solo procesa esa llanta; si None,
+                procesa todas las terminadas sin precio.
+
+        Returns:
+            (ok, resumen con conteos)
+        """
+        from src.modules.llantas.models.llanta_model import Llanta
+
+        with get_session() as session:
+            # Índice de precios: (dimension_id, diseno_id) -> precio_normal
+            precios = {
+                (p.dimension_id, p.diseno_id): p.precio_normal
+                for p in session.query(PrecioProducto).all()
+                if p.dimension_id and p.diseno_id
+            }
+
+            q = session.query(Llanta).filter(
+                Llanta.estado.in_(["REENCAUCHADA", "REPARADA"]),
+            )
+            if llanta_id is not None:
+                q = q.filter(Llanta.id == llanta_id)
+
+            aplicados = 0
+            sin_cubrir = 0
+            ya_tienen = 0
+            sin_dim_dis = 0
+
+            for l in q.all():
+                if not l.dimension_id or not l.diseno_id:
+                    sin_dim_dis += 1
+                    continue
+                if l.precio_venta is not None and l.precio_venta > 0:
+                    ya_tienen += 1
+                    continue
+                precio = precios.get((l.dimension_id, l.diseno_id))
+                if precio is None:
+                    sin_cubrir += 1
+                    continue
+                l.precio_venta = precio
+                aplicados += 1
+
+            return True, (
+                f"Precios aplicados: {aplicados} | ya tenían: {ya_tienen} | "
+                f"sin cobertura: {sin_cubrir} | sin dim/dis: {sin_dim_dis}"
+            )
+
     # ── Excel import ──────────────────────────────────────────────────
 
     @staticmethod
@@ -111,7 +166,8 @@ class PrecioProductoService:
             d.nombre: d.id for d in LlantaService.listar_disenos()
         }
         dimensiones_map: dict[str, int] = {
-            m.display: m.id for m in LlantaService.listar_dimensiones()
+            m.display.strip().replace(" ", "").upper(): m.id
+            for m in LlantaService.listar_dimensiones()
         }
 
         importados = 0
@@ -123,7 +179,9 @@ class PrecioProductoService:
             diseno_nombre = str(row[0]).strip()
             dimension_display = str(row[1]).strip()
             diseno_id = disenos_map.get(diseno_nombre)
-            dimension_id = dimensiones_map.get(dimension_display)
+            dimension_id = dimensiones_map.get(
+                dimension_display.strip().replace(" ", "").upper()
+            )
             if diseno_id is None:
                 errores.append(f"Fila {i}: Diseño '{diseno_nombre}' no encontrado")
                 continue

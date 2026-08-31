@@ -28,68 +28,6 @@ from src.modules.inventario.services.documento_service import DocumentoService
 from src.modules.inventario.views.inventario_view._widgets import C_AZUL
 
 
-class _LineaProductoDialog(QDialog):
-    """Agrega un producto a un documento de movimiento."""
-
-    def __init__(
-        self,
-        productos: list[Producto],
-        tipo: str,  # "ENTRADA" or "SALIDA"
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Agregar Producto")
-        self.resize(380, 200)
-        layout = QFormLayout()
-
-        self.producto_combo = QComboBox()
-        for p in productos:
-            stock_str = f" (stock: {p.stock})" if tipo == "SALIDA" else ""
-            self.producto_combo.addItem(
-                f"{p.nombre} ({p.sku}){stock_str}", p.id
-            )
-        layout.addRow("Producto:", self.producto_combo)
-
-        self.cantidad_input = QLineEdit()
-        self.cantidad_input.setPlaceholderText("0")
-        layout.addRow("Cantidad *:", self.cantidad_input)
-
-        self.costo_input = QLineEdit()
-        self.costo_input.setPlaceholderText("Dejar vacío = costo actual")
-        layout.addRow("Costo Unit.:", self.costo_input)
-
-        btn_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        btn_box.accepted.connect(self._validar)
-        btn_box.rejected.connect(self.reject)
-        layout.addRow(btn_box)
-
-        self.setLayout(layout)
-
-    def _validar(self) -> None:
-        text = self.cantidad_input.text().strip()
-        if not text:
-            QMessageBox.warning(self, "Validación", "Ingrese la cantidad")
-            return
-        try:
-            cant = Decimal(text)
-        except Exception:
-            QMessageBox.warning(self, "Validación", "Cantidad inválida")
-            return
-        if cant <= 0:
-            QMessageBox.warning(self, "Validación", "La cantidad debe ser > 0")
-            return
-        self.accept()
-
-    def get_data(self) -> tuple[int, Decimal, Decimal | None]:
-        pid = self.producto_combo.currentData()
-        cantidad = Decimal(self.cantidad_input.text().strip() or "0")
-        costo_text = self.costo_input.text().strip()
-        costo = Decimal(costo_text) if costo_text else None
-        return pid, cantidad, costo
-
-
 # ═════════════════════════════════════════════════════════════════════
 #  Document search / viewer dialog
 # ═════════════════════════════════════════════════════════════════════
@@ -138,7 +76,7 @@ class _DocumentoSearchDialog(QDialog):
         btn_buscar.clicked.connect(self._buscar)
         btn_buscar.setStyleSheet(
             f"QPushButton {{ background: {C_AZUL}; color: white; font-weight: bold; "
-            "padding: 6px 14px; border-radius: 4px; border: none; }}"
+            f"padding: 6px 14px; border-radius: 4px; border: none; }}"
         )
         filter_layout.addWidget(btn_buscar)
 

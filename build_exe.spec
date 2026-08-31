@@ -12,7 +12,13 @@ a = Analysis(
     ["main.py"],
     pathex=[PROJECT_DIR],
     binaries=[],
-    datas=[],
+    datas=[
+        # Datos maestros para poblar catálogos en instalación limpia
+        ("data/datos_maestros.xlsx", "data"),
+        # Assets: hoja de proceso (fondo de impresión) + icono
+        ("assets/hoja_proceso_reencauche.png", "assets"),
+        ("assets/delca.ico", "assets"),
+    ],
     hiddenimports=[
         # PySide6
         "PySide6.QtCore",
@@ -39,6 +45,7 @@ a = Analysis(
         "src.modules.automatizacion.models.regla_model",
         # Services
         "src.core.services.dashboard_service",
+        "src.core.services.backup_service",
         "src.modules.automatizacion.services.automatizacion_service",
         "src.modules.clientes.services.cliente_service",
         "src.modules.clientes.viewmodels.cliente_viewmodel",
@@ -51,6 +58,21 @@ a = Analysis(
         "src.modules.usuarios.services.auth_service",
         "src.modules.usuarios.viewmodels.login_viewmodel",
         "src.modules.usuarios.use_cases.bootstrap_admin",
+        # Migraciones (run_migration_once las importa dinámicamente)
+        "scripts.migration_utils",
+        "scripts.cargar_datos_maestros",
+        "scripts.migrate_v1_0_0_schema",
+        "scripts.migrate_v1_1_0_garantia",
+        "scripts.migrate_v1_2_0_llantas",
+        "scripts.migrate_v1_3_0_facturacion",
+        "scripts.migrate_v1_4_0_inventario",
+        "scripts.migrate_v1_4_0_costo_produccion",
+        "scripts.migrate_v1_5_0_eliminar_produccion_detenida",
+        "scripts.migrate_v1_6_0_fusionar_consulta_en_operador",
+        "scripts.migrate_v1_7_0_ubicacion_actual",
+        "scripts.migrate_v1_8_0_asesor",
+        "scripts.migrate_v2_5_0_reproceso",
+        "scripts.migrate_v2_6_0_dimension_ancho_float",
     ],
     hookspath=[],
     hooksconfig={},

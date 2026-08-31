@@ -17,6 +17,10 @@ caller's responsibility (typically main.py during app startup).
 # ─── Usuarios ────────────────────────────────────────────────
 from src.modules.usuarios.models.rol_model import Rol  # noqa: F401
 from src.modules.usuarios.models.usuario_model import Usuario  # noqa: F401
+from src.modules.usuarios.models.permiso_model import (  # noqa: F401
+    Permiso,
+    rol_permiso,
+)
 
 # ─── Clientes ────────────────────────────────────────────────
 from src.modules.clientes.models.cliente_model import Cliente  # noqa: F401

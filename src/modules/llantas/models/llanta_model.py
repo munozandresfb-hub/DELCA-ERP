@@ -25,7 +25,7 @@ class Llanta(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('PENDIENTE','APTA','RECHAZADA','REENCAUCHADA','REPARADA')"
+            "estado IN ('PENDIENTE','APTA','RECHAZADA','REENCAUCHADA','REPARADA','REPROCESO')"
         ),
         Index("ix_llantas_cliente_id", "cliente_id"),
     )
@@ -78,15 +78,15 @@ class Llanta(Base):
 
     cliente_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("cliente.id", ondelete="RESTRICT"), nullable=True)
 
-    cliente = relationship("Cliente", back_populates="llantas", lazy="joined")
+    cliente = relationship("Cliente", back_populates="llantas", lazy="selectin")
     marca_obj = relationship(
-        MarcaLlanta, foreign_keys=[marca_id], lazy="joined"
+        MarcaLlanta, foreign_keys=[marca_id], lazy="selectin"
     )
     dimension_obj = relationship(
-        DimensionLlanta, foreign_keys=[dimension_id], lazy="joined"
+        DimensionLlanta, foreign_keys=[dimension_id], lazy="selectin"
     )
     diseno_obj = relationship(
-        DisenoLlanta, foreign_keys=[diseno_id], lazy="joined"
+        DisenoLlanta, foreign_keys=[diseno_id], lazy="selectin"
     )
 
     historial_estados = relationship(

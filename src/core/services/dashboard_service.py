@@ -9,6 +9,10 @@ from src.modules.finanzas.models.pago_model import Pago  # noqa: F401 - needed f
 from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta  # noqa: F401
+from src.modules.llantas.services.llanta_service import (
+    ESTADOS_EN_PLANTA,
+    ESTADOS_EN_PRODUCCION,
+)
 
 
 def obtener_metricas() -> dict:
@@ -18,23 +22,46 @@ def obtener_metricas() -> dict:
         inicio_mes = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         # --- Client metrics ---
+        # Clientes activos REALES: cliente con ≥1 llanta en planta (no
+        # entregada) en el último año. El campo activo del catálogo legacy
+        # marca 1 para todos los migrados, no refleja operación real.
         total_clientes = db.query(Cliente).count()
+        hace_1_anio = now.replace(year=now.year - 1)
         clientes_activos = (
-            db.query(Cliente).filter(Cliente.activo == True).count()
-        )
+            db.query(func.count(func.distinct(Llanta.cliente_id)))
+            .filter(
+                Llanta.cliente_id.isnot(None),
+                Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                (Llanta.ubicacion_actual.is_(None))
+                | (Llanta.ubicacion_actual != "CLIENTE"),
+                Llanta.fecha_ingreso >= hace_1_anio,
+            )
+            .scalar()
+        ) or 0
+        clientes_inactivos = total_clientes - clientes_activos
 
         # --- Tire metrics ---
-        # En planta = pendientes + aptas (recibidas o en proceso no retiradas)
+        # En planta = no entregadas al cliente (flujo correcto 2: estados en
+        # planta y ubicación != CLIENTE).
         en_planta = (
             db.query(Llanta)
-            .filter(Llanta.estado.in_(["PENDIENTE", "APTA"]))
+            .filter(
+                Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                (Llanta.ubicacion_actual.is_(None))
+                | (Llanta.ubicacion_actual != "CLIENTE"),
+            )
             .count()
         )
 
-        # En proceso = aptas (aceptadas por inspección inicial)
+        # En producción = llantas cuya ubicación actual es PRODUCCION
+        # (flujo correcto 2: APTA y REPROCESO residen en PRODUCCION; la
+        # ubicación es la fuente de verdad de dónde está la llanta).
         en_produccion = (
             db.query(Llanta)
-            .filter(Llanta.estado == "APTA")
+            .filter(
+                Llanta.estado.in_(ESTADOS_EN_PRODUCCION),
+                Llanta.ubicacion_actual == "PRODUCCION",
+            )
             .count()
         )
 
@@ -79,12 +106,13 @@ def obtener_metricas() -> dict:
 
         cartera_pendiente = (
             db.query(func.coalesce(func.sum(Factura.saldo), 0))
-            .filter(Factura.saldo > 0)
+            .filter(Factura.saldo > 0, Factura.estado != "ANULADA")
             .scalar()
         )
 
     return {
         "clientes_activos": clientes_activos,
+        "clientes_inactivos": clientes_inactivos,
         "clientes_totales": total_clientes,
         "en_planta": en_planta,
         "en_produccion": en_produccion,
@@ -101,17 +129,25 @@ def obtener_metricas_estados() -> dict:
         now = datetime.now()
         inicio_mes = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        # En proceso = APTA (aceptada por inspección inicial)
+        # En proceso = llantas en ubicación PRODUCCION (APTA + REPROCESO)
         en_proceso = (
             db.query(Llanta)
-            .filter(Llanta.estado == "APTA")
+            .filter(
+                Llanta.estado.in_(ESTADOS_EN_PRODUCCION),
+                Llanta.ubicacion_actual == "PRODUCCION",
+            )
             .count()
         )
 
-        # En planta (reencauchadas/reparadas/rechazadas no retiradas) = REENCAUCHADA + REPARADA + RECHAZADA
+        # En planta (no entregadas al cliente): estados de planta y
+        # ubicación != CLIENTE.
         en_planta = (
             db.query(Llanta)
-            .filter(Llanta.estado.in_(["REENCAUCHADA", "REPARADA", "RECHAZADA"]))
+            .filter(
+                Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                (Llanta.ubicacion_actual.is_(None))
+                | (Llanta.ubicacion_actual != "CLIENTE"),
+            )
             .count()
         )
 

@@ -135,17 +135,17 @@ class _CrudTableWidget(QWidget):
         self.btn_add = QPushButton("+ Agregar")
         self.btn_add.setStyleSheet(
             f"QPushButton {{ background: {self.C_VERDE}; color: white; padding: 6px 16px; "
-            "border-radius: 4px; font-weight: bold; }}"
+            f"border-radius: 4px; font-weight: bold; }}"
         )
         self.btn_edit = QPushButton("Editar")
         self.btn_edit.setStyleSheet(
             f"QPushButton {{ background: {self.C_AZUL}; color: white; padding: 6px 16px; "
-            "border-radius: 4px; font-weight: bold; }}"
+            f"border-radius: 4px; font-weight: bold; }}"
         )
         self.btn_delete = QPushButton("Eliminar")
         self.btn_delete.setStyleSheet(
             f"QPushButton {{ background: {self.C_ROJO}; color: white; padding: 6px 16px; "
-            "border-radius: 4px; font-weight: bold; }}"
+            f"border-radius: 4px; font-weight: bold; }}"
         )
         self.btn_import = QPushButton("Importar Excel")
         self.btn_import.setStyleSheet(

@@ -8,6 +8,8 @@ from src.modules.inventario.models.inventario_config_models import RecetaProducc
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.inventario.services.producto_service import ProductoService
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service import ESTADOS_TERMINADAS
 
 
 class InventarioKpiService:
@@ -30,7 +32,7 @@ class InventarioKpiService:
             mp_disponible = float(mp_query[0] or 0)
             valor_inventario = float(mp_query[1] or 0)
 
-            # Finished tires in plant
+            # Finished tires in plant (no entregadas al cliente)
             terminadas = (
                 session.query(
                     func.count(Llanta.id),
@@ -38,8 +40,9 @@ class InventarioKpiService:
                     func.sum(Llanta.precio_venta),
                 )
                 .filter(
-                    Llanta.estado.in_(["REENCAUCHADA", "REPARADA"]),
-                    Llanta.ubicacion_actual == "PLANTA",
+                    Llanta.estado.in_(ESTADOS_TERMINADAS),
+                    (Llanta.ubicacion_actual.is_(None))
+                    | (Llanta.ubicacion_actual != "CLIENTE"),
                 )
                 .first()
                 or (0, 0, 0)
@@ -114,8 +117,9 @@ class InventarioKpiService:
                     joinedload(Llanta.marca_obj),
                 )
                 .filter(
-                    Llanta.estado.in_(["REENCAUCHADA", "REPARADA"]),
-                    Llanta.ubicacion_actual == "PLANTA",
+                    Llanta.estado.in_(ESTADOS_TERMINADAS),
+                    (Llanta.ubicacion_actual.is_(None))
+                    | (Llanta.ubicacion_actual != "CLIENTE"),
                 )
                 .order_by(Llanta.fecha_ingreso.asc())
                 .all()
@@ -126,7 +130,7 @@ class InventarioKpiService:
                 precio = float(ll.precio_venta or 0)
                 resultados.append({
                     "id": ll.id,
-                    "tiquete": ll.tiquete,
+                    "tiquete": formatear_tiquete(ll.tiquete),
                     "dimension": ll.dimension_obj.display if ll.dimension_obj else ll.dimension,
                     "diseno": ll.diseno_obj.nombre if ll.diseno_obj else "",
                     "marca": ll.marca_obj.nombre if ll.marca_obj else ll.marca,
@@ -174,7 +178,7 @@ class InventarioKpiService:
             )
             return [
                 {
-                    "tiquete": ll.tiquete,
+                    "tiquete": formatear_tiquete(ll.tiquete),
                     "dimension": ll.dimension_obj.display if ll.dimension_obj else ll.dimension,
                     "diseno": ll.diseno_obj.nombre if ll.diseno_obj else "",
                     "cliente": ll.cliente.nombre if ll.cliente else "",
@@ -186,32 +190,3 @@ class InventarioKpiService:
                 }
                 for ll in llantas
             ]
-
-    @staticmethod
-    def margen_bruto_operacion(
-        fecha_desde: datetime | None = None,
-        fecha_hasta: datetime | None = None,
-    ) -> dict:
-        """Gross operating profit from delivered tires."""
-        with get_session() as session:
-            query = session.query(Llanta).filter(
-                Llanta.ubicacion_actual == "CLIENTE"
-            )
-            if fecha_desde:
-                query = query.filter(Llanta.fecha_ingreso >= fecha_desde)
-            if fecha_hasta:
-                query = query.filter(Llanta.fecha_ingreso <= fecha_hasta)
-
-            llantas = query.all()
-            total_costo = sum(float(ll.costo_produccion or 0) for ll in llantas)
-            total_precio = sum(float(ll.precio_venta or 0) for ll in llantas)
-            return {
-                "total_llantas": len(llantas),
-                "costo_total": round(total_costo, 2),
-                "venta_total": round(total_precio, 2),
-                "margen_bruto": round(total_precio - total_costo, 2),
-                "margen_pct": round(
-                    ((total_precio - total_costo) / total_precio * 100)
-                    if total_precio > 0 else 0, 1
-                ),
-            }

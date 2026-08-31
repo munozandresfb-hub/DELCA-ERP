@@ -39,23 +39,30 @@
 ### Máquina de Estados (Trazabilidad)
 
 ```
-RECIBIDA → INSPECCIÓN → PRODUCCIÓN → RASPADO → LLENADO →
-VULCANIZACIÓN → TERMINADO → ENTREGADA
+PENDIENTE → APTA → REENCAUCHADA / REPARADA
+     │        │            │
+     └→ RECHAZADA          └→ (REPROCESO → REENCAUCHADA / REPARADA / RECHAZADA)
 ```
 
-1. **Avance solo hacia adelante**: Validado por índice numérico en
-   LlantaViewModel. No se puede retroceder.
-2. **Sin saltos**: No se puede pasar de RECIBIDA a TERMINADO
-   directamente. Cada estado intermedio es obligatorio.
-3. **Estado terminal**: ENTREGADA. No hay transiciones posteriores.
-4. **Código único**: `codigo` con UNIQUE constraint.
+**Estados válidos (6)**: `PENDIENTE`, `APTA`, `RECHAZADA`, `REENCAUCHADA`, `REPARADA`, `REPROCESO`.
+**Ubicaciones válidas (3)**: `PRODUCCION`, `PLANTA`, `CLIENTE`.
+
+1. **Matriz de transiciones** (`TRANSICIONES_VALIDAS` en `_constantes.py`):
+   - `PENDIENTE` → `APTA` | `RECHAZADA` (veredicto de inspección inicial)
+   - `APTA` → `REENCAUCHADA` | `REPARADA` | `REPROCESO` (inspección final)
+   - `REPROCESO` → `REENCAUCHADA` | `REPARADA` | `RECHAZADA` (inspección final repetida)
+   - `REENCAUCHADA` / `REPARADA` / `RECHAZADA` → terminales (solo cambian de ubicación)
+2. **Veredicto atómico**: `aplicar_veredicto()` cambia estado + ubicación en una sola transacción. `CLIENTE` NO es un estado: es una ubicación.
+3. **Combinaciones estado↔ubicación** (`COMBINACIONES_VALIDAS`):
+   - `APTA` no puede estar en `CLIENTE`; `PENDIENTE` no en `PRODUCCION`;
+   - `REENCAUCHADA`/`REPARADA` no en `PRODUCCION`; `REPROCESO` solo en `PRODUCCION`.
+4. **Reparada condicional**: solo si el diseño de banda es `REP` (regla R5).
 5. **Cliente opcional**: `cliente_id` nullable (FK a cliente).
 6. **Historial completo**: Cada cambio de estado crea un registro en
    `estados_llanta` con timestamp.
 7. **Historial de ubicaciones**: Cada movimiento físico crea un
    registro en `ubicaciones_llanta` con timestamp.
-8. **Display states**: EN_BODEGA, EN_PRODUCCION, EN_ENTREGA son
-   agrupaciones visuales, no estados reales en BD.
+8. **Ubicación inicial**: al crear una llanta se asigna `PENDIENTE` + `PLANTA`.
 
 ---
 
@@ -155,7 +162,8 @@ VULCANIZACIÓN → TERMINADO → ENTREGADA
 2. **STOCK_BAJO**: Productos activos con `0 < stock < umbral`.
 3. **CARTERA_VENCIDA**: Facturas PENDIENTE con `saldo > 0` y
    `(hoy - emision).days >= dias`.
-4. **LLANTAS_LISTAS**: Llantas con `estado = 'ENTREGADA'`.
+4. **LLANTAS_LISTAS**: Llantas con `estado = 'REENCAUCHADA'` y
+   `ubicacion_actual = 'PLANTA'`.
 
 
 ### Alertas
@@ -181,7 +189,7 @@ VULCANIZACIÓN → TERMINADO → ENTREGADA
 ### Llantas
 - Por estado (agrupado)
 - Por cliente (agrupado)
-- Tiempo promedio de producción (días de RECIBIDA a TERMINADO)
+- Tiempo promedio de producción (días de PENDIENTE a REENCAUCHADA)
 
 ### Finanzas
 - Facturación por mes (SUM total por mes)
@@ -218,9 +226,10 @@ VULCANIZACIÓN → TERMINADO → ENTREGADA
 | Total Clientes | `COUNT(cliente)` |
 | Clientes Activos | `COUNT(cliente WHERE activo = True)` |
 | Total Llantas | `COUNT(llantas)` |
-| En Producción | `COUNT(llantas WHERE estado IN ('PRODUCCION','INSPECCION'))` |
-| Entregadas | `COUNT(llantas WHERE estado = 'ENTREGADA')` |
-| Recibidas | `COUNT(llantas WHERE estado = 'RECIBIDA')` |
+| En Producción | `COUNT(llantas WHERE estado IN ('APTA','REPROCESO') AND ubicacion_actual = 'PRODUCCION')` |
+| En Planta | `COUNT(llantas WHERE estado IN (6 estados de planta) AND ubicacion_actual != 'CLIENTE')` |
+| Entregadas (Cliente) | `COUNT(llantas WHERE ubicacion_actual = 'CLIENTE')` |
+| Recibidas | `COUNT(estados_llanta WHERE estado = 'PENDIENTE')` |
 | Facturación del Mes | `SUM(total) WHERE fecha_emision >= inicio_de_mes` |
 | Cartera Pendiente | `SUM(saldo) WHERE saldo > 0` |
 | Total Facturas | `COUNT(facturas)` |

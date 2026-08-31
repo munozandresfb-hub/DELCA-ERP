@@ -6,12 +6,29 @@ Supports future PostgreSQL by using SQLAlchemy URL format.
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Project root is two levels up from src/config.py
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Project root:
+#  - Modo desarrollo: dos niveles arriba de src/config.py (ruta del repo).
+#  - Modo empaquetado (PyInstaller): la carpeta donde está el .exe.
+#    En un exe onefile, __file__ apunta a un directorio temporal (_MEIxxx)
+#    que se borra al cerrar; usar sys.executable garantiza una ruta estable.
+#    Unificación de BD: si el exe está dentro de dist/ del proyecto y la BD
+#    existe en la carpeta padre (el repo), se usa ESA BD — la misma que usa
+#    el modo desarrollo (.bat). Si el exe es portable (sin BD en el padre),
+#    usa su propia carpeta.
+if getattr(sys, "frozen", False):
+    _exe_dir = Path(sys.executable).resolve().parent
+    _padre = _exe_dir.parent
+    if (_padre / "delca.db").exists():
+        PROJECT_ROOT = _padre
+    else:
+        PROJECT_ROOT = _exe_dir
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Load .env from project root
 load_dotenv(PROJECT_ROOT / ".env")
@@ -40,10 +57,6 @@ class Settings:
     @property
     def is_sqlite(self) -> bool:
         return self.DATABASE_URL.startswith("sqlite")
-
-    @property
-    def is_postgres(self) -> bool:
-        return self.DATABASE_URL.startswith("postgresql")
 
     # ── Paths ────────────────────────────────────────────────────
     LOG_DIR: Path = Path(

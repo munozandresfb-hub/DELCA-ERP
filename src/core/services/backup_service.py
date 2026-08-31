@@ -331,13 +331,21 @@ def export_all_tables(directory: str) -> dict[str, str]:
 # ======================================================================
 
 def _today_key() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    # Formato sin guiones: coincide con el nombre del backup
+    # (delca_YYYYMMDD_HHMMSS.db). Con guiones (YYYY-MM-DD) nunca
+    # coincidiría con el nombre del archivo.
+    return datetime.now().strftime("%Y%m%d")
 
 
 def was_backup_done_today() -> bool:
-    """Check if a daily backup has already been created today."""
+    """Check if a daily backup has already been created today.
+
+    Solo cuenta backups AUTOMÁTICOS (delca_YYYYMMDD_*.db), no los
+    pre-migración (delca_pre_*_YYYYMMDD_*.db) que crean los scripts
+    de migración como punto de restauración.
+    """
     today = _today_key()
     for f in BACKUP_DIR.glob(f"{BACKUP_PREFIX}*.db"):
-        if today in f.stem:  # delca_20260624_*.db
+        if today in f.stem and not f.stem.startswith(f"{BACKUP_PREFIX}pre_"):
             return True
     return False

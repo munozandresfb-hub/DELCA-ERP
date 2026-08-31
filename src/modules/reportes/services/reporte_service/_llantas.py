@@ -9,8 +9,12 @@ from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_llanta_model import FacturaLlanta
 from src.modules.finanzas.models.factura_model import Factura
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
-from src.modules.llantas.services.llanta_service import UBICACIONES_DISPLAY
+from src.modules.llantas.services.llanta_service import (
+    ESTADOS_EN_PLANTA,
+    UBICACIONES_DISPLAY,
+)
 
 
 class _LlantasReports:
@@ -25,15 +29,19 @@ class _LlantasReports:
         fecha_hasta: datetime | None = None,
         busqueda: str | None = None,
         solo_planta: bool = False,
+        limite: int | None = None,
+        offset: int = 0,
     ) -> dict:
         """Unified tire report with combinable filters.
+
+        Los KPIs se calculan con SQL agregado (rápido incluso con decenas
+        de miles de llantas). Las filas detalladas aceptan paginación
+        opcional (limite/offset).
 
         Returns rows + KPIs computed on the filtered set.
         """
         from datetime import datetime as dt
         from sqlalchemy import desc
-
-        ESTADOS_EN_PLANTA = ("PENDIENTE", "APTA", "RECHAZADA", "REPARADA")
 
         with get_session() as session:
             # ── Latest location per tire ──
@@ -75,7 +83,11 @@ class _LlantasReports:
             if fecha_hasta is not None:
                 q = q.filter(Llanta.fecha_ingreso <= fecha_hasta)
             if solo_planta:
-                q = q.filter(Llanta.estado.in_(ESTADOS_EN_PLANTA))
+                q = q.filter(
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (latest_ubicacion.c.ubicacion.is_(None))
+                    | (latest_ubicacion.c.ubicacion != "CLIENTE"),
+                )
             if busqueda:
                 pattern = f"%{busqueda}%"
                 q = q.filter(
@@ -84,41 +96,103 @@ class _LlantasReports:
                     | Llanta.dimension.ilike(pattern)
                 )
 
-            results = q.order_by(Llanta.fecha_ingreso.desc()).all()
+            # ── KPIs con SQL agregado (sin cargar todas las filas) ──
+            from sqlalchemy import case
 
-            # ── Build rows + KPIs ──
+            hace_30 = dt.now() - __import__("datetime").timedelta(days=30)
+            cond_planta = (
+                Llanta.estado.in_(ESTADOS_EN_PLANTA)
+                & ((latest_ubicacion.c.ubicacion.is_(None))
+                   | (latest_ubicacion.c.ubicacion != "CLIENTE"))
+            )
+            kpi_query = session.query(
+                func.count(Llanta.id).label("total"),
+                func.sum(
+                    case((cond_planta, 1), else_=0)
+                ).label("en_planta"),
+                func.sum(
+                    case(
+                        (cond_planta & (Llanta.fecha_ingreso <= hace_30), 1),
+                        else_=0,
+                    )
+                ).label("mas_30d"),
+                func.coalesce(
+                    func.sum(Llanta.costo_produccion), 0
+                ).label("valor_inventario"),
+                func.coalesce(
+                    func.sum(Llanta.precio_venta), 0
+                ).label("total_precio"),
+                func.sum(
+                    case(
+                        ((Llanta.costo_produccion > 0)
+                         & (Llanta.precio_venta > 0), 1),
+                        else_=0,
+                    )
+                ).label("con_precio"),
+            ).outerjoin(
+                latest_ubicacion,
+                (Llanta.id == latest_ubicacion.c.llanta_id)
+                & (latest_ubicacion.c.rn == 1),
+            )
+            # Re-aplicar filtros al KPI query (cliente/estado/ubicacion/fechas)
+            if cliente_id is not None:
+                kpi_query = kpi_query.filter(Llanta.cliente_id == cliente_id)
+            if estado:
+                kpi_query = kpi_query.filter(Llanta.estado == estado)
+            if ubicacion:
+                kpi_query = kpi_query.filter(latest_ubicacion.c.ubicacion == ubicacion)
+            if fecha_desde is not None:
+                kpi_query = kpi_query.filter(Llanta.fecha_ingreso >= fecha_desde)
+            if fecha_hasta is not None:
+                kpi_query = kpi_query.filter(Llanta.fecha_ingreso <= fecha_hasta)
+            if solo_planta:
+                kpi_query = kpi_query.filter(
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (latest_ubicacion.c.ubicacion.is_(None))
+                    | (latest_ubicacion.c.ubicacion != "CLIENTE"),
+                )
+            if busqueda:
+                pattern = f"%{busqueda}%"
+                kpi_query = kpi_query.filter(
+                    Llanta.tiquete.ilike(pattern)
+                    | Llanta.marca.ilike(pattern)
+                    | Llanta.dimension.ilike(pattern)
+                )
+            kpi_row = kpi_query.first()
+
+            total = kpi_row.total or 0
+            en_planta = kpi_row.en_planta or 0
+            mas_30d = kpi_row.mas_30d or 0
+            total_costo = float(kpi_row.valor_inventario or 0)
+            total_precio = float(kpi_row.total_precio or 0)
+            con_precio = kpi_row.con_precio or 0
+            sin_precio = total - con_precio
+
+            # ── Filas detalladas (paginables) ──
+            results = q.order_by(Llanta.fecha_ingreso.desc())
+            if limite is not None:
+                results = results.limit(limite).offset(offset)
+            results = results.all()
+
             now = dt.now()
             rows = []
-            total_costo = 0.0
-            total_precio = 0.0
-            con_precio = 0
-            sin_precio = 0
-            en_planta = 0
-            mas_30d = 0
-
             for l, ubic, cnombre, cnit in results:
                 costo = float(l.costo_produccion or 0)
                 precio = float(l.precio_venta or 0)
                 utilidad = precio - costo
                 if costo > 0 and precio > 0:
-                    con_precio += 1
                     margen = round((utilidad / precio) * 100, 1)
                 else:
-                    sin_precio += 1
                     margen = None
-
-                total_costo += costo
-                total_precio += precio
 
                 dias = 0
                 if l.fecha_ingreso:
                     dias = (now - l.fecha_ingreso).days
 
-                is_planta = l.estado in ESTADOS_EN_PLANTA if l.estado else False
-                if is_planta:
-                    en_planta += 1
-                if is_planta and dias > 30:
-                    mas_30d += 1
+                is_planta = (
+                    (l.estado in ESTADOS_EN_PLANTA if l.estado else False)
+                    and (ubic is None or ubic != "CLIENTE")
+                )
 
                 ubic_display = (
                     UBICACIONES_DISPLAY.get(ubic, ubic)
@@ -127,7 +201,7 @@ class _LlantasReports:
 
                 rows.append({
                     "id": l.id,
-                    "tiquete": l.tiquete or "",
+                    "tiquete": formatear_tiquete(l.tiquete),
                     "cliente": cnombre or "—",
                     "cliente_id": l.cliente_id or 0,
                     "nit": cnit or "—",
@@ -149,11 +223,10 @@ class _LlantasReports:
                     "margen_pct": margen,
                 })
 
-            total_llantas = len(rows)
             return {
                 "rows": rows,
                 "kpis": {
-                    "total": total_llantas,
+                    "total": total,
                     "en_planta": en_planta,
                     "valor_inventario": round(total_costo, 2),
                     "mas_30d": mas_30d,
@@ -217,7 +290,7 @@ class _LlantasReports:
                     {
                         "tipo": "Reencauchada",
                         "id": l.id,
-                        "tiquete": l.tiquete or "",
+                        "tiquete": formatear_tiquete(l.tiquete),
                         "marca": l.marca or "",
                         "dimension": l.dimension_obj.display if l.dimension_obj else (l.dimension or ""),
                         "estado": l.estado or "",
@@ -282,8 +355,6 @@ class _LlantasReports:
         """
         from sqlalchemy import desc
 
-        ESTADOS_EN_PLANTA = ("PENDIENTE", "APTA", "RECHAZADA", "REPARADA")
-
         with get_session() as session:
             # ── Latest location per tire ──
             latest_ubicacion = (
@@ -313,7 +384,11 @@ class _LlantasReports:
                     (Llanta.id == latest_ubicacion.c.llanta_id)
                     & (latest_ubicacion.c.rn == 1),
                 )
-                .filter(Llanta.estado.in_(ESTADOS_EN_PLANTA))
+                .filter(
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (latest_ubicacion.c.ubicacion.is_(None))
+                    | (latest_ubicacion.c.ubicacion != "CLIENTE"),
+                )
                 .order_by(Llanta.id.desc())
                 .all()
             )
@@ -341,7 +416,7 @@ class _LlantasReports:
                 total_precio += precio
 
                 detalle.append({
-                    "tiquete": l.tiquete or "",
+                    "tiquete": formatear_tiquete(l.tiquete),
                     "cliente": cliente_nombre or "Sin cliente",
                     "estado": l.estado or "",
                     "ubicacion": (
@@ -374,7 +449,11 @@ class _LlantasReports:
                     func.count(Llanta.id),
                     func.coalesce(func.sum(Llanta.costo_produccion), 0),
                 )
-                .filter(Llanta.estado.in_(ESTADOS_EN_PLANTA))
+                .filter(
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (Llanta.ubicacion_actual.is_(None))
+                    | (Llanta.ubicacion_actual != "CLIENTE"),
+                )
                 .group_by(Llanta.estado)
                 .order_by(Llanta.estado)
                 .all()
@@ -472,7 +551,7 @@ class _LlantasReports:
                     fecha = ultimo_apta[0] if ultimo_apta else None
                     if fecha is not None and fecha >= inicio_mes:
                         detalle.append({
-                            "tiquete": l.tiquete or "",
+                            "tiquete": formatear_tiquete(l.tiquete),
                             "cliente": cnombre or "Sin cliente",
                             "marca": l.marca or "",
                             "dimension": l.dimension_obj.display if l.dimension_obj else (l.dimension or ""),

@@ -5,10 +5,14 @@ from src.modules.llantas.services.llanta_service import LlantaService
 class LlantaViewModel:
     """ViewModel for tire operations (MVVM pattern)."""
 
+    PAGE_SIZE = 500
+
     def __init__(self) -> None:
         self._llantas: list[Llanta] = []
         self._filtro: str = ""
         self._filtro_estado: str | None = None
+        self._pagina: int = 0
+        self._total: int = 0
 
     @property
     def llantas(self) -> list[Llanta]:
@@ -30,24 +34,56 @@ class LlantaViewModel:
     def filtro_estado(self, valor: str | None) -> None:
         self._filtro_estado = valor
 
-    def cargar_llantas(self) -> None:
+    @property
+    def pagina(self) -> int:
+        return self._pagina
+
+    @property
+    def total(self) -> int:
+        return self._total
+
+    @property
+    def hay_mas(self) -> bool:
+        """True si existen más registros después de la página actual."""
+        return (self._pagina + 1) * self.PAGE_SIZE < self._total
+
+    def cargar_llantas(self, pagina: int | None = None) -> None:
+        if pagina is not None:
+            self._pagina = pagina
+        offset = self._pagina * self.PAGE_SIZE
         if self._filtro or self._filtro_estado:
-            self._llantas = LlantaService.buscar(
+            self._llantas, self._total = LlantaService.buscar(
                 term=self._filtro,
                 estado=self._filtro_estado,
+                limite=self.PAGE_SIZE,
+                offset=offset,
             )
         else:
-            self._llantas = LlantaService.listar_llantas()
+            self._llantas, self._total = LlantaService.listar_llantas(
+                limite=self.PAGE_SIZE, offset=offset
+            )
 
     def buscar(self, termino: str) -> list[Llanta]:
         self._filtro = termino
+        self._pagina = 0
         self.cargar_llantas()
         return self._llantas
 
     def filtrar_por_estado(self, estado: str | None) -> list[Llanta]:
         self._filtro_estado = estado
+        self._pagina = 0
         self.cargar_llantas()
         return self._llantas
+
+    def siguiente_pagina(self) -> None:
+        if self.hay_mas:
+            self._pagina += 1
+            self.cargar_llantas()
+
+    def pagina_anterior(self) -> None:
+        if self._pagina > 0:
+            self._pagina -= 1
+            self.cargar_llantas()
 
     def crear(
         self,
@@ -106,6 +142,14 @@ class LlantaViewModel:
 
     def cambiar_estado(self, llanta_id: int, estado: str) -> tuple[bool, str]:
         resultado = LlantaService.cambiar_estado(llanta_id, estado)
+        if resultado[0]:
+            self.cargar_llantas()
+        return resultado
+
+    def aplicar_veredicto(
+        self, llanta_id: int, veredicto: str
+    ) -> tuple[bool, str]:
+        resultado = LlantaService.aplicar_veredicto(llanta_id, veredicto)
         if resultado[0]:
             self.cargar_llantas()
         return resultado

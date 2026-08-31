@@ -16,6 +16,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.modules.llantas.services.llanta_service import (
+    ESTADOS_PROCESO,
+    UBICACIONES_PLANTA,
+)
 from src.modules.reportes.services.reporte_service import ReporteService
 from src.modules.reportes.views.reportes_view._report_tab import _ReportTab
 
@@ -50,12 +54,12 @@ class _LlantasReportView:
 
         filters.addWidget(QLabel("Estado:"))
         self._rep_estado = QComboBox()
-        self._rep_estado.addItems(["Todos", "PENDIENTE", "APTA", "RECHAZADA", "REENCAUCHADA", "REPARADA"])
+        self._rep_estado.addItems(["Todos", *ESTADOS_PROCESO])
         filters.addWidget(self._rep_estado)
 
         filters.addWidget(QLabel("Ubicación:"))
         self._rep_ubicacion = QComboBox()
-        self._rep_ubicacion.addItems(["Todas", "PRODUCCION", "PLANTA", "CLIENTE"])
+        self._rep_ubicacion.addItems(["Todas", *UBICACIONES_PLANTA])
         filters.addWidget(self._rep_ubicacion)
 
         layout.addLayout(filters)
@@ -142,6 +146,11 @@ class _LlantasReportView:
             fecha_hasta=fecha_hasta,
             busqueda=busqueda,
             solo_planta=solo_planta,
+            # Limite de filas en la tabla (los KPIs se calculan en SQL
+            # sobre el total, no sobre la pagina). Evita saturar la UI
+            # con decenas de miles de filas.
+            limite=2000,
+            offset=0,
         )
         rows = data["rows"]
         kpis = data["kpis"]

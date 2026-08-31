@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.finanzas.services.factura_service import FacturaService
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 
 
 class FacturaFormDialog(QDialog):
@@ -181,7 +182,7 @@ class FacturaFormDialog(QDialog):
         for l in disponibles:
             marca = l.marca_obj.nombre if l.marca_obj else (l.marca or "")
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "")
-            label = f"{l.tiquete} — {marca} {dim}".strip(" —")
+            label = f"{formatear_tiquete(l.tiquete)} — {marca} {dim}".strip(" —")
             self.llanta_combo.addItem(label, l.id)
 
     def _agregar_llanta(self) -> None:
@@ -205,7 +206,7 @@ class FacturaFormDialog(QDialog):
                 "tipo": "Reencauchada",
                 "llanta_id": llanta_id,
                 "descripcion": None,
-                "tiquete": llanta.tiquete or "",
+                "tiquete": formatear_tiquete(llanta.tiquete),
                 "dimension": (
                     llanta.dimension_obj.display
                     if llanta.dimension_obj
@@ -330,7 +331,7 @@ class FacturaFormDialog(QDialog):
                         if llanta.dimension_obj
                         else (llanta.dimension or "")
                     )
-                    label = f"{llanta.tiquete} — {marca} {dim}".strip(" —")
+                    label = f"{formatear_tiquete(llanta.tiquete)} — {marca} {dim}".strip(" —")
                     self.llanta_combo.addItem(label, llanta.id)
 
     def _recalcular_total(self) -> None:

@@ -88,7 +88,7 @@ class InventarioView(QWidget):
         btn_nuevo_mp = QPushButton("🧾 Nuevo Producto")
         btn_nuevo_mp.setStyleSheet(
             f"QPushButton {{ background: {C_AZUL}; color: white; font-weight: bold; "
-            "padding: 8px 18px; border-radius: 5px; border: none; }}"
+            f"padding: 8px 18px; border-radius: 5px; border: none; }}"
         )
         btn_nuevo_mp.clicked.connect(self._nuevo_producto_mp)
 

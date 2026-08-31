@@ -1,7 +1,5 @@
 """SessionManager unit tests — singleton, user tracking, inactivity."""
 
-import time
-
 from src.core.services.session_service import SessionManager
 
 
@@ -35,16 +33,29 @@ class TestSessionManager:
         assert sm.get_user() is None
         assert sm.get_username() == ""
 
-    def test_activity_update(self):
+    def test_activity_update(self, monkeypatch):
         sm = SessionManager()
         mock_user = type("User", (), {"id": 1, "username": "test"})()
         sm.set_user(mock_user)
 
+        # Reloj controlado para evitar flakiness por resolución del sistema:
+        # update_activity() tiene un throttle de 2s (MIN_ACTIVITY_INTERVAL_SECONDS),
+        # así que un sleep real nunca garantiza que el timestamp cambie.
+        fake_clock = {"now": 1000.0}
+        monkeypatch.setattr(
+            "src.core.services.session_service.time.time",
+            lambda: fake_clock["now"],
+        )
+        sm.clear_session()  # resetea _last_activity al reloj fake (1000.0)
+        sm.set_user(mock_user)
+
         before = sm.get_last_activity()
-        time.sleep(0.01)
+        fake_clock["now"] += 5.0  # supera el throttle de 2s
         sm.update_activity()
         after = sm.get_last_activity()
 
+        assert before == 1000.0
+        assert after == 1005.0
         assert after > before
 
     def test_not_expired_after_activity(self):

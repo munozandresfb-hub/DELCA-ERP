@@ -12,11 +12,18 @@ por dominio:
 
 from src.modules.llantas.services.llanta_service._catalogos import _CatalogosMixin
 from src.modules.llantas.services.llanta_service._constantes import (
+    COMBINACIONES_VALIDAS,
+    DISENO_REPARADA,
     ESTADOS_EN_PLANTA,
+    ESTADOS_EN_PRODUCCION,
     ESTADOS_PROCESO,
+    ESTADOS_TERMINADAS,
     TRANSICIONES_VALIDAS,
+    UBICACIONES_CAMBIO_MANUAL,
     UBICACIONES_DISPLAY,
     UBICACIONES_PLANTA,
+    VEREDICTO_UBICACION,
+    VEREDICTOS_INSPECCION_FINAL,
 )
 from src.modules.llantas.services.llanta_service._core import _GestionLlantasMixin
 
@@ -26,10 +33,17 @@ class LlantaService(_GestionLlantasMixin, _CatalogosMixin):
 
 
 __all__ = [
+    "COMBINACIONES_VALIDAS",
+    "DISENO_REPARADA",
     "ESTADOS_EN_PLANTA",
+    "ESTADOS_EN_PRODUCCION",
     "ESTADOS_PROCESO",
+    "ESTADOS_TERMINADAS",
     "TRANSICIONES_VALIDAS",
+    "UBICACIONES_CAMBIO_MANUAL",
     "UBICACIONES_DISPLAY",
     "UBICACIONES_PLANTA",
+    "VEREDICTO_UBICACION",
+    "VEREDICTOS_INSPECCION_FINAL",
     "LlantaService",
 ]

@@ -18,6 +18,7 @@ from src.modules.llantas.services.llanta_service import (
     UBICACIONES_DISPLAY,
     LlantaService,
 )
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 from src.modules.llantas.services.tiquete_printer import TiquetePrinter
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 from src.modules.llantas.views.catalogos_view import CatalogoMaestroDialog
@@ -108,6 +109,24 @@ class LlantasView(QWidget):
 
         layout.addLayout(row2)
 
+        # Pagination row
+        pag_row = QHBoxLayout()
+        self.prev_btn = QPushButton("← Anterior")
+        self.prev_btn.clicked.connect(self._pagina_anterior)
+        self.prev_btn.setEnabled(False)
+        pag_row.addWidget(self.prev_btn)
+
+        self.pag_label = QLabel("")
+        pag_row.addWidget(self.pag_label)
+
+        self.next_btn = QPushButton("Siguiente →")
+        self.next_btn.clicked.connect(self._pagina_siguiente)
+        self.next_btn.setEnabled(False)
+        pag_row.addWidget(self.next_btn)
+
+        pag_row.addStretch()
+        layout.addLayout(pag_row)
+
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(len(self.COLUMNAS))
@@ -134,6 +153,25 @@ class LlantasView(QWidget):
         self.viewmodel.cargar_llantas()
         self._poblar_tabla()
 
+    def _pagina_anterior(self) -> None:
+        self.viewmodel.pagina_anterior()
+        self._poblar_tabla()
+
+    def _pagina_siguiente(self) -> None:
+        self.viewmodel.siguiente_pagina()
+        self._poblar_tabla()
+
+    def _actualizar_paginacion(self) -> None:
+        vm = self.viewmodel
+        self.prev_btn.setEnabled(vm.pagina > 0)
+        self.next_btn.setEnabled(vm.hay_mas)
+        desde = vm.pagina * vm.PAGE_SIZE + 1
+        hasta = min((vm.pagina + 1) * vm.PAGE_SIZE, vm.total)
+        self.pag_label.setText(
+            f"Mostrando {desde}–{hasta} de {vm.total} llantas "
+            f"(página {vm.pagina + 1})"
+        )
+
     def _poblar_tabla(self) -> None:
         llantas = self.viewmodel.llantas
         self.table.setRowCount(len(llantas))
@@ -142,7 +180,7 @@ class LlantasView(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(str(l.id)))
             nombre_cliente = l.cliente.nombre if l.cliente else "Sin cliente"
             self.table.setItem(row, 1, QTableWidgetItem(nombre_cliente))
-            self.table.setItem(row, 2, QTableWidgetItem(l.tiquete or ""))
+            self.table.setItem(row, 2, QTableWidgetItem(formatear_tiquete(l.tiquete)))
             self.table.setItem(row, 3, QTableWidgetItem(l.numero_orden or "—"))
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "—")
             self.table.setItem(row, 4, QTableWidgetItem(dim))
@@ -160,6 +198,7 @@ class LlantasView(QWidget):
             self.table.setItem(row, 8, QTableWidgetItem(fecha))
 
         self.table.setColumnHidden(0, True)
+        self._actualizar_paginacion()
 
     def _buscar(self) -> None:
         termino = self.search_input.text()

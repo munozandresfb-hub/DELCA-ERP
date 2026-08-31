@@ -174,17 +174,18 @@ Propósito: Registro de llantas con trazabilidad.
 | Columna | Tipo | Restricciones | Default |
 |---|---|---|---|
 | id | INTEGER | PK, AUTOINCREMENT, INDEX | |
-| codigo | VARCHAR | UNIQUE, NOT NULL | |
-| marca | VARCHAR | nullable | NULL |
-| medida | VARCHAR | nullable | NULL |
-| estado | VARCHAR | | 'RECIBIDA' |
+| tiquete | VARCHAR(100) | UNIQUE, NOT NULL, INDEX | |
+| marca | VARCHAR(100) | nullable | NULL |
+| dimension | VARCHAR(100) | nullable | NULL |
+| estado | VARCHAR(30) | CHECK IN (PENDIENTE, APTA, RECHAZADA, REENCAUCHADA, REPARADA, REPROCESO) | 'PENDIENTE' |
+| ubicacion_actual | VARCHAR(50) | nullable | 'PLANTA' |
 | cliente_id | INTEGER | FK → cliente.id | |
 
 FK: `cliente_id → cliente.id` (lazy='joined').
 Referencia a: `estados_llanta.llanta_id`, `ubicaciones_llanta.llanta_id`.
-Estilo: Legacy Column.
+Estilo: Mapped (moderno).
 
-**Máquina de estados:** RECIBIDA → INSPECCIÓN → PRODUCCIÓN → RASPADO → LLENADO → VULCANIZACIÓN → TERMINADO → ENTREGADA
+**Máquina de estados:** PENDIENTE → APTA → REENCAUCHADA/REPARADA; APTA → REPROCESO → REENCAUCHADA/REPARADA/RECHAZADA. Ubicaciones: PRODUCCION, PLANTA, CLIENTE.
 
 ### estados_llanta
 

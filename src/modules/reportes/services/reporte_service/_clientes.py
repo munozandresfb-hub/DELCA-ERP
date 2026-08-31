@@ -12,6 +12,7 @@ from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_model import Factura
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
 
 
 class _ClientesReports:
@@ -27,7 +28,9 @@ class _ClientesReports:
                     func.count(Llanta.id).label("cnt"),
                 )
                 .filter(
-                    Llanta.estado.in_(["PENDIENTE", "APTA", "RECHAZADA", "REPARADA"]),
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (Llanta.ubicacion_actual.is_(None))
+                    | (Llanta.ubicacion_actual != "CLIENTE"),
                 )
                 .group_by(Llanta.cliente_id)
                 .subquery()
@@ -38,6 +41,7 @@ class _ClientesReports:
                     Cliente.ciudad,
                     Cliente.telefono,
                     Cliente.celular,
+                    Cliente.email,
                     Cliente.nit,
                     Cliente.activo,
                     func.coalesce(sub_llantas.c.cnt, 0),
@@ -51,9 +55,10 @@ class _ClientesReports:
                     "nombre": r[0],
                     "ciudad": r[1] or "",
                     "contacto": r[2] or r[3] or "",
-                    "nit": r[4] or "",
-                    "activo": bool(r[5]),
-                    "llantas_planta": r[6],
+                    "email": r[4] or "",
+                    "nit": r[5] or "",
+                    "activo": bool(r[6]),
+                    "llantas_planta": r[7],
                 }
                 for r in results
             ]
@@ -74,6 +79,20 @@ class _ClientesReports:
         with get_session() as session:
             from sqlalchemy import func as f
 
+            sub_llantas = (
+                session.query(
+                    Llanta.cliente_id,
+                    func.count(Llanta.id).label("cnt"),
+                )
+                .filter(
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (Llanta.ubicacion_actual.is_(None))
+                    | (Llanta.ubicacion_actual != "CLIENTE"),
+                )
+                .group_by(Llanta.cliente_id)
+                .subquery()
+            )
+
             q = session.query(
                 Cliente.nombre,
                 Cliente.telefono,
@@ -82,7 +101,10 @@ class _ClientesReports:
                 Cliente.id,
                 Cliente.activo,
                 f.max(Factura.fecha_emision).label("ultima_vez"),
-            ).outerjoin(Factura, Cliente.id == Factura.cliente_id)
+                f.coalesce(sub_llantas.c.cnt, 0),
+            ).outerjoin(Factura, Cliente.id == Factura.cliente_id).outerjoin(
+                sub_llantas, Cliente.id == sub_llantas.c.cliente_id
+            )
 
             if filtro == "ACTIVO":
                 q = q.filter(Cliente.activo.is_(True))
@@ -104,6 +126,7 @@ class _ClientesReports:
                     "ultima_vez": (
                         r[6].strftime("%Y-%m-%d") if r[6] else "—"
                     ),
+                    "llantas_planta": r[7],
                 }
                 for r in results
             ]
@@ -203,11 +226,12 @@ class _ClientesReports:
 
             q = (
                 session.query(
-                    Cliente.id,
                     Cliente.nombre,
                     Cliente.telefono,
                     Cliente.celular,
                     Cliente.nit,
+                    Cliente.id,
+                    Cliente.email,
                     Cliente.saldo,
                     sub_fact.c.fecha_emision,
                 )
@@ -234,13 +258,14 @@ class _ClientesReports:
             )
             return [
                 {
-                    "id": r[0],
-                    "nombre": r[1],
-                    "contacto": r[2] or r[3] or "",
-                    "nit": r[4] or "",
-                    "saldo": float(r[5] or 0),
+                    "nombre": r[0],
+                    "contacto": r[1] or r[2] or "",
+                    "nit": r[3] or "",
+                    "id": r[4],
+                    "email": r[5] or "",
+                    "saldo": float(r[6] or 0),
                     "fecha_saldo": (
-                        r[6].strftime("%Y-%m-%d") if r[6] else "—"
+                        r[7].strftime("%Y-%m-%d") if r[7] else "—"
                     ),
                 }
                 for r in results

@@ -528,12 +528,6 @@ class AutomatizacionView(QWidget):
                 font-size: 13px;
                 font-weight: 500;
             }}
-            QPushButton:hover {{
-                opacity: 0.9;
-            }}
-            QPushButton:pressed {{
-                opacity: 0.7;
-            }}
         """
 
     @staticmethod

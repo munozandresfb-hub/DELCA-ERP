@@ -4,6 +4,7 @@ from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.clientes.repositories.cliente_repository import ClienteRepository
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
 
 
 class ClienteService:
@@ -113,17 +114,12 @@ class ClienteService:
         with get_session() as session:
             resultados = (
                 session.query(Llanta.cliente_id)
-                .filter(Llanta.estado.in_(["PENDIENTE", "APTA", "RECHAZADA", "REPARADA"]))
+                .filter(
+                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
+                    (Llanta.ubicacion_actual.is_(None))
+                    | (Llanta.ubicacion_actual != "CLIENTE"),
+                )
                 .distinct()
                 .all()
             )
             return {r[0] for r in resultados}
-
-    @staticmethod
-    def clasificacion_abc(clientes: list[Cliente]) -> dict[str, list[Cliente]]:
-        """Classify clients by ABC category."""
-        result: dict[str, list[Cliente]] = {"A": [], "B": [], "C": []}
-        for c in clientes:
-            cat = c.categoria_abc or "B"
-            result[cat].append(c)
-        return result

@@ -1,12 +1,16 @@
 ; DELCA ERP — Inno Setup Installer
 ; Build with: ISCC.exe installer.iss
 ; Requires Inno Setup 6+ (https://jrsoftware.org/isdl.php)
+;
+; NOTA: el exe es auto-inicializante. En primera ejecución crea la BD
+; (con migraciones, admin y datos maestros) automáticamente. No es
+; necesario copiar delca.db — el instalador solo instala el ejecutable.
 
 #define MyAppName "DELCA ERP"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.5.0"
 #define MyAppPublisher "DELCA"
 #define MyAppURL "https://delca.com"
-#define MyAppExeName "DELCA_ERP.exe"
+#define MyAppExeName "DELCA ERP.exe"
 
 [Setup]
 AppId={{B8A3C8D0-4E7F-4A9C-9F2D-1E5F3B7C8D9E}
@@ -37,14 +41,10 @@ Name: "{app}\logs"; Permissions: users-modify
 Name: "{app}\docs"; Permissions: users-modify
 
 [Files]
-; PyInstaller single-folder deployment
-Source: "dist\DELCA_ERP\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; PyInstaller onefile
+Source: "dist\DELCA ERP.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; .env configuration (only if not exists)
-Source: ".env"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
-Source: ".env.example"; DestDir: "{app}"; Flags: ignoreversion
-
-; Documentation
+; Documentación
 Source: "CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Stack.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "Database_er.md"; DestDir: "{app}\docs"; Flags: ignoreversion

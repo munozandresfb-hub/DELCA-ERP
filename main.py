@@ -113,6 +113,8 @@ def main() -> int:
             ("v1.6.0",               "scripts.migrate_v1_6_0_fusionar_consulta_en_operador"),
             ("v1.7.0",               "scripts.migrate_v1_7_0_ubicacion_actual"),
             ("v1.8.0",               "scripts.migrate_v1_8_0_asesor"),
+            ("v2.5.0",               "scripts.migrate_v2_5_0_reproceso"),
+            ("v2.6.0",               "scripts.migrate_v2_6_0_dimension_ancho_float"),
         ]
 
         for version, path in _MIGRACIONES:
@@ -127,6 +129,14 @@ def main() -> int:
         splash.showMessage("Preparando sesión...", Qt.AlignBottom | Qt.AlignHCenter, QColor("#27ae60"))
         app.processEvents()
         bootstrap_admin()
+
+        # ─── Datos maestros (instalación limpia: pobla catálogos) ────
+        try:
+            from scripts.cargar_datos_maestros import inicializar_datos_maestros
+
+            inicializar_datos_maestros(only_if_empty=True)
+        except Exception as e:
+            print(f"[main] Error cargando datos maestros: {e}")
 
         # ─── Inicializar reglas de automatización ────────────────────
         from src.modules.automatizacion.services.automatizacion_service import (

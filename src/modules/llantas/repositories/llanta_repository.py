@@ -48,15 +48,6 @@ class LlantaRepository:
         return query.order_by(Llanta.id.desc()).all()
 
     @staticmethod
-    def get_by_estado(session: Session, estado: str) -> list[Llanta]:
-        return (
-            session.query(Llanta)
-            .filter(Llanta.estado == estado)
-            .order_by(Llanta.id.desc())
-            .all()
-        )
-
-    @staticmethod
     def count_by_estado(session: Session) -> dict[str, int]:
         from sqlalchemy import func
 
@@ -73,24 +64,6 @@ class LlantaRepository:
         session.flush()
         return llanta
 
-    @staticmethod
-    def update_estado(
-        session: Session, llanta_id: int, nuevo_estado: str
-    ) -> Llanta | None:
-        llanta = session.query(Llanta).filter(Llanta.id == llanta_id).first()
-        if llanta:
-            llanta.estado = nuevo_estado
-        return llanta
-
-    @staticmethod
-    def update_cliente(
-        session: Session, llanta_id: int, cliente_id: int | None
-    ) -> Llanta | None:
-        llanta = session.query(Llanta).filter(Llanta.id == llanta_id).first()
-        if llanta:
-            llanta.cliente_id = cliente_id
-        return llanta
-
     # ── Catalog helpers ───────────────────────────────────────────────
 
     @staticmethod
@@ -102,13 +75,3 @@ class LlantaRepository:
     @staticmethod
     def get_all_dimensiones(session: Session) -> list:
         return session.query(DimensionLlanta).order_by(DimensionLlanta.ancho).all()
-
-    @staticmethod
-    def get_all_disenos(session: Session) -> list:
-        from src.modules.llantas.models.diseno_llanta_model import DisenoLlanta
-
-        return (
-            session.query(DisenoLlanta)
-            .order_by(DisenoLlanta.nombre)
-            .all()
-        )

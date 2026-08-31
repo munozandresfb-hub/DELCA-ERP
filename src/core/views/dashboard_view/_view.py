@@ -207,6 +207,7 @@ class DashboardView(QWidget):
         bar_layout.setContentsMargins(0, 0, 0, 0)
         self._bar_chart_view = QChartView()
         self._bar_chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self._chart_owned: QChart | None = None
         bar_layout.addWidget(self._bar_chart_view)
         charts_section.addWidget(bar_container)
         self._main_layout.addLayout(charts_section)
@@ -433,10 +434,15 @@ class DashboardView(QWidget):
             print(f"[Dashboard] Error en gráficos: {e}")
 
     def _delete_old_chart(self) -> None:
-        """Delete the old chart to prevent memory leak."""
-        old = self._bar_chart_view.chart()
-        if old:
-            old.deleteLater()
+        """Elimina SOLO el chart creado por este dashboard.
+
+        NUNCA se elimina el chart interno por defecto de QChartView (existe
+        incluso sin setChart): eliminarlo deja la scene del view dañada y
+        provoca access violation al redimensionar/maximizar la ventana.
+        """
+        if self._chart_owned is not None:
+            self._chart_owned.deleteLater()
+            self._chart_owned = None
 
     def _render_bar_chart(self) -> None:
         self._delete_old_chart()
@@ -500,3 +506,4 @@ class DashboardView(QWidget):
         chart.legend().setVisible(False)
         chart.setBackgroundRoundness(12)
         self._bar_chart_view.setChart(chart)
+        self._chart_owned = chart

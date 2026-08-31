@@ -1,13 +1,28 @@
 from src.database.engine import get_session
+from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
 from src.modules.llantas.services.llanta_service._constantes import (
+    COMBINACIONES_VALIDAS,
+    DISENO_REPARADA,
     ESTADOS_PROCESO,
     TRANSICIONES_VALIDAS,
     UBICACIONES_PLANTA,
+    VEREDICTO_UBICACION,
 )
+
+
+def formatear_tiquete(tiquete: str | None) -> str:
+    """Devuelve el tiquete SIN el prefijo fijo 'J' de la serie (presentación).
+
+    La BD almacena el tiquete con el prefijo (ej. 'J24537'); en pantalla se
+    muestra solo el número ('24537'). NO modifica el dato almacenado.
+    """
+    if not tiquete:
+        return ""
+    return tiquete.removeprefix("J")
 
 
 class _GestionLlantasMixin:
@@ -15,26 +30,64 @@ class _GestionLlantasMixin:
     transiciones de estado y movimientos de ubicación."""
 
     @staticmethod
-    def listar_llantas() -> list[Llanta]:
+    def listar_llantas(
+        limite: int | None = None, offset: int = 0
+    ) -> tuple[list[Llanta], int]:
+        """Lista llantas con paginación opcional.
+
+        Devuelve (llantas, total_registros). Con limite=None devuelve todas.
+        """
         with get_session() as session:
-            llantas = LlantaRepository.get_all(session)
+            total = session.query(Llanta).count()
+            query = session.query(Llanta).order_by(Llanta.id.desc())
+            if limite is not None:
+                query = query.limit(limite).offset(offset)
+            llantas = query.all()
             for ll in llantas:
                 session.expunge(ll)
-            return llantas
+            return llantas, total
 
     @staticmethod
     def buscar(
         term: str = "",
         estado: str | None = None,
         cliente_id: int | None = None,
-    ) -> list[Llanta]:
+        limite: int | None = None,
+        offset: int = 0,
+    ) -> tuple[list[Llanta], int]:
+        """Búsqueda con paginación opcional.
+
+        Devuelve (llantas, total_registros). Con limite=None devuelve todas.
+        """
         with get_session() as session:
-            llantas = LlantaRepository.search(
-                session, term=term, estado=estado, cliente_id=cliente_id
-            )
+            query = session.query(Llanta)
+
+            if term:
+                pattern = f"%{term}%"
+                query = query.outerjoin(
+                    Cliente, Llanta.cliente_id == Cliente.id
+                ).filter(
+                    Llanta.tiquete.ilike(pattern)
+                    | Llanta.marca.ilike(pattern)
+                    | Llanta.dimension.ilike(pattern)
+                    | Cliente.nombre.ilike(pattern)
+                    | Cliente.nit.ilike(pattern)
+                )
+
+            if estado:
+                query = query.filter(Llanta.estado == estado)
+
+            if cliente_id is not None:
+                query = query.filter(Llanta.cliente_id == cliente_id)
+
+            total = query.count()
+            query = query.order_by(Llanta.id.desc())
+            if limite is not None:
+                query = query.limit(limite).offset(offset)
+            llantas = query.all()
             for ll in llantas:
                 session.expunge(ll)
-            return llantas
+            return llantas, total
 
     @staticmethod
     def obtener_por_id(llanta_id: int) -> Llanta | None:
@@ -125,6 +178,7 @@ class _GestionLlantasMixin:
                 precio_venta=precio_venta,
                 asesor=asesor,
                 estado="PENDIENTE",
+                ubicacion_actual="PLANTA",
                 cliente_id=cliente_id,
                 numero_orden=numero_orden,
                 consecutivo=consecutivo,
@@ -137,6 +191,12 @@ class _GestionLlantasMixin:
             # Create initial estado
             historial = EstadoLlanta(llanta_id=llanta.id, estado="PENDIENTE")
             session.add(historial)
+
+            # Create initial ubicacion (ingreso = Planta según flujo correcto 2)
+            historial_ubicacion = UbicacionLlanta(
+                llanta_id=llanta.id, ubicacion="PLANTA"
+            )
+            session.add(historial_ubicacion)
 
             session.expunge(llanta)
             return True, llanta
@@ -181,6 +241,15 @@ class _GestionLlantasMixin:
             if not llanta:
                 return False, "Llanta no encontrada"
 
+            # Validar combinación estado ↔ ubicación (reglas R1-R4, R6)
+            estado_actual = llanta.estado or "PENDIENTE"
+            permitidas = COMBINACIONES_VALIDAS.get(estado_actual, set())
+            if ubicacion not in permitidas:
+                return False, (
+                    f"Ubicación inválida: la llanta en estado '{estado_actual}' "
+                    f"no puede estar en '{ubicacion}'"
+                )
+
             movimiento = UbicacionLlanta(
                 llanta_id=llanta_id, ubicacion=ubicacion
             )
@@ -193,21 +262,15 @@ class _GestionLlantasMixin:
         llanta_id: int, veredicto: str
     ) -> tuple[bool, str]:
         """Aplica un veredicto de inspección: cambia estado y ubicación
-        de forma atómica según el flujo definido en "Unificación de
-        conceptos y flujos".
+        de forma atómica según "flujo correcto 2".
 
         Veredictos válidos:
           - APTA         → estado APTA, ubicación PRODUCCION
           - REENCAUCHADA → estado REENCAUCHADA, ubicación PLANTA
-          - REPARADA     → estado REPARADA, ubicación PLANTA
+          - REPARADA     → estado REPARADA, ubicación PLANTA (solo diseño REP)
           - RECHAZADA    → estado RECHAZADA, ubicación PLANTA
+          - REPROCESO    → estado REPROCESO, ubicación PRODUCCION (R7)
         """
-        VEREDICTO_UBICACION = {
-            "APTA": "PRODUCCION",
-            "REENCAUCHADA": "PLANTA",
-            "REPARADA": "PLANTA",
-            "RECHAZADA": "PLANTA",
-        }
         if veredicto not in VEREDICTO_UBICACION:
             return False, (
                 f"Veredicto inválido: {veredicto}. "
@@ -219,6 +282,18 @@ class _GestionLlantasMixin:
             if not llanta:
                 return False, "Llanta no encontrada"
 
+            # Regla R5: REPARADA solo cuando el diseño de banda es REP
+            if veredicto == "REPARADA":
+                diseno_nombre = (
+                    llanta.diseno_obj.nombre if llanta.diseno_obj else None
+                )
+                if diseno_nombre != DISENO_REPARADA:
+                    return False, (
+                        f"Reparada solo se permite con diseño de banda "
+                        f"'{DISENO_REPARADA}' (diseño actual: "
+                        f"{diseno_nombre or 'sin diseño'})"
+                    )
+
             # Validar transición según la matriz del flujo
             estado_actual = llanta.estado or "PENDIENTE"
             permitidos = TRANSICIONES_VALIDAS.get(estado_actual, set())
@@ -229,8 +304,9 @@ class _GestionLlantasMixin:
                 )
 
             # Estado + ubicación en la misma transacción
+            nueva_ubicacion = VEREDICTO_UBICACION[veredicto]
             llanta.estado = veredicto
-            llanta.ubicacion_actual = VEREDICTO_UBICACION[veredicto]
+            llanta.ubicacion_actual = nueva_ubicacion
 
             session.add(
                 EstadoLlanta(llanta_id=llanta_id, estado=veredicto)
@@ -238,12 +314,12 @@ class _GestionLlantasMixin:
             session.add(
                 UbicacionLlanta(
                     llanta_id=llanta_id,
-                    ubicacion=VEREDICTO_UBICACION[veredicto],
+                    ubicacion=nueva_ubicacion,
                 )
             )
             return True, (
                 f"Veredicto '{veredicto}' aplicado — "
-                f"ubicación: {VEREDICTO_UBICACION[veredicto]}"
+                f"ubicación: {nueva_ubicacion}"
             )
 
     @staticmethod

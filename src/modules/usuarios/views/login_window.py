@@ -180,5 +180,6 @@ class LoginWindow(QWidget):
         from src.core.views.main_window import MainWindow
 
         self.main_window = MainWindow(user)
-        self.main_window.show()
+        # Abre maximizada: aprovecha toda la pantalla (opción elegida por el usuario)
+        self.main_window.showMaximized()
         self.close()

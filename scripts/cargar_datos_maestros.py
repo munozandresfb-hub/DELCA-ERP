@@ -12,6 +12,7 @@ Los registros existentes se actualizan (UPSERT por nombre/codigo).
 """
 
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 # ── Asegurar que el proyecto esta en el path ────────────────────────
@@ -27,7 +28,7 @@ from src.database.engine import DB_PATH, engine, get_session
 from src.database.base import Base
 from src.modules.llantas.models.marca_llanta_model import MarcaLlanta
 from src.modules.llantas.models.dimension_llanta_model import DimensionLlanta
-from src.modules.llantas.models.diseno_llanta_model import DisenoLlanta
+from src.modules.llantas.models.diseno_llanta_model import DisenoLlanta, TIPOS_DISENO
 from src.modules.llantas.models.causa_rechazo_model import CausaRechazo
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.inventario.models.precio_producto_model import PrecioProducto
@@ -36,6 +37,24 @@ from src.modules.inventario.models.inventario_config_models import (
 )
 
 DATA_FILE = BASE_DIR / "data" / "datos_maestros.xlsx"
+
+
+# ======================================================================
+#  Helpers
+# ======================================================================
+
+
+def _buscar_dimension_por_display(session, medida_display: str) -> DimensionLlanta | None:
+    """Busca una dimensión por su display canónico (ej. '205/55 R16').
+
+    Normaliza el texto eliminando espacios para comparar contra el
+    display calculado del modelo.
+    """
+    normalizado = medida_display.replace(" ", "").upper()
+    for dim in session.query(DimensionLlanta).all():
+        if dim.display.replace(" ", "").upper() == normalizado:
+            return dim
+    return None
 
 
 # ======================================================================
@@ -80,25 +99,31 @@ def _cargar_medidas(ws, session):
 
 
 def _cargar_disenos(ws, session):
-    """Hoja: Disenos | columnas: nombre, marca_nombre"""
+    """Hoja: Disenos | columnas: nombre, tipo (opcional; por defecto MIXTO).
+
+    Desde v2.2.0 los diseños son independientes de la marca: la columna
+    legacy 'marca_nombre' ya no se usa. El 'tipo' acepta MIXTO/TRACCION/
+    DIRECCIONAL (default MIXTO).
+    """
     count = 0
     for row in ws.iter_rows(min_row=2, values_only=True):
         nombre = (row[0] or "").strip()
-        marca_nombre = (row[1] or "").strip()
-        if not nombre or not marca_nombre:
+        if not nombre or nombre.startswith("'"):
             continue
-        marca = session.query(MarcaLlanta).filter_by(nombre=marca_nombre).first()
-        if not marca:
-            print(f"  [AVISO] Marca '{marca_nombre}' no encontrada. Skip: {nombre}")
-            continue
+        # Si el nombre ya viene con sufijo de marca legacy ("D-100 Goodyear"),
+        # solo interesa la parte del diseño.
+        nombre_limpio = nombre.split(" ")[0].strip()
+        tipo = (row[1] or "MIXTO").strip().upper()
+        if tipo not in TIPOS_DISENO:
+            tipo = "MIXTO"
         existente = (
             session.query(DisenoLlanta)
-            .filter_by(nombre=nombre, marca_id=marca.id)
+            .filter_by(nombre=nombre_limpio)
             .first()
         )
         if existente:
             continue
-        session.add(DisenoLlanta(nombre=nombre, marca_id=marca.id))
+        session.add(DisenoLlanta(nombre=nombre_limpio, tipo=tipo))
         count += 1
     session.commit()
     return count
@@ -148,43 +173,36 @@ def _cargar_precios(ws, session):
         if not medida_display or not diseno_nombre:
             continue
 
-        # Buscar medida por display "ancho/perfil Rrin"
-        partes = medida_display.replace("R", " ").replace("/", " ").split()
-        if len(partes) < 3:
-            print(f"  [AVISO] Formato medida invalido: '{medida_display}'")
-            continue
-        ancho, perfil, rin = int(partes[0]), int(partes[1]), int(partes[2])
-        medida = (
-            session.query(DimensionLlanta)
-            .filter_by(ancho=ancho, perfil=perfil, rin=rin)
-            .first()
-        )
+        # Buscar medida por display "ancho/perfil Rrin" (ej. "205/55 R16")
+        medida = _buscar_dimension_por_display(session, medida_display)
         if not medida:
             print(f"  [AVISO] Medida no encontrada: {medida_display}")
             continue
 
-        diseno = session.query(DisenoLlanta).filter_by(nombre=diseno_nombre).first()
+        # Desde v2.2.0 los diseños son independientes: nombre simple "D-100"
+        diseno_nombre_limpio = diseno_nombre.split(" ")[0].strip()
+        diseno = session.query(DisenoLlanta).filter_by(nombre=diseno_nombre_limpio).first()
         if not diseno:
-            print(f"  [AVISO] Diseno no encontrado: {diseno_nombre}")
+            print(f"  [AVISO] Diseno no encontrado: {diseno_nombre_limpio}")
             continue
 
         existente = (
             session.query(PrecioProducto)
-            .filter_by(medida_id=medida.id, diseno_id=diseno.id)
+            .filter_by(dimension_id=medida.id, diseno_id=diseno.id)
             .first()
         )
         vals = {
-            "costo_fabricacion": float(row[2]) if row[2] is not None else 0,
-            "precio_minimo": float(row[3]) if row[3] is not None else 0,
-            "precio_medio": float(row[4]) if row[4] is not None else 0,
-            "precio_normal": float(row[5]) if row[5] is not None else 0,
+            "costo_fabricacion": Decimal(str(row[2])) if row[2] is not None else Decimal("0"),
+            "precio_minimo": Decimal(str(row[3])) if row[3] is not None else Decimal("0"),
+            "precio_medio": Decimal(str(row[4])) if row[4] is not None else Decimal("0"),
+            "precio_normal": Decimal(str(row[5])) if row[5] is not None else Decimal("0"),
         }
         if existente:
             for k, v in vals.items():
                 setattr(existente, k, v)
         else:
             session.add(PrecioProducto(
-                medida_id=medida.id, diseno_id=diseno.id, **vals
+                dimension_id=medida.id, diseno_id=diseno.id, **vals
             ))
         count += 1
     session.commit()
@@ -223,18 +241,11 @@ def _cargar_recetas(ws, session):
         if not medida_display or not diseno_nombre or not producto_sku:
             continue
 
-        partes = medida_display.replace("R", " ").replace("/", " ").split()
-        if len(partes) < 3:
-            continue
-        ancho, perfil, rin = int(partes[0]), int(partes[1]), int(partes[2])
-        medida = (
-            session.query(DimensionLlanta)
-            .filter_by(ancho=ancho, perfil=perfil, rin=rin)
-            .first()
-        )
+        medida = _buscar_dimension_por_display(session, medida_display)
         if not medida:
             continue
-        diseno = session.query(DisenoLlanta).filter_by(nombre=diseno_nombre).first()
+        diseno_nombre_limpio = diseno_nombre.split(" ")[0].strip()
+        diseno = session.query(DisenoLlanta).filter_by(nombre=diseno_nombre_limpio).first()
         if not diseno:
             continue
         producto = session.query(Producto).filter_by(sku=producto_sku).first()
@@ -248,7 +259,7 @@ def _cargar_recetas(ws, session):
         existente = (
             session.query(RecetaProduccion)
             .filter_by(
-                diseno_id=diseno.id, medida_id=medida.id, producto_id=producto.id
+                diseno_id=diseno.id, dimension_id=medida.id, producto_id=producto.id
             )
             .first()
         )
@@ -257,7 +268,7 @@ def _cargar_recetas(ws, session):
             existente.unidad = unidad
         else:
             session.add(RecetaProduccion(
-                diseno_id=diseno.id, medida_id=medida.id,
+                diseno_id=diseno.id, dimension_id=medida.id,
                 producto_id=producto.id, cantidad=cantidad, unidad=unidad,
             ))
         count += 1
@@ -268,6 +279,58 @@ def _cargar_recetas(ws, session):
 # ======================================================================
 #  Main
 # ======================================================================
+
+
+def inicializar_datos_maestros(only_if_empty: bool = True) -> int:
+    """Carga datos maestros desde el Excel (idempotente).
+
+    Pensada para el arranque del programa (main.py): en una instalación
+    limpia (BD nueva sin catálogos), puebla marcas/medidas/diseños/
+    productos/precios/causas/recetas automáticamente.
+
+    Args:
+        only_if_empty: si True, solo carga cuando no hay marcas registradas
+            (evita duplicar en instalaciones ya pobladas).
+
+    Returns:
+        Número de registros procesados (0 si no aplica).
+    """
+    if not DATA_FILE.exists():
+        print(f"[datos_maestros] No se encuentra {DATA_FILE} — saltando")
+        return 0
+
+    # Idempotencia: si ya hay catálogos cargados, no re-procesar
+    if only_if_empty:
+        from src.modules.llantas.models.marca_llanta_model import MarcaLlanta
+
+        with get_session() as session:
+            if session.query(MarcaLlanta).count() > 0:
+                print("[datos_maestros] Catálogos ya poblados — saltando")
+                return 0
+
+    print(f"[datos_maestros] Leyendo: {DATA_FILE}")
+    wb = load_workbook(DATA_FILE, data_only=True)
+    Base.metadata.create_all(bind=engine)
+
+    total = {}
+    with get_session() as session:
+        if "Marcas" in wb.sheetnames:
+            total["Marcas"] = _cargar_marcas(wb["Marcas"], session)
+        if "Medidas" in wb.sheetnames:
+            total["Medidas"] = _cargar_medidas(wb["Medidas"], session)
+        if "Disenos" in wb.sheetnames:
+            total["Disenos"] = _cargar_disenos(wb["Disenos"], session)
+        if "Productos" in wb.sheetnames:
+            total["Productos"] = _cargar_productos(wb["Productos"], session)
+        if "PreciosProducto" in wb.sheetnames:
+            total["PreciosProducto"] = _cargar_precios(wb["PreciosProducto"], session)
+        if "CausasRechazo" in wb.sheetnames:
+            total["CausasRechazo"] = _cargar_causas_rechazo(wb["CausasRechazo"], session)
+        if "RecetasProduccion" in wb.sheetnames:
+            total["RecetasProduccion"] = _cargar_recetas(wb["RecetasProduccion"], session)
+
+    print("[datos_maestros] Resumen:", total)
+    return sum(total.values())
 
 
 def main():

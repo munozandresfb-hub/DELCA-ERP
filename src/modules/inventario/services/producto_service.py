@@ -248,19 +248,6 @@ class ProductoService:
             return True, f"{tipo} registrada. Stock: {producto.stock}"
 
     @staticmethod
-    def obtener_kardex(
-        producto_id: int, limite: int = 50
-    ) -> list[MovimientoInventario]:
-        with get_session() as session:
-            return (
-                session.query(MovimientoInventario)
-                .filter(MovimientoInventario.producto_id == producto_id)
-                .order_by(MovimientoInventario.fecha.desc())
-                .limit(limite)
-                .all()
-            )
-
-    @staticmethod
     def obtener_kardex_por_filtros(
         producto_id: int | None = None,
         tipo: str | None = None,
@@ -283,42 +270,3 @@ class ProductoService:
             for r in results:
                 session.expunge(r)
             return results
-
-    @staticmethod
-    def obtener_resumen_stock() -> list[tuple[str, str]]:
-        """Get stock summary across all products."""
-        with get_session() as session:
-            productos = (
-                session.query(Producto)
-                .order_by(Producto.nombre)
-                .all()
-            )
-            total_productos = len(productos)
-            total_stock = sum(p.stock for p in productos if p.stock)
-            valor_total = sum(
-                p.stock * p.costo_unitario
-                for p in productos
-                if p.stock and p.costo_unitario
-            )
-
-            # Count products with low stock
-            bajos = sum(1 for p in productos if 0 < p.stock < 10)
-
-            return [
-                ("Total Productos", str(total_productos)),
-                ("Total Unidades", str(total_stock)),
-                ("Valor Inventario", f"${valor_total:,.2f}"),
-                ("Stock Bajo", str(bajos)),
-            ]
-
-    @staticmethod
-    def listar_categorias() -> list[str]:
-        with get_session() as session:
-            resultados = (
-                session.query(Producto.categoria)
-                .filter(Producto.categoria.isnot(None))
-                .distinct()
-                .order_by(Producto.categoria)
-                .all()
-            )
-            return [r[0] for r in resultados]

@@ -25,7 +25,7 @@ class _ClientesReportView:
         # ── Por Ciudad ───────────────────────────────────────────
         tab = _ReportTab("Clientes")
         tab.set_columns([
-            "Cliente", "Contacto", "NIT/Cédula", "Ciudad",
+            "Cliente", "Contacto", "NIT/Cédula", "Ciudad", "Correo",
             "Llantas en Planta", "Estado",
         ])
 
@@ -63,7 +63,8 @@ class _ClientesReportView:
 
         self._tab_act_inact = _ReportTab("Act/Inact")
         self._tab_act_inact.set_columns([
-            "Cliente", "Contacto", "NIT/Cédula", "N° Cliente", "Estado", "Última Vez",
+            "Cliente", "Contacto", "NIT/Cédula", "Llantas en Planta",
+            "Estado", "Última Vez",
         ])
         tab2_layout.addWidget(self._tab_act_inact)
 
@@ -94,8 +95,8 @@ class _ClientesReportView:
 
         self._tab_mayor_saldo = _ReportTab("Mayor Saldo")
         self._tab_mayor_saldo.set_columns([
-            "N° Cliente", "Cliente", "Contacto", "NIT",
-            "Saldo Pendiente", "Fecha Saldo",
+            "Cliente", "Contacto", "NIT/Cédula",
+            "Saldo Pendiente", "Fecha Saldo", "Correo Electrónico",
         ])
         tab3_layout.addWidget(self._tab_mayor_saldo)
 
@@ -125,6 +126,7 @@ class _ClientesReportView:
                 r["contacto"],
                 r["nit"],
                 r["ciudad"],
+                r["email"],
                 str(r["llantas_planta"]),
                 "Activo" if r["activo"] else "Inactivo",
             ])
@@ -136,7 +138,7 @@ class _ClientesReportView:
                 f"Llantas en planta: {total_llantas}",
             )
         else:
-            tab.add_row(["(sin datos)"] * 6)
+            tab.add_row(["(sin datos)"] * 7)
 
     def _refresh_activos_inactivos(self) -> None:
         from datetime import datetime as dt
@@ -152,16 +154,24 @@ class _ClientesReportView:
             fecha_hasta=dt.combine(cast(dt, hasta), dt.max.time()),
         )
         self._tab_act_inact.clear_rows()
+        total_llantas = 0
         for r in data:
             self._tab_act_inact.add_row([
                 r["nombre"],
                 r["contacto"],
                 r["nit"],
-                str(r["id"]),
+                str(r["llantas_planta"]),
                 "Activo" if r["activo"] else "Inactivo",
                 r["ultima_vez"],
             ])
-        if not data:
+            total_llantas += r["llantas_planta"]
+        if data:
+            self._tab_act_inact.clear_summaries()
+            self._tab_act_inact.add_summary(
+                f"Total clientes: {len(data)}  |  "
+                f"Llantas en planta: {total_llantas}",
+            )
+        else:
             self._tab_act_inact.add_row(["(sin datos)"] * 6)
 
     def _refresh_mayor_saldo(self) -> None:
@@ -179,12 +189,12 @@ class _ClientesReportView:
         total_saldo = 0
         for r in data:
             self._tab_mayor_saldo.add_row([
-                str(r["id"]),
                 r["nombre"],
                 r["contacto"],
                 r["nit"],
                 f"${r['saldo']:,.2f}",
                 r["fecha_saldo"],
+                r["email"],
             ])
             total_saldo += r["saldo"]
         if data:

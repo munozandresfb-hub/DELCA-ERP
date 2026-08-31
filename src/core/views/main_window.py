@@ -1,11 +1,15 @@
 from collections.abc import Callable
 
+from PySide6.QtCore import QTimer, QEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QListWidget,
     QMainWindow,
+    QMessageBox,
     QStackedWidget,
+    QStatusBar,
     QVBoxLayout,
     QWidget,
 )
@@ -28,8 +32,14 @@ from src.core.views.backup_view import BackupView
 from src.modules.usuarios.views.usuarios_view import UsuariosView
 
 # ─── Session tracking for inactivity timeout ─────────────────────────
-from PySide6.QtCore import QTimer, QEvent
 from src.core.services.session_service import get_session_manager
+
+# ─── Backup automático ───────────────────────────────────────────────
+from src.core.services.backup_service import (
+    create_backup,
+    get_last_backup_time,
+    was_backup_done_today,
+)
 
 # ─── RBAC ────────────────────────────────────────────────────────────
 from src.modules.usuarios.services.permiso_service import tiene_permiso_por_usuario
@@ -77,6 +87,8 @@ class MainWindow(QMainWindow):
 
         self.setup_ui()
         self._setup_inactivity_timer()
+        self._setup_backup_scheduler()
+        self._setup_status_bar()
 
     def setup_ui(self) -> None:
         # Central widget
@@ -204,8 +216,13 @@ class MainWindow(QMainWindow):
         self._inactivity_timer.timeout.connect(self._check_inactivity)
         self._inactivity_timer.start(30_000)
 
-        # Track user activity via event filter
-        self.centralWidget().installEventFilter(self)
+        # Track user activity via event filter.
+        # Instalado en la APLICACIÓN (no en centralWidget) para capturar también
+        # la actividad dentro de diálogos modales (QMessageBox, QDialog), cuyos
+        # eventos NO pasan por un filter del central widget.
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
 
         # Also track on sidebar clicks
         self.sidebar.currentRowChanged.connect(
@@ -213,7 +230,7 @@ class MainWindow(QMainWindow):
         )
 
     def eventFilter(self, obj, event) -> bool:
-        """Reset inactivity timer on mouse/keyboard events."""
+        """Reset inactivity timer on mouse/keyboard events (app-wide)."""
         if event.type() in (QEvent.MouseButtonPress, QEvent.KeyPress,
                             QEvent.MouseMove, QEvent.Wheel):
             self._session.update_activity()
@@ -224,7 +241,6 @@ class MainWindow(QMainWindow):
         if self._session.is_session_expired():
             self._session.lock()
             # Show a simple lock message
-            from PySide6.QtWidgets import QMessageBox
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Information)
             msg.setWindowTitle("Sesión Expirada")
@@ -234,3 +250,78 @@ class MainWindow(QMainWindow):
             )
             msg.exec()
             self.close()
+
+    # ── Backup automático (Roadmap Fase 1) ────────────────────────────
+
+    def _setup_backup_scheduler(self) -> None:
+        """Backup automático diario.
+
+        - Al arrancar la app (3s después), crea el backup del día si falta.
+        - Timer cada 6h como red de seguridad (cubre el cambio de día con la
+          app abierta: al pasar de medianoche, el siguiente tick detecta que
+          ya no hay backup de hoy y lo crea).
+        - Solo se informa al usuario si el backup FALLA (no molesta si todo OK).
+        """
+        self._backup_timer = QTimer(self)
+        self._backup_timer.timeout.connect(self._check_auto_backup)
+        self._backup_timer.start(6 * 60 * 60 * 1000)  # cada 6 horas
+
+        # Backup del día al arrancar (no depende de abrir el módulo Backup)
+        QTimer.singleShot(3_000, self._check_auto_backup)
+
+    def _check_auto_backup(self) -> None:
+        """Crea el backup del día si aún no existe. Informa solo si falla."""
+        if was_backup_done_today():
+            return
+        ok, msg = create_backup()
+        if ok:
+            print(f"[Backup] Automático diario OK: {msg}")
+            self._refresh_status_bar()
+        else:
+            print(f"[Backup] Automático falló: {msg}")
+            self._notify_backup_failed(msg)
+
+    def _notify_backup_failed(self, msg: str) -> None:
+        """Avisa al usuario solo si el backup automático falló."""
+        if not hasattr(self.user, "rol"):
+            return
+        try:
+            if self.user.rol.nombre == "Operador":
+                return
+        except Exception:
+            pass
+        QTimer.singleShot(
+            0,
+            lambda: QMessageBox.warning(
+                self,
+                "Backup automático",
+                f"No se pudo crear el respaldo de la base de datos:\n"
+                f"{msg}\n\n"
+                "Revise el módulo Backup para más detalles.",
+            ),
+        )
+
+    # ── Barra de estado (Roadmap Fase 1) ──────────────────────────────
+
+    def _setup_status_bar(self) -> None:
+        """Barra de estado: usuario, rol y último backup."""
+        status = QStatusBar()
+        self.setStatusBar(status)
+
+        rol = "—"
+        try:
+            if hasattr(self.user, "rol") and self.user.rol is not None:
+                rol = self.user.rol.nombre
+        except Exception:
+            pass
+
+        self._status_user = QLabel(f"👤 {self.user.nombre} · {rol}")
+        self._status_backup = QLabel("")
+
+        status.addWidget(self._status_user)
+        status.addPermanentWidget(self._status_backup)
+        self._refresh_status_bar()
+
+    def _refresh_status_bar(self) -> None:
+        ultimo = get_last_backup_time() or "nunca"
+        self._status_backup.setText(f"💾 Último backup: {ultimo}")

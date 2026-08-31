@@ -21,21 +21,28 @@ from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
 from src.modules.llantas.services.llanta_service import (
+    UBICACIONES_CAMBIO_MANUAL,
     UBICACIONES_DISPLAY,
     UBICACIONES_PLANTA,
     LlantaService,
 )
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 from sqlalchemy import func as sa_func
 
 
 class _UbicacionRapidaDialog(QDialog):
-    """Dialog to quickly change tire location by entering code."""
+    """Dialog to quickly change tire location by entering code.
+
+    Ofrece siempre las opciones fijas de cambio manual: Cliente y Planta.
+    La validación según el estado actual (reglas R1-R4, R6 del flujo
+    correcto 2) la realiza el servicio.
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Ubicación Rápida")
-        self.resize(420, 180)
+        self.setWindowTitle("Cambio de Ubicación")
+        self.resize(420, 200)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
 
@@ -56,7 +63,8 @@ class _UbicacionRapidaDialog(QDialog):
         form.addRow(self.info_label)
 
         self.ubicacion_combo = QComboBox()
-        for u in UBICACIONES_PLANTA:
+        # Opciones fijas de cambio manual: Cliente, Planta
+        for u in UBICACIONES_CAMBIO_MANUAL:
             self.ubicacion_combo.addItem(UBICACIONES_DISPLAY.get(u, u), u)
         self.ubicacion_combo.setEnabled(False)
         self.ubicacion_combo.setStyleSheet(
@@ -99,8 +107,11 @@ class _UbicacionRapidaDialog(QDialog):
             self._llanta_encontrada = None
             return
 
+        # Acepta el tiquete con o sin el prefijo "J" de la serie (la BD lo guarda con "J")
+        tiquete_bd = tiquete if tiquete.startswith("J") else "J" + tiquete
+
         with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+            llanta = LlantaRepository.get_by_tiquete(s, tiquete_bd)
             ultima_ubicacion = (
                 s.query(UbicacionLlanta)
                 .filter(UbicacionLlanta.llanta_id == llanta.id)
@@ -111,14 +122,19 @@ class _UbicacionRapidaDialog(QDialog):
         if llanta:
             marca_text = llanta.marca_obj.nombre if llanta.marca_obj else (llanta.marca or "?")
             dimension_text = llanta.dimension_obj.display if llanta.dimension_obj else (llanta.dimension or "?")
+            estado = llanta.estado or "PENDIENTE"
             ubic_actual = "N/A"
             if ultima_ubicacion:
                 ubic_val = str(ultima_ubicacion.ubicacion)
                 ubic_actual = UBICACIONES_DISPLAY.get(ubic_val, ubic_val)
             self.info_label.setText(
-                f"  {marca_text} {dimension_text} — Ubicación: {ubic_actual}"
+                f"  {marca_text} {dimension_text} — Estado: {estado} — "
+                f"Ubicación: {ubic_actual}"
             )
             self.info_label.setStyleSheet("color: #2e7d32; font-size: 13px;")
+
+            # Opciones fijas (Cliente, Planta) ya cargadas en setup_ui.
+            # Preseleccionar la ubicación actual si está disponible.
             db_val = ultima_ubicacion.ubicacion if ultima_ubicacion else ""
             idx = self.ubicacion_combo.findData(db_val)
             if idx >= 0:
@@ -224,17 +240,35 @@ class PlantaView(QWidget):
         mover_btn.clicked.connect(self._mover_ubicacion)
         move_row.addWidget(mover_btn)
 
-        rapido_btn = QPushButton("Ubicación Rápida")
-        rapido_btn.setStyleSheet(
+        cambio_ubicacion_btn = QPushButton("CAMBIO DE UBICACIÓN")
+        cambio_ubicacion_btn.setStyleSheet(
             "QPushButton { background-color: #9b59b6; color: white; font-size: 14px; "
             "font-weight: bold; padding: 8px 20px; border-radius: 5px; border: none; }"
             "QPushButton:hover { background-color: #8e44ad; }"
         )
-        rapido_btn.clicked.connect(self._ubicacion_rapida)
-        move_row.addWidget(rapido_btn)
+        cambio_ubicacion_btn.clicked.connect(self._ubicacion_rapida)
+        move_row.addWidget(cambio_ubicacion_btn)
 
         move_row.addStretch()
         layout.addLayout(move_row)
+
+        # ── Pagination ─────────────────────────────────────────────────
+        pag_row = QHBoxLayout()
+        self.prev_btn = QPushButton("← Anterior")
+        self.prev_btn.clicked.connect(self._pagina_anterior)
+        self.prev_btn.setEnabled(False)
+        pag_row.addWidget(self.prev_btn)
+
+        self.pag_label = QLabel("")
+        pag_row.addWidget(self.pag_label)
+
+        self.next_btn = QPushButton("Siguiente →")
+        self.next_btn.clicked.connect(self._pagina_siguiente)
+        self.next_btn.setEnabled(False)
+        pag_row.addWidget(self.next_btn)
+
+        pag_row.addStretch()
+        layout.addLayout(pag_row)
 
         # ── Table ──────────────────────────────────────────────────────
         self.table = QTableWidget()
@@ -263,14 +297,40 @@ class PlantaView(QWidget):
         self.viewmodel.cargar_llantas()
         self._poblar_tabla()
 
+    def _pagina_anterior(self) -> None:
+        self.viewmodel.pagina_anterior()
+        self._poblar_tabla()
+
+    def _pagina_siguiente(self) -> None:
+        self.viewmodel.siguiente_pagina()
+        self._poblar_tabla()
+
+    def _actualizar_paginacion(self) -> None:
+        vm = self.viewmodel
+        self.prev_btn.setEnabled(vm.pagina > 0)
+        self.next_btn.setEnabled(vm.hay_mas)
+        desde = vm.pagina * vm.PAGE_SIZE + 1
+        hasta = min((vm.pagina + 1) * vm.PAGE_SIZE, vm.total)
+        self.pag_label.setText(
+            f"Mostrando {desde}–{hasta} de {vm.total} llantas "
+            f"(página {vm.pagina + 1})"
+        )
+
     def _filtrar(self) -> None:
         self.viewmodel.cargar_llantas()
         ubicacion = self.ubicacion_filter.currentData()
         if ubicacion:
+            # Filtrar por ubicación SIN cargar todo: busca solo en la página
+            # actual por defecto (el filtro de estado/ubicación completo se
+            # puede afinar con la búsqueda del módulo Llantas).
+            ids_pagina = {l.id for l in self.viewmodel.llantas}
             with get_session() as session:
                 ids_con_ubicacion = (
                     session.query(UbicacionLlanta.llanta_id)
-                    .filter(UbicacionLlanta.ubicacion == ubicacion)
+                    .filter(
+                        UbicacionLlanta.ubicacion == ubicacion,
+                        UbicacionLlanta.llanta_id.in_(ids_pagina),
+                    )
                     .distinct()
                     .all()
                 )
@@ -318,8 +378,8 @@ class PlantaView(QWidget):
             # 0 - Cliente
             nombre_cliente = l.cliente.nombre if l.cliente else "—"
             self.table.setItem(row, 0, QTableWidgetItem(nombre_cliente))
-            # 1 - Tiquete
-            self.table.setItem(row, 1, QTableWidgetItem(l.tiquete or ""))
+            # 1 - Tiquete (sin el prefijo "J" de la serie)
+            self.table.setItem(row, 1, QTableWidgetItem(formatear_tiquete(l.tiquete)))
             # 2 - N° Orden
             self.table.setItem(row, 2, QTableWidgetItem(l.numero_orden or "—"))
             # 3 - Dimensión (estandarizada)
@@ -346,6 +406,8 @@ class PlantaView(QWidget):
             # 7 - Fecha de Ingreso
             fecha = l.fecha_ingreso.strftime("%Y-%m-%d") if l.fecha_ingreso else "—"
             self.table.setItem(row, 7, QTableWidgetItem(fecha))
+
+        self._actualizar_paginacion()
 
     def _mover_ubicacion(self) -> None:
         row = self.table.currentRow()

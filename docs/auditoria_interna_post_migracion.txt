@@ -1,0 +1,77 @@
+======================================================================
+AUDITORÍA INTERNA — DELCA ERP (post-migración 24,451 llantas)
+Fecha: 2026-08-24 19:56:53
+======================================================================
+
+## 1. INTEGRIDAD GLOBAL
+  PRAGMA integrity_check: ok
+  PRAGMA foreign_key_check: 0 violaciones
+  PRAGMA quick_check: ok
+
+## 2. CONTEO DE REGISTROS POR TABLA
+  llantas: 24459
+  estados_llanta: 24466
+  ubicaciones_llanta: 24473
+  marcas_llanta: 476
+  dimensiones_llanta: 88
+  disenos_llanta: 56
+  causas_rechazo: 41
+  cliente: 5239
+  facturas: 13
+  pagos: 11
+  productos: 5
+  usuarios: 3
+
+## 3. DISTRIBUCIÓN DE ESTADOS (llantas)
+  REENCAUCHADA: 17164
+  APTA: 5255
+  REPARADA: 1730
+  PENDIENTE: 310
+
+## 4. DISTRIBUCIÓN DE UBICACIONES (ubicacion_actual)
+  CLIENTE: 17987
+  PRODUCCION: 4620
+  PLANTA: 1852
+
+## 5. COMBINACIONES ESTADO + UBICACION
+  REENCAUCHADA + CLIENTE: 16383  [OK]
+  APTA + PRODUCCION: 4620  [OK]
+  REPARADA + CLIENTE: 1604  [OK]
+  REENCAUCHADA + PLANTA: 781  [OK]
+  APTA + PLANTA: 635  [OK]
+  PENDIENTE + PLANTA: 310  [OK]
+  REPARADA + PLANTA: 126  [OK]
+
+## 6. HISTORIALES (coherencia)
+  Llantas SIN historial de estado: 0
+  Llantas SIN historial de ubicación: 3
+  Llantas con estado actual != último historial: 4
+
+## 7. CATÁLOGOS
+  Marcas totales: 476
+  Dimensiones totales: 88
+  Diseños totales: 56
+  Llantas con marca textual pero SIN marca_id: 3
+  Llantas con dimension textual pero SIN dimension_id: 1637
+  Llantas con banda/diseño NO resuelto (sin diseno_id): 5
+  Llantas con diseño REP: 2189
+
+## 8. RELACIONES
+  Llantas SIN cliente: 17
+  Llantas con cliente_id INEXISTENTE: 0
+  Clientes totales en BD: 5239
+  Clientes distintos referenciados por llantas: 1561
+
+## 9. FECHAS
+  Rango de fecha_ingreso: 2021-02-09 00:00:00.000000 → 2026-08-20 00:00:00.000000
+  Llantas SIN fecha_ingreso: 4
+
+## 10. DATOS FINANCIEROS
+  Llantas con costo_produccion > 0: 16399
+  Llantas con precio_venta > 0: 3
+  Costo producción promedio: 15743.11 | Precio venta promedio: 936666.67
+
+## 11. SANIDAD DE LA MIGRACIÓN
+  Tiquetes duplicados: NINGUNO - OK
+  Tiquetes vacíos: 0
+  Estados NULL: 0

@@ -97,19 +97,20 @@ Vista (PySide6 Widget) → ViewModel → Service → Repository → ORM (SQLAlch
 - Saldo pendiente automático
 
 ### Llantas
-- Registro de llantas con código, marca, medida
-- Trazabilidad por estados: RECIBIDA → INSPECCIÓN → PRODUCCIÓN → RASPADO → LLENADO → VULCANIZACIÓN → TERMINADO → ENTREGADA
+- Registro de llantas con tiquete, marca, dimensión, diseño
+- Trazabilidad por estados: PENDIENTE → APTA → REENCAUCHADA/REPARADA (con REPROCESO en inspección final)
 - Historial de cambios de estado y ubicaciones
 - Filtro por estado y búsqueda
 
 ### Producción
 - Vista del pipeline de producción
-- Llantas activas en flujo (RECIBIDA → INSPECCIÓN → PRODUCCIÓN → REENCAUCHADA)
+- Llantas activas en flujo (PENDIENTE → APTA → REENCAUCHADA / REPROCESO)
+- Botón **INSPECCIÓN FINAL**: aplicación rápida de veredicto por tiquete
 - Filtro por estado
 
 ### Planta
 - Mapa de ubicaciones en planta
-- Movimiento de llantas entre ubicaciones
+- Botón **CAMBIO DE UBICACIÓN**: movimiento validado por combinación estado↔ubicación
 - Filtro por ubicación
 
 ### Facturación

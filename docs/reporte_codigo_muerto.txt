@@ -1,0 +1,143 @@
+REPORTE DE CÓDIGO MUERTO — VERIFICACIÓN CRUZADA (vulture + referencias)
+Fecha: 2026-08-27 15:23
+Proyecto: DELCA ERP — 123 hallazgos vulture (confidence>=60)
+==========================================================================================
+
+## CON REFERENCIA (falso positivo) (59)
+Archivo                                                 Línea Tipo       Nombre                         Refs
+------------------------------------------------------------------------------------------
+src\config.py                                              72 variable   DATA_DIR                          5
+src\config.py                                              77 variable   SECRET_KEY                        2
+src\core\services\backup_service.py                       225 attribute  row_factory                       2
+src\core\services\backup_service.py                       274 attribute  row_factory                       2
+src\core\services\backup_service.py                       300 attribute  width                            24
+src\core\services\session_service.py                        9 import     Optional                          5
+src\core\services\session_service.py                       52 method     get_user                          4
+src\core\services\session_service.py                       62 method     get_username                      3
+src\core\services\session_service.py                       78 method     clear_session                     4
+src\core\services\session_service.py                      100 method     get_last_activity                 3
+src\core\services\session_service.py                      104 method     get_remaining_seconds             2
+src\core\services\session_service.py                      131 method     unlock                            2
+src\core\services\session_service.py                      136 method     is_locked                         4
+src\core\services\session_service.py                      142 method     get_login_time                    2
+src\core\services\session_service.py                      146 method     get_session_duration              2
+src\core\views\backup_view.py                             189 variable   checked                           5
+src\modules\auditoria\models\auditoria_model.py            29 variable   payload_json                      6
+src\modules\automatizacion\services\automatizacion_service.py    49 method     inicializar_reglas                2
+src\modules\automatizacion\views\automatizacion_view\_view.py   290 variable   checked                           5
+src\modules\automatizacion\views\automatizacion_view\_view.py   330 variable   checked                           5
+src\modules\automatizacion\views\automatizacion_view\_view.py   345 variable   checked                           5
+src\modules\automatizacion\views\automatizacion_view\_view.py   354 variable   checked                           5
+src\modules\finanzas\services\factura_service\_cartera.py   179 attribute  alignment                         8
+src\modules\finanzas\services\factura_service\_cartera.py   191 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   192 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   193 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   194 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   195 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   201 attribute  number_format                     3
+src\modules\finanzas\services\factura_service\_cartera.py   215 attribute  alignment                         8
+src\modules\finanzas\services\factura_service\_cartera.py   259 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   265 attribute  number_format                     3
+src\modules\finanzas\services\factura_service\_cartera.py   295 attribute  number_format                     3
+src\modules\finanzas\services\factura_service\_cartera.py   308 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   309 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   310 attribute  width                            24
+src\modules\finanzas\services\factura_service\_cartera.py   311 attribute  width                            24
+src\modules\inventario\models\movimiento_inventario_model.py    46 variable   documento                         6
+src\modules\inventario\services\precio_producto_service.py    86 method     aplicar_precios                  10
+src\modules\inventario\views\inventario_view\_config_dialog.py   184 attribute  _precio_id                        3
+src\modules\inventario\views\inventario_view\_config_dialog.py   256 attribute  _precio_id                        3
+src\modules\inventario\views\inventario_view\_widgets.py   108 attribute  _columnas                         3
+src\modules\inventario\views\kardex_view\_view.py         323 attribute  alignment                         8
+src\modules\inventario\views\kardex_view\_view.py         359 attribute  width                            24
+src\modules\inventario\views\precios_view.py               35 attribute  _precio_id                        3
+src\modules\inventario\views\precios_view.py              117 attribute  _columnas                         3
+src\modules\inventario\views\productos_view.py            248 class      ProductosView                     2
+src\modules\llantas\models\llanta_model.py                 92 variable   historial_estados                 2
+src\modules\llantas\models\llanta_model.py                 97 variable   historial_ubicaciones             2
+src\modules\llantas\services\llanta_service\_core.py      299 method     contar_por_estado                 2
+src\modules\llantas\views\catalogos_view\_tabular.py       28 attribute  _columnas                         3
+src\modules\reportes\services\reporte_service\_export.py    35 attribute  alignment                         8
+src\modules\reportes\services\reporte_service\_export.py    48 attribute  width                            24
+src\modules\usuarios\models\permiso_model.py               28 variable   modulo                           30
+src\modules\usuarios\services\permiso_service.py          118 function   permisos_de_rol                   4
+src\modules\usuarios\use_cases\bootstrap_admin.py          46 function   bootstrap_admin                   6
+src\modules\usuarios\views\login_window.py                 81 class      LoginWindow                       4
+src\modules\usuarios\views\login_window.py                 88 attribute  _pending_user                     2
+src\modules\usuarios\views\login_window.py                149 attribute  _pending_user                     2
+
+## VARIABLE/ATRIBUTO (verificar si es API) (34)
+Archivo                                                 Línea Tipo       Nombre                         Refs
+------------------------------------------------------------------------------------------
+src\core\models\kpi_model.py                               29 variable   updated_at                        1
+src\core\services\audit_service.py                         60 variable   ip                                1
+src\modules\inventario\views\inventario_view\_widgets.py    18 variable   C_AZUL_OSCURO                     1
+src\modules\inventario\views\inventario_view\_widgets.py    22 variable   C_BG_CARD                         1
+src\modules\inventario\views\inventario_view\_widgets.py    24 variable   KPI_COLORS                        1
+src\modules\inventario\views\inventario_view\_widgets.py    32 variable   ANTIGUEDAD_COLORS                 1
+src\modules\inventario\views\kardex_view\_view.py          46 variable   TIPOS_MOVIMIENTO                  1
+src\modules\usuarios\services\permiso_service.py           17 variable   DASHBOARD_VER                     1
+src\modules\usuarios\services\permiso_service.py           20 variable   CLIENTES_VER                      1
+src\modules\usuarios\services\permiso_service.py           21 variable   CLIENTES_CREAR                    1
+src\modules\usuarios\services\permiso_service.py           22 variable   CLIENTES_EDITAR                   1
+src\modules\usuarios\services\permiso_service.py           23 variable   CLIENTES_ELIMINAR                 1
+src\modules\usuarios\services\permiso_service.py           26 variable   LLANTAS_VER                       1
+src\modules\usuarios\services\permiso_service.py           27 variable   LLANTAS_CREAR                     1
+src\modules\usuarios\services\permiso_service.py           28 variable   LLANTAS_EDITAR                    1
+src\modules\usuarios\services\permiso_service.py           29 variable   LLANTAS_ELIMINAR                  1
+src\modules\usuarios\services\permiso_service.py           32 variable   PRODUCCION_VER                    1
+src\modules\usuarios\services\permiso_service.py           33 variable   PRODUCCION_GESTIONAR              1
+src\modules\usuarios\services\permiso_service.py           36 variable   PLANTA_VER                        1
+src\modules\usuarios\services\permiso_service.py           37 variable   PLANTA_GESTIONAR                  1
+src\modules\usuarios\services\permiso_service.py           40 variable   FACTURACION_VER                   1
+src\modules\usuarios\services\permiso_service.py           41 variable   FACTURACION_CREAR                 1
+src\modules\usuarios\services\permiso_service.py           42 variable   FACTURACION_ANULAR                1
+src\modules\usuarios\services\permiso_service.py           45 variable   CARTERA_VER                       1
+src\modules\usuarios\services\permiso_service.py           46 variable   CARTERA_COBRAR                    1
+src\modules\usuarios\services\permiso_service.py           49 variable   INVENTARIO_VER                    1
+src\modules\usuarios\services\permiso_service.py           50 variable   INVENTARIO_AJUSTAR                1
+src\modules\usuarios\services\permiso_service.py           53 variable   KARDEX_VER                        1
+src\modules\usuarios\services\permiso_service.py           56 variable   REPORTES_VER                      1
+src\modules\usuarios\services\permiso_service.py           59 variable   AUTOMATIZACION_VER                1
+src\modules\usuarios\services\permiso_service.py           60 variable   AUTOMATIZACION_GESTIONAR          1
+src\modules\usuarios\services\permiso_service.py           63 variable   BACKUP_GESTIONAR                  1
+src\modules\usuarios\services\permiso_service.py           66 variable   USUARIOS_GESTIONAR                1
+src\modules\usuarios\services\permiso_service.py           69 variable   AUDITORIA_VER                     1
+
+## SIN REFERENCIA (candidato real) (25)
+Archivo                                                 Línea Tipo       Nombre                         Refs
+------------------------------------------------------------------------------------------
+src\config.py                                              61 property   is_postgres                       1
+src\database\engine.py                                     69 function   _set_wal_mode                     1
+src\modules\clientes\services\cliente_service.py          127 method     clasificacion_abc                 1
+src\modules\inventario\services\documento_service.py       34 method     crear_documento                   1
+src\modules\inventario\services\documento_service.py       57 method     agregar_movimiento                1
+src\modules\inventario\services\documento_service.py      141 method     eliminar_documento                1
+src\modules\inventario\services\inventario_config_service.py    16 method     listar_costos                     1
+src\modules\inventario\services\inventario_config_service.py    31 method     obtener_costo                     1
+src\modules\inventario\services\inventario_config_service.py    48 method     guardar_costo                     1
+src\modules\inventario\services\inventario_config_service.py    70 method     eliminar_costo                    1
+src\modules\inventario\services\inventario_config_service.py   104 method     obtener_precio                    1
+src\modules\inventario\services\inventario_config_service.py   166 method     listar_recetas                    1
+src\modules\inventario\services\inventario_config_service.py   185 method     guardar_receta                    1
+src\modules\inventario\services\inventario_config_service.py   217 method     eliminar_receta                   1
+src\modules\inventario\services\inventario_kpi_service.py   193 method     margen_bruto_operacion            1
+src\modules\inventario\services\producto_service.py       250 method     obtener_kardex                    1
+src\modules\inventario\services\producto_service.py       287 method     obtener_resumen_stock             1
+src\modules\inventario\services\producto_service.py       314 method     listar_categorias                 1
+src\modules\inventario\views\inventario_view\_documento_dialogs.py    31 class      _LineaProductoDialog              1
+src\modules\llantas\repositories\llanta_repository.py      50 method     get_by_estado                     1
+src\modules\llantas\repositories\llanta_repository.py      76 method     update_cliente                    1
+src\modules\llantas\repositories\llanta_repository.py      97 method     get_all_disenos                   1
+src\modules\llantas\views\catalogos_view\_dialog.py       164 method     _parse_rin                        1
+src\modules\usuarios\services\permiso_service.py           14 class      Perms                             1
+src\modules\usuarios\services\usuario_service.py          280 method     obtener_usuario                   1
+
+## DINAMICO/DIFERIDO (no eliminar) (5)
+Archivo                                                 Línea Tipo       Nombre                         Refs
+------------------------------------------------------------------------------------------
+src\core\services\dashboard_service.py                    165 function   obtener_actividad_reciente        1
+src\core\services\dashboard_service.py                    188 function   obtener_llantas_por_estado        1
+src\modules\automatizacion\services\automatizacion_service.py   190 method     alertas_no_leidas_count           1
+src\modules\reportes\services\reporte_service\_clientes.py   134 method     clientes_con_mayor_saldo          1
+src\modules\reportes\services\reporte_service\_llantas.py   429 method     indicador_reprocesadas            1

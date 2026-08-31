@@ -52,6 +52,7 @@ class KpiHistoricoDialog(QDialog):
         self._chart_view = QChartView()
         self._chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
         self._chart_view.setMinimumHeight(280)
+        self._chart_owned: QChart | None = None
         layout.addWidget(self._chart_view)
 
         # Table
@@ -88,7 +89,6 @@ class KpiHistoricoDialog(QDialog):
         return (
             f"QPushButton {{ background-color: {color}; color: white; border: none; "
             f"border-radius: 6px; padding: 6px 16px; font-size: 12px; font-weight: 600; }}"
-            f"QPushButton:hover {{ opacity: 0.8; }}"
         )
 
     def _poblar_tabla(self) -> None:
@@ -115,9 +115,10 @@ class KpiHistoricoDialog(QDialog):
             self._table.setItem(i, 3, item_cumpl)
 
     def _delete_old_chart(self) -> None:
-        old = self._chart_view.chart()
-        if old:
-            old.deleteLater()
+        """Elimina SOLO el chart creado por este diálogo (nunca el default de QChartView)."""
+        if self._chart_owned is not None:
+            self._chart_owned.deleteLater()
+            self._chart_owned = None
 
     def _render_chart(self, modo: str) -> None:
         """Render historical line chart for production or financial KPI."""
@@ -207,5 +208,6 @@ class KpiHistoricoDialog(QDialog):
             eq_series.attachAxis(axis_y)
 
             self._chart_view.setChart(chart)
+            self._chart_owned = chart
         except Exception:
             pass
