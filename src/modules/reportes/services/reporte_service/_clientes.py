@@ -69,17 +69,24 @@ class _ClientesReports:
         fecha_desde: datetime | None = None,
         fecha_hasta: datetime | None = None,
     ) -> list[dict]:
-        """Detailed client list with status and last-invoice date.
+        """Clientes con estado Activo/Inactivo (definición operativa confirmada).
+
+        Definición:
+          ACTIVO   = tiene ≥1 llanta en planta/producción (no entregada)
+                     O ingresó llantas dentro del periodo [fecha_desde, fecha_hasta]
+                     (movimiento reciente en la BD).
+          INACTIVO = sin llantas en planta/producción Y su último ingreso de
+                     llantas es anterior a fecha_desde (por defecto en la vista:
+                     hace 12 meses → ≥1 año sin movimientos).
 
         Args:
             filtro: "ACTIVO", "INACTIVO", or None for all.
-            fecha_desde: filter by last invoice ≥ this date.
-            fecha_hasta: filter by last invoice ≤ this date.
+            fecha_desde: inicio de la ventana de actividad (ingresos de llantas).
+            fecha_hasta: fin de la ventana de actividad.
         """
         with get_session() as session:
-            from sqlalchemy import func as f
-
-            sub_llantas = (
+            # Llantas en planta/producción por cliente (no entregadas al cliente)
+            sub_planta = (
                 session.query(
                     Llanta.cliente_id,
                     func.count(Llanta.id).label("cnt"),
@@ -93,43 +100,59 @@ class _ClientesReports:
                 .subquery()
             )
 
-            q = session.query(
-                Cliente.nombre,
-                Cliente.telefono,
-                Cliente.celular,
-                Cliente.nit,
-                Cliente.id,
-                Cliente.activo,
-                f.max(Factura.fecha_emision).label("ultima_vez"),
-                f.coalesce(sub_llantas.c.cnt, 0),
-            ).outerjoin(Factura, Cliente.id == Factura.cliente_id).outerjoin(
-                sub_llantas, Cliente.id == sub_llantas.c.cliente_id
+            # Último ingreso de llanta por cliente (movimiento en la BD)
+            sub_ingreso = (
+                session.query(
+                    Llanta.cliente_id,
+                    func.max(Llanta.fecha_ingreso).label("ult_ingreso"),
+                )
+                .group_by(Llanta.cliente_id)
+                .subquery()
             )
 
-            if filtro == "ACTIVO":
-                q = q.filter(Cliente.activo.is_(True))
-            elif filtro == "INACTIVO":
-                q = q.filter(Cliente.activo.is_(False))
-
             results = (
-                q.group_by(Cliente.id)
+                session.query(
+                    Cliente.nombre,
+                    Cliente.telefono,
+                    Cliente.celular,
+                    Cliente.nit,
+                    Cliente.id,
+                    func.coalesce(sub_planta.c.cnt, 0),
+                    sub_ingreso.c.ult_ingreso,
+                )
+                .outerjoin(sub_planta, Cliente.id == sub_planta.c.cliente_id)
+                .outerjoin(sub_ingreso, Cliente.id == sub_ingreso.c.cliente_id)
                 .order_by(Cliente.nombre)
                 .all()
             )
-            return [
-                {
-                    "nombre": r[0],
-                    "contacto": r[1] or r[2] or "",
-                    "nit": r[3] or "",
-                    "id": r[4],
-                    "activo": bool(r[5]),
-                    "ultima_vez": (
-                        r[6].strftime("%Y-%m-%d") if r[6] else "—"
-                    ),
-                    "llantas_planta": r[7],
-                }
-                for r in results
-            ]
+
+            filas: list[dict] = []
+            for r in results:
+                llantas_planta = r[5] or 0
+                ult_ingreso = r[6]
+                # Movimiento reciente: ingresó llantas dentro del periodo
+                mov_reciente = ult_ingreso is not None and (
+                    fecha_desde is None or ult_ingreso >= fecha_desde
+                )
+                activo = (llantas_planta > 0) or mov_reciente
+                if filtro == "ACTIVO" and not activo:
+                    continue
+                if filtro == "INACTIVO" and activo:
+                    continue
+                filas.append(
+                    {
+                        "nombre": r[0],
+                        "contacto": r[1] or r[2] or "",
+                        "nit": r[3] or "",
+                        "id": r[4],
+                        "activo": activo,
+                        "ultima_vez": (
+                            ult_ingreso.strftime("%Y-%m-%d") if ult_ingreso else "—"
+                        ),
+                        "llantas_planta": llantas_planta,
+                    }
+                )
+            return filas
 
     @staticmethod
     def clientes_con_mayor_saldo(

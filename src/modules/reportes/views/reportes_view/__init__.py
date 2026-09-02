@@ -83,6 +83,30 @@ class ReportesView(
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
+        # ── Carga diferida (lazy): solo la pestaña visible carga al abrir;
+        # las demás cargan al seleccionarse por primera vez. Acelera la
+        # apertura del módulo (evita ~13 queries pesadas al arrancar).
+        self._tabs_cargadas: set[int] = set()
+        self.tabs.currentChanged.connect(self._on_tab_change)
+        self._on_tab_change(self.tabs.currentIndex())
+
+    def _on_tab_change(self, idx: int) -> None:
+        """Refresca la pestaña seleccionada la primera vez que se muestra."""
+        if idx in self._tabs_cargadas:
+            return
+        self._tabs_cargadas.add(idx)
+        refreshers = {
+            0: self._refresh_clientes,
+            1: self._refresh_reporte_llantas,
+            2: self._refresh_indicadores,
+            3: self._refresh_finanzas,
+            4: self._refresh_inventario,
+            5: self._refresh_resumen,
+        }
+        fn = refreshers.get(idx)
+        if fn:
+            fn()
+
     def _refresh_all(self) -> None:
         self._refresh_clientes()
         self._refresh_reporte_llantas()
@@ -90,6 +114,7 @@ class ReportesView(
         self._refresh_finanzas()
         self._refresh_inventario()
         self._refresh_resumen()
+        self._tabs_cargadas = {0, 1, 2, 3, 4, 5}
 
 
 __all__ = ["ReportesView", "_ReportTab"]

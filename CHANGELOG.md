@@ -7,6 +7,25 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.1] — 2026-09-02 — Reportes: carga rápida + clientes activos/inactivos con definición correcta
+
+### Fixed
+- **"Clientes inactivos" salía vacío**: el reporte filtraba con el campo legacy `Cliente.activo` (marcado 1 para todos los 5,239 clientes migrados → 0 inactivos) y las fechas no filtraban nada. Ahora usa la **definición operativa confirmada**:
+  - **ACTIVO** = tiene ≥1 llanta en planta/producción (no entregada) **o** ingresó llantas dentro del periodo seleccionado
+  - **INACTIVO** = sin llantas en planta/producción **y** ≥1 año sin movimientos en la BD (último ingreso anterior al inicio del periodo)
+  - Resultado actual: **4,115 inactivos + 1,124 activos** = 5,239 ✓
+  - El reporte ahora muestra el **último ingreso de llanta** ("Última Vez") en vez de la última factura
+- **Carga lenta del módulo Reportes**: ahora **carga diferida (lazy)** — al abrir solo carga la pestaña visible (Clientes, ~1.8 s); las demás pestañas cargan al seleccionarse por primera vez y quedan en caché. Antes ejecutaba ~13 queries pesadas al abrir
+- **Índices de base de datos** (migración v2.8.1, una sola vez): `ix_llantas_estado`, `ix_llantas_ubicacion_actual`, `ix_facturas_fecha_emision` — aceleran las queries de reportes/dashboard sobre 24,451 llantas
+
+### Verification
+- **Reporte**: inactivos 4,115 / activos 1,124 (0.18 s por query — con índices)
+- **Carga del módulo**: 1.83 s al abrir (antes: decenas de segundos); pestañas perezosas + caché
+- **Suite de tests**: 151 passed (27.0 s)
+- **EXE recompilado** (exit 0)
+
+---
+
 ## [2.8.0] — 2026-09-02 — INSPECCION INICIAL: botón renombrado + fix búsqueda por tiquete
 
 ### Changed

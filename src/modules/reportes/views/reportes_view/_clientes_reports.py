@@ -108,6 +108,9 @@ class _ClientesReportView:
 
         self.tabs.addTab(self._clientes_tabs, "Clientes")
 
+        # NOTA: sin refresco aquí — la pestaña carga de forma diferida
+        # (solo la pestaña visible al abrir el módulo; ver ReportesView.setup_ui)
+
     def _refresh_clientes(self) -> None:
         self._refresh_por_ciudad()
         self._refresh_activos_inactivos()

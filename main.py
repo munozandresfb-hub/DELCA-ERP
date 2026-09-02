@@ -115,6 +115,7 @@ def main() -> int:
             ("v1.8.0",               "scripts.migrate_v1_8_0_asesor"),
             ("v2.5.0",               "scripts.migrate_v2_5_0_reproceso"),
             ("v2.6.0",               "scripts.migrate_v2_6_0_dimension_ancho_float"),
+            ("v2.8.1",               "scripts.migrate_v2_8_1_indices"),
         ]
 
         for version, path in _MIGRACIONES:
