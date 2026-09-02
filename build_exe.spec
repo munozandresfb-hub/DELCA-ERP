@@ -17,6 +17,7 @@ a = Analysis(
         ("data/datos_maestros.xlsx", "data"),
         # Assets: hoja de proceso (fondo de impresión) + icono
         ("assets/hoja_proceso_reencauche.png", "assets"),
+        ("assets/hoja_proceso_reencauche_v.png", "assets"),
         ("assets/delca.ico", "assets"),
     ],
     hiddenimports=[
@@ -25,6 +26,7 @@ a = Analysis(
         "PySide6.QtGui",
         "PySide6.QtWidgets",
         "PySide6.QtSvg",
+        "PySide6.QtPrintSupport",
         # SQLAlchemy
         "sqlalchemy",
         "sqlalchemy.sql.default_comparator",
@@ -51,6 +53,7 @@ a = Analysis(
         "src.modules.clientes.viewmodels.cliente_viewmodel",
         "src.modules.clientes.repositories.cliente_repository",
         "src.modules.llantas.services.llanta_service",
+        "src.modules.llantas.services.tiquete_printer",
         "src.modules.llantas.viewmodels.llanta_viewmodel",
         "src.modules.finanzas.services.factura_service",
         "src.modules.inventario.services.producto_service",
