@@ -7,6 +7,16 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.7.9] — 2026-09-02 — Reparación de launchers del venv (pyinstaller.exe, pytest.exe)
+
+### Fixed
+- **`pyinstaller.exe` y `pytest.exe` del venv no ejecutaban** (exit 1 silencioso): los launchers `.exe` de Scripts de la instalación original (24/06/2026) se habían corrompido — 14/14 fallaban (pyinstaller, pytest, coverage, fonttools, pyi-*, etc.), mientras `pip.exe` (reinstalado el 24/07) y los módulos (`python -m PyInstaller`) funcionaban. Causa probable: corrupción de los binarios por la sincronización de OneDrive sobre la carpeta del proyecto
+- **Solución**: reinstalación forzada de los paquetes (`pip install --force-reinstall --no-deps`): PyInstaller 6.22.2, pytest 9.1.1, coverage 7.16.0, fonttools 4.64.0, Pygments 2.21.0, python-dotenv 1.2.3 → los launchers se regeneraron sanos
+- **Verificado**: `pyinstaller.exe build_exe.spec --clean -y` funciona (EXE recompilado con el comando estándar), `pytest.exe` ejecuta, EXE arranca (vivo a los 20 s)
+- **Nota**: `python -m pytest` sigue siendo la vía recomendada para los tests (el launcher no añade el CWD al sys.path)
+
+---
+
 ## [2.7.8] — 2026-09-02 — Dashboard: cards con estados y ubicación específicos
 
 ### Changed
