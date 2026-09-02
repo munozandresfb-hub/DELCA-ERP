@@ -56,6 +56,9 @@ class _ClientesReportView:
         self._ai_fecha_hasta.dateChanged.connect(self._refresh_activos_inactivos)
         act_inact_toolbar.addWidget(self._ai_fecha_hasta)
         act_inact_toolbar.addStretch()
+        btn_visualizar_ai = QPushButton("👁️ Visualizar")
+        btn_visualizar_ai.clicked.connect(self._refresh_activos_inactivos)
+        act_inact_toolbar.addWidget(btn_visualizar_ai)
         btn_export_ai = QPushButton("📊 Exportar Excel")
         btn_export_ai.clicked.connect(self._exportar_activos_inactivos)
         act_inact_toolbar.addWidget(btn_export_ai)
@@ -88,6 +91,9 @@ class _ClientesReportView:
         self._ms_fecha_hasta.dateChanged.connect(self._refresh_mayor_saldo)
         ms_toolbar.addWidget(self._ms_fecha_hasta)
         ms_toolbar.addStretch()
+        btn_visualizar_ms = QPushButton("👁️ Visualizar")
+        btn_visualizar_ms.clicked.connect(self._refresh_mayor_saldo)
+        ms_toolbar.addWidget(btn_visualizar_ms)
         btn_export_ms = QPushButton("📊 Exportar Excel")
         btn_export_ms.clicked.connect(self._exportar_mayor_saldo)
         ms_toolbar.addWidget(btn_export_ms)
@@ -137,7 +143,7 @@ class _ClientesReportView:
         if data:
             tab.clear_summaries()
             tab.add_summary(
-                f"Total clientes: {len(data)}  |  "
+                f"Clientes en el reporte: {len(data)}  |  "
                 f"Llantas en planta: {total_llantas}",
             )
         else:
@@ -171,7 +177,7 @@ class _ClientesReportView:
         if data:
             self._tab_act_inact.clear_summaries()
             self._tab_act_inact.add_summary(
-                f"Total clientes: {len(data)}  |  "
+                f"Clientes en el reporte: {len(data)}  |  "
                 f"Llantas en planta: {total_llantas}",
             )
         else:

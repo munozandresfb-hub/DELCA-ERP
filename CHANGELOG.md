@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.4] — 2026-09-02 — Reportes: botón "Visualizar" + conteo visible en la barra
+
+### Added
+- **Botón "👁️ Visualizar" en las 6 secciones con exportar** (Clientes Activos/Inactivos y Mayor Saldo, Finanzas por Mes/Estado/Detalle Llantas, Llantas): carga la tabla con los filtros actuales para verificar la información ANTES de exportar a Excel (1:1 con cada botón "📊 Exportar Excel")
+- **Barra de resumen con el conteo del reporte** (visible sin exportar): los reportes de Clientes ahora dicen **"Clientes en el reporte: X"** (antes "Total clientes"); Finanzas muestra "Facturas: X"; Llantas e Inventario ya mostraban su total
+
+### Verification
+- **6 botones Visualizar** verificados (1:1 con los 6 Exportar) — vista construye OK
+- **Barra de resumen** con conteo visible en todas las secciones (ej. "Clientes en el reporte: 5,239")
+- **Suite de tests**: 151 passed
+- **EXE recompilado** (exit 0)
+
+---
+
 ## [2.8.3] — 2026-09-02 — Clientes activos: definición UNIFICADA en toda la app
 
 ### Fixed
