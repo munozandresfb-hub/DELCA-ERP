@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.7.7] — 2026-09-01 — N° de Orden con consecutivo (1-12)
+
+### Changed
+- **El N° de Orden (O.S.) se muestra con su consecutivo** (`64230C-1`): una orden agrupa hasta 12 tiquetes y cada uno lleva su casilla/consecutivo. El campo `consecutivo` estaba en la BD (24,451/24,451 migrados) pero nunca se mostraba
+- **Nuevo helper central** `formatear_orden(numero_orden, consecutivo)` en `llanta_service/_core.py` (presentación pura, no modifica la BD)
+- **Aplicado en**: impresión de la hoja de proceso (campo O.S.), tablas de Llantas, Producción, Planta y dict de Inventario
+
+### Verification
+- **Helper probado**: `formatear_orden('64230C','1')`→`'64230C-1'`, `'5615','12'`→`'5615-12'`, sin consecutivo→solo la orden
+- **Ejemplo real**: tiquete J3 → orden "2-3" (orden 2, consecutivo 3)
+- **Suite de tests**: 151 passed (32.9 s)
+- **EXE recompilado** (71.6 MB) y arrancando (vivo a los 25 s, sin WER nuevos)
+
+---
+
 ## [2.7.6] — 2026-08-31 — Tiquete sin prefijo "J" en toda la app
 
 ### Changed

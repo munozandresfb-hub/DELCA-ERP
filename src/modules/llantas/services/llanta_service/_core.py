@@ -25,6 +25,19 @@ def formatear_tiquete(tiquete: str | None) -> str:
     return tiquete.removeprefix("J")
 
 
+def formatear_orden(numero_orden: str | None, consecutivo: str | None = None) -> str:
+    """Orden de servicio con su consecutivo (1-12 por orden): '64230C-1'.
+
+    Una orden agrupa hasta 12 tiquetes; cada tiquete lleva su consecutivo en
+    la casilla correspondiente. Sin consecutivo devuelve solo la orden.
+    """
+    orden = (numero_orden or "").strip()
+    if not orden:
+        return ""
+    cons = (consecutivo or "").strip()
+    return f"{orden}-{cons}" if cons else orden
+
+
 class _GestionLlantasMixin:
     """Gestión del ciclo de vida de llantas: consulta, creación,
     transiciones de estado y movimientos de ubicación."""

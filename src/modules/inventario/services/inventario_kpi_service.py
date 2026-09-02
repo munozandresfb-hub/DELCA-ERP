@@ -8,7 +8,7 @@ from src.modules.inventario.models.inventario_config_models import RecetaProducc
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.inventario.services.producto_service import ProductoService
 from src.modules.llantas.models.llanta_model import Llanta
-from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service._core import formatear_orden, formatear_tiquete
 from src.modules.llantas.services.llanta_service import ESTADOS_TERMINADAS
 
 
@@ -141,7 +141,7 @@ class InventarioKpiService:
                     "cliente_id": ll.cliente_id,
                     "dias_en_planta": dias,
                     "fecha_ingreso": ll.fecha_ingreso,
-                    "numero_orden": ll.numero_orden or "",
+                    "numero_orden": formatear_orden(ll.numero_orden, ll.consecutivo),
                 })
         return resultados
 

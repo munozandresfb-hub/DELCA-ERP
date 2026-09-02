@@ -18,7 +18,10 @@ from src.modules.llantas.services.llanta_service import (
     UBICACIONES_DISPLAY,
     LlantaService,
 )
-from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service._core import (
+    formatear_orden,
+    formatear_tiquete,
+)
 from src.modules.llantas.services.tiquete_printer import TiquetePrinter
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 from src.modules.llantas.views.catalogos_view import CatalogoMaestroDialog
@@ -181,7 +184,7 @@ class LlantasView(QWidget):
             nombre_cliente = l.cliente.nombre if l.cliente else "Sin cliente"
             self.table.setItem(row, 1, QTableWidgetItem(nombre_cliente))
             self.table.setItem(row, 2, QTableWidgetItem(formatear_tiquete(l.tiquete)))
-            self.table.setItem(row, 3, QTableWidgetItem(l.numero_orden or "—"))
+            self.table.setItem(row, 3, QTableWidgetItem(formatear_orden(l.numero_orden, l.consecutivo) or "—"))
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "—")
             self.table.setItem(row, 4, QTableWidgetItem(dim))
             dis = l.diseno_obj.nombre if l.diseno_obj else "—"

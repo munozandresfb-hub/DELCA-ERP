@@ -26,7 +26,10 @@ from src.modules.llantas.services.llanta_service import (
     UBICACIONES_PLANTA,
     LlantaService,
 )
-from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service._core import (
+    formatear_orden,
+    formatear_tiquete,
+)
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 from sqlalchemy import func as sa_func
 
@@ -381,7 +384,7 @@ class PlantaView(QWidget):
             # 1 - Tiquete (sin el prefijo "J" de la serie)
             self.table.setItem(row, 1, QTableWidgetItem(formatear_tiquete(l.tiquete)))
             # 2 - N° Orden
-            self.table.setItem(row, 2, QTableWidgetItem(l.numero_orden or "—"))
+            self.table.setItem(row, 2, QTableWidgetItem(formatear_orden(l.numero_orden, l.consecutivo) or "—"))
             # 3 - Dimensión (estandarizada)
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "—")
             self.table.setItem(row, 3, QTableWidgetItem(dim))

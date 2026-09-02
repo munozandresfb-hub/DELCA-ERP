@@ -24,7 +24,10 @@ from src.modules.llantas.services.llanta_service import (
     VEREDICTOS_INSPECCION_FINAL,
     LlantaService,
 )
-from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service._core import (
+    formatear_orden,
+    formatear_tiquete,
+)
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 
 
@@ -321,7 +324,7 @@ class ProduccionView(QWidget):
             # Tiquete (sin el prefijo "J" de la serie)
             self.table.setItem(row, 1, QTableWidgetItem(formatear_tiquete(l.tiquete)))
             # N° Orden
-            self.table.setItem(row, 2, QTableWidgetItem(l.numero_orden or "—"))
+            self.table.setItem(row, 2, QTableWidgetItem(formatear_orden(l.numero_orden, l.consecutivo) or "—"))
             # Dimensión (estandarizada desde catálogo)
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "—")
             self.table.setItem(row, 3, QTableWidgetItem(dim))

@@ -45,6 +45,7 @@ from PySide6.QtPrintSupport import (
 
 from src.config import settings
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service._core import formatear_orden
 
 # ── Hoja física (mm) — vertical, medida por el usuario ─────────────────
 PAGINA_MM = (103.0, 279.0)
@@ -381,7 +382,7 @@ class TiquetePrinter:
             "tiquete": (llanta.tiquete or "—").removeprefix("J"),
             "dimension": llanta.dimension or "—",
             "diseno": diseno,
-            "os": llanta.numero_orden or "—",
+            "os": formatear_orden(llanta.numero_orden, llanta.consecutivo) or "—",
             "serie": llanta.dot or "—",
             "marca": marca,
             "fecha": fecha,
