@@ -9,6 +9,7 @@ from src.modules.finanzas.models.pago_model import Pago  # noqa: F401 - needed f
 from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta  # noqa: F401
+from src.core.services.cliente_actividad import contar_clientes_activos_inactivos
 from src.modules.llantas.services.llanta_service import (
     ESTADOS_EN_PLANTA,
     ESTADOS_EN_PRODUCCION,
@@ -22,23 +23,11 @@ def obtener_metricas() -> dict:
         inicio_mes = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         # --- Client metrics ---
-        # Clientes activos REALES: cliente con ≥1 llanta en planta (no
-        # entregada) en el último año. El campo activo del catálogo legacy
-        # marca 1 para todos los migrados, no refleja operación real.
+        # Clientes activos/inactivos con la DEFINICIÓN CENTRAL (actividad
+        # completa en la BD: llantas en planta/producción o movimientos en el
+        # último año). Coherente con el módulo de Reportes.
         total_clientes = db.query(Cliente).count()
-        hace_1_anio = now.replace(year=now.year - 1)
-        clientes_activos = (
-            db.query(func.count(func.distinct(Llanta.cliente_id)))
-            .filter(
-                Llanta.cliente_id.isnot(None),
-                Llanta.estado.in_(ESTADOS_EN_PLANTA),
-                (Llanta.ubicacion_actual.is_(None))
-                | (Llanta.ubicacion_actual != "CLIENTE"),
-                Llanta.fecha_ingreso >= hace_1_anio,
-            )
-            .scalar()
-        ) or 0
-        clientes_inactivos = total_clientes - clientes_activos
+        clientes_activos, clientes_inactivos = contar_clientes_activos_inactivos()
 
         # --- Tire metrics ---
         # Reencauchadas FÍSICAMENTE en planta: estado REENCAUCHADA + ubicación PLANTA

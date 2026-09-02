@@ -37,9 +37,14 @@ class ClienteRepository:
 
     @staticmethod
     def get_activos(session: Session) -> list[Cliente]:
+        """Lista TODOS los clientes para selección (facturación, etc.).
+
+        Antes filtraba por el campo legacy `Cliente.activo` (marcado 1 para
+        todos los migrados = no filtraba nada real). La facturación debe
+        permitir seleccionar cualquier cliente, incluso sin actividad reciente.
+        """
         return (
             session.query(Cliente)
-            .filter(Cliente.activo.is_(True))
             .order_by(Cliente.nombre)
             .all()
         )

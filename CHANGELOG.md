@@ -7,6 +7,23 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.3] — 2026-09-02 — Clientes activos: definición UNIFICADA en toda la app
+
+### Fixed
+- **Inconsistencia: Dashboard mostraba "314 / 5,239" clientes activos vs Reporte "1,124"**: la definición de "cliente activo" estaba implementada en 3 variantes incompatibles:
+  - Dashboard (314): solo llantas en planta con `fecha_ingreso` en el último año (incompleta — no contaba entregas, estados, facturas ni clientes sin llantas en planta)
+  - Resumen de reportes (5,239): campo legacy `Cliente.activo` (marcado 1 para todos)
+  - Reporte de clientes (1,124): actividad completa (correcta)
+- **Solución**: nuevo módulo central `src/core/services/cliente_actividad.py` (único punto de verdad) con la definición confirmada (llantas en planta/producción **o** cualquier movimiento en el periodo). Las 3 secciones lo usan → **coherentes en 1,124 activos / 4,115 inactivos**
+- **Filtros legacy eliminados**: cartera (Finanzas) y combo de clientes de facturación ya no filtran por `Cliente.activo` (campo sin significado real) — la facturación permite seleccionar cualquier cliente
+
+### Verification
+- **Coherencia verificada**: Dashboard "1,124 / 5,239" = Resumen reportes (1,124/4,115) = Reporte Activos/Inactivos (1,124/4,115) ✓
+- **Suite de tests**: 151 passed (26.3 s)
+- **EXE recompilado** (exit 0)
+
+---
+
 ## [2.8.2] — 2026-09-02 — Estado Activo/Inactivo de clientes: actividad COMPLETA + coherencia entre pestañas
 
 ### Fixed

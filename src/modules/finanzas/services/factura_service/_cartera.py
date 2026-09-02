@@ -67,7 +67,8 @@ class _CarteraMixin:
                 .outerjoin(fecha_sub, Cliente.id == fecha_sub.c.cliente_id)
                 .outerjoin(pagos_sub, Cliente.id == pagos_sub.c.cliente_id)
                 .filter(
-                    Cliente.activo.is_(True),
+                    # Nota: sin filtro por Cliente.activo (campo legacy marcaba 1
+                    # para todos) — la cartera muestra clientes con saldo pendiente.
                     func.coalesce(saldo_sub.c.total_pendiente, 0) > 0,
                 )
                 .order_by(Cliente.nombre)

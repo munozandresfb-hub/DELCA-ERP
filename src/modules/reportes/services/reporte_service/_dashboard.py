@@ -12,6 +12,7 @@ from src.modules.inventario.models.movimiento_inventario_model import (
     MovimientoInventario,
 )
 from src.modules.inventario.models.producto_model import Producto
+from src.core.services.cliente_actividad import contar_clientes_activos_inactivos
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
 
@@ -24,8 +25,9 @@ class _DashboardReports:
         """Get a complete summary for the dashboard report."""
         with get_session() as session:
             total_clientes = session.query(Cliente).count()
-            clientes_activos = session.query(Cliente).filter(Cliente.activo.is_(True)).count()
-            clientes_inactivos = session.query(Cliente).filter(Cliente.activo.is_(False)).count()
+            # Clientes activos/inactivos con la DEFINICIÓN CENTRAL (actividad
+            # completa), coherente con el dashboard principal y el reporte de clientes.
+            clientes_activos, clientes_inactivos = contar_clientes_activos_inactivos()
             llantas_planta = session.query(Llanta).filter(
                 Llanta.estado.in_(ESTADOS_EN_PLANTA),
                 (Llanta.ubicacion_actual.is_(None))

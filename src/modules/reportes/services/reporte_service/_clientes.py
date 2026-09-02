@@ -6,104 +6,17 @@ Contiene los reportes que consultan exclusivamente datos de clientes
 
 from datetime import datetime
 
-from sqlalchemy import func, union_all
+from sqlalchemy import func
 
+from src.core.services.cliente_actividad import (
+    es_activo as _es_activo,
+    sub_llantas_en_planta as _sub_llantas_en_planta,
+    sub_ultima_actividad as _sub_ultima_actividad,
+)
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_model import Factura
-from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
-from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
-from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
-
-
-def _sub_llantas_en_planta(session):
-    """Subquery: cantidad de llantas en planta/producción por cliente (no entregadas)."""
-    return (
-        session.query(
-            Llanta.cliente_id,
-            func.count(Llanta.id).label("cnt"),
-        )
-        .filter(
-            Llanta.estado.in_(ESTADOS_EN_PLANTA),
-            (Llanta.ubicacion_actual.is_(None))
-            | (Llanta.ubicacion_actual != "CLIENTE"),
-        )
-        .group_by(Llanta.cliente_id)
-        .subquery()
-    )
-
-
-def _sub_ultima_actividad(session):
-    """Subquery: última fecha de MOVIMIENTO del cliente en la BD.
-
-    Movimiento = cualquier evento con fecha registrada:
-      - Ingreso de llantas (llantas.fecha_ingreso)
-      - Cambios de estado (estados_llanta.fecha)
-      - Cambios de ubicación / entregas (ubicaciones_llanta.fecha)
-      - Facturación (facturas.fecha_emision)
-    """
-    ingresos = (
-        session.query(
-            Llanta.cliente_id.label("cliente_id"),
-            Llanta.fecha_ingreso.label("fecha"),
-        )
-        .filter(Llanta.fecha_ingreso.isnot(None), Llanta.cliente_id.isnot(None))
-    )
-    estados = (
-        session.query(
-            Llanta.cliente_id.label("cliente_id"),
-            EstadoLlanta.fecha.label("fecha"),
-        )
-        .join(EstadoLlanta, EstadoLlanta.llanta_id == Llanta.id)
-        .filter(EstadoLlanta.fecha.isnot(None), Llanta.cliente_id.isnot(None))
-    )
-    ubicaciones = (
-        session.query(
-            Llanta.cliente_id.label("cliente_id"),
-            UbicacionLlanta.fecha.label("fecha"),
-        )
-        .join(UbicacionLlanta, UbicacionLlanta.llanta_id == Llanta.id)
-        .filter(UbicacionLlanta.fecha.isnot(None), Llanta.cliente_id.isnot(None))
-    )
-    facturas = (
-        session.query(
-            Factura.cliente_id.label("cliente_id"),
-            Factura.fecha_emision.label("fecha"),
-        )
-        .filter(Factura.fecha_emision.isnot(None), Factura.cliente_id.isnot(None))
-    )
-
-    union = (
-        ingresos.union_all(estados)
-        .union_all(ubicaciones)
-        .union_all(facturas)
-        .subquery()
-    )
-    # Las columnas del union se acceden por posición (c[0]=cliente_id, c[1]=fecha)
-    return (
-        session.query(
-            union.c[0].label("cliente_id"),
-            func.max(union.c[1]).label("ultima_actividad"),
-        )
-        .group_by(union.c[0])
-        .subquery()
-    )
-
-
-def _es_activo(
-    llantas_planta: int, ultima_actividad, desde: datetime | None
-) -> bool:
-    """Definición operativa confirmada:
-    ACTIVO = tiene ≥1 llanta en planta/producción (no entregada)
-             O tuvo movimientos en la BD dentro del periodo [desde, ...].
-    INACTIVO = sin llantas en planta/producción Y sin movimientos en el periodo.
-    """
-    if llantas_planta > 0:
-        return True
-    if ultima_actividad is None:
-        return False
-    return desde is None or ultima_actividad >= desde
 
 
 class _ClientesReports:
