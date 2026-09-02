@@ -399,7 +399,7 @@ class CambioRapidoDialog(QDialog):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Cambio Rápido de Estado")
+        self.setWindowTitle("INSPECCION INICIAL")
         self.resize(380, 180)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
@@ -445,8 +445,11 @@ class CambioRapidoDialog(QDialog):
             self._llanta_encontrada = None
             return
 
+        # Acepta el tiquete con o sin el prefijo "J" de la serie (la BD lo guarda con "J")
+        tiquete_bd = tiquete if tiquete.startswith("J") else "J" + tiquete
+
         with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+            llanta = LlantaRepository.get_by_tiquete(s, tiquete_bd)
         self._llanta_encontrada = llanta
         if llanta:
             self.info_label.setText(

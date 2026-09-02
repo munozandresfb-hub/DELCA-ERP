@@ -90,7 +90,7 @@ class LlantasView(QWidget):
         nueva_btn.clicked.connect(self._nueva_llanta)
         row2.addWidget(nueva_btn)
 
-        cambio_rapido_btn = QPushButton("⚡ Cambio Rápido")
+        cambio_rapido_btn = QPushButton("⚡ INSPECCION INICIAL")
         cambio_rapido_btn.clicked.connect(self._cambio_rapido)
         row2.addWidget(cambio_rapido_btn)
 

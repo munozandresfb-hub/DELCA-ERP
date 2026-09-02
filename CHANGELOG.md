@@ -7,6 +7,22 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.0] — 2026-09-02 — INSPECCION INICIAL: botón renombrado + fix búsqueda por tiquete
+
+### Changed
+- **Botón "⚡ Cambio Rápido" → "⚡ INSPECCION INICIAL"** (módulo Llantas) — nombre según documentos de certificación
+- **Título del diálogo** → "INSPECCION INICIAL" (coherencia)
+
+### Fixed
+- **"Llanta no encontrada" en la casilla tiquete**: el diálogo buscaba el tiquete con coincidencia EXACTA contra la BD (que guarda el prefijo "J"), pero el usuario escribe el número sin la "J" (como se muestra en las tablas desde v2.7.6). Búsqueda normalizada: acepta `24537` y `J24537` (mismo patrón que Producción/Planta)
+- Verificado con tiquete real APTA: encontrado con y sin "J"
+
+### Verification
+- **Suite de tests**: 151 passed (30.7 s)
+- **EXE recompilado** (3:43 PM) con el comando estándar restaurado
+
+---
+
 ## [2.7.9] — 2026-09-02 — Reparación de launchers del venv (pyinstaller.exe, pytest.exe)
 
 ### Fixed
