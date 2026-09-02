@@ -6,13 +6,104 @@ Contiene los reportes que consultan exclusivamente datos de clientes
 
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, union_all
 
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_model import Factura
+from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
+
+
+def _sub_llantas_en_planta(session):
+    """Subquery: cantidad de llantas en planta/producción por cliente (no entregadas)."""
+    return (
+        session.query(
+            Llanta.cliente_id,
+            func.count(Llanta.id).label("cnt"),
+        )
+        .filter(
+            Llanta.estado.in_(ESTADOS_EN_PLANTA),
+            (Llanta.ubicacion_actual.is_(None))
+            | (Llanta.ubicacion_actual != "CLIENTE"),
+        )
+        .group_by(Llanta.cliente_id)
+        .subquery()
+    )
+
+
+def _sub_ultima_actividad(session):
+    """Subquery: última fecha de MOVIMIENTO del cliente en la BD.
+
+    Movimiento = cualquier evento con fecha registrada:
+      - Ingreso de llantas (llantas.fecha_ingreso)
+      - Cambios de estado (estados_llanta.fecha)
+      - Cambios de ubicación / entregas (ubicaciones_llanta.fecha)
+      - Facturación (facturas.fecha_emision)
+    """
+    ingresos = (
+        session.query(
+            Llanta.cliente_id.label("cliente_id"),
+            Llanta.fecha_ingreso.label("fecha"),
+        )
+        .filter(Llanta.fecha_ingreso.isnot(None), Llanta.cliente_id.isnot(None))
+    )
+    estados = (
+        session.query(
+            Llanta.cliente_id.label("cliente_id"),
+            EstadoLlanta.fecha.label("fecha"),
+        )
+        .join(EstadoLlanta, EstadoLlanta.llanta_id == Llanta.id)
+        .filter(EstadoLlanta.fecha.isnot(None), Llanta.cliente_id.isnot(None))
+    )
+    ubicaciones = (
+        session.query(
+            Llanta.cliente_id.label("cliente_id"),
+            UbicacionLlanta.fecha.label("fecha"),
+        )
+        .join(UbicacionLlanta, UbicacionLlanta.llanta_id == Llanta.id)
+        .filter(UbicacionLlanta.fecha.isnot(None), Llanta.cliente_id.isnot(None))
+    )
+    facturas = (
+        session.query(
+            Factura.cliente_id.label("cliente_id"),
+            Factura.fecha_emision.label("fecha"),
+        )
+        .filter(Factura.fecha_emision.isnot(None), Factura.cliente_id.isnot(None))
+    )
+
+    union = (
+        ingresos.union_all(estados)
+        .union_all(ubicaciones)
+        .union_all(facturas)
+        .subquery()
+    )
+    # Las columnas del union se acceden por posición (c[0]=cliente_id, c[1]=fecha)
+    return (
+        session.query(
+            union.c[0].label("cliente_id"),
+            func.max(union.c[1]).label("ultima_actividad"),
+        )
+        .group_by(union.c[0])
+        .subquery()
+    )
+
+
+def _es_activo(
+    llantas_planta: int, ultima_actividad, desde: datetime | None
+) -> bool:
+    """Definición operativa confirmada:
+    ACTIVO = tiene ≥1 llanta en planta/producción (no entregada)
+             O tuvo movimientos en la BD dentro del periodo [desde, ...].
+    INACTIVO = sin llantas en planta/producción Y sin movimientos en el periodo.
+    """
+    if llantas_planta > 0:
+        return True
+    if ultima_actividad is None:
+        return False
+    return desde is None or ultima_actividad >= desde
 
 
 class _ClientesReports:
@@ -20,21 +111,18 @@ class _ClientesReports:
 
     @staticmethod
     def clientes_por_ciudad() -> list[dict]:
-        """Detailed client list with city, contact, tires-in-plant, and status."""
+        """Clientes por ciudad con llantas en planta y estado operativo.
+
+        El estado (Activo/Inactivo) usa la definición dinámica confirmada
+        (actividad en el último año o llantas en planta), NO el campo legacy.
+        """
+        desde = datetime.now().replace(
+            year=datetime.now().year - 1, month=datetime.now().month,
+            day=datetime.now().day,
+        )
         with get_session() as session:
-            sub_llantas = (
-                session.query(
-                    Llanta.cliente_id,
-                    func.count(Llanta.id).label("cnt"),
-                )
-                .filter(
-                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
-                    (Llanta.ubicacion_actual.is_(None))
-                    | (Llanta.ubicacion_actual != "CLIENTE"),
-                )
-                .group_by(Llanta.cliente_id)
-                .subquery()
-            )
+            sub_llantas = _sub_llantas_en_planta(session)
+            sub_actividad = _sub_ultima_actividad(session)
             results = (
                 session.query(
                     Cliente.nombre,
@@ -43,10 +131,13 @@ class _ClientesReports:
                     Cliente.celular,
                     Cliente.email,
                     Cliente.nit,
-                    Cliente.activo,
                     func.coalesce(sub_llantas.c.cnt, 0),
+                    sub_actividad.c.ultima_actividad,
                 )
                 .outerjoin(sub_llantas, Cliente.id == sub_llantas.c.cliente_id)
+                .outerjoin(
+                    sub_actividad, Cliente.id == sub_actividad.c.cliente_id
+                )
                 .order_by(Cliente.ciudad, Cliente.nombre)
                 .all()
             )
@@ -57,8 +148,8 @@ class _ClientesReports:
                     "contacto": r[2] or r[3] or "",
                     "email": r[4] or "",
                     "nit": r[5] or "",
-                    "activo": bool(r[6]),
-                    "llantas_planta": r[7],
+                    "activo": _es_activo(r[6], r[7], desde),
+                    "llantas_planta": r[6],
                 }
                 for r in results
             ]
@@ -85,30 +176,8 @@ class _ClientesReports:
             fecha_hasta: fin de la ventana de actividad.
         """
         with get_session() as session:
-            # Llantas en planta/producción por cliente (no entregadas al cliente)
-            sub_planta = (
-                session.query(
-                    Llanta.cliente_id,
-                    func.count(Llanta.id).label("cnt"),
-                )
-                .filter(
-                    Llanta.estado.in_(ESTADOS_EN_PLANTA),
-                    (Llanta.ubicacion_actual.is_(None))
-                    | (Llanta.ubicacion_actual != "CLIENTE"),
-                )
-                .group_by(Llanta.cliente_id)
-                .subquery()
-            )
-
-            # Último ingreso de llanta por cliente (movimiento en la BD)
-            sub_ingreso = (
-                session.query(
-                    Llanta.cliente_id,
-                    func.max(Llanta.fecha_ingreso).label("ult_ingreso"),
-                )
-                .group_by(Llanta.cliente_id)
-                .subquery()
-            )
+            sub_planta = _sub_llantas_en_planta(session)
+            sub_actividad = _sub_ultima_actividad(session)
 
             results = (
                 session.query(
@@ -118,10 +187,10 @@ class _ClientesReports:
                     Cliente.nit,
                     Cliente.id,
                     func.coalesce(sub_planta.c.cnt, 0),
-                    sub_ingreso.c.ult_ingreso,
+                    sub_actividad.c.ultima_actividad,
                 )
                 .outerjoin(sub_planta, Cliente.id == sub_planta.c.cliente_id)
-                .outerjoin(sub_ingreso, Cliente.id == sub_ingreso.c.cliente_id)
+                .outerjoin(sub_actividad, Cliente.id == sub_actividad.c.cliente_id)
                 .order_by(Cliente.nombre)
                 .all()
             )
@@ -129,12 +198,8 @@ class _ClientesReports:
             filas: list[dict] = []
             for r in results:
                 llantas_planta = r[5] or 0
-                ult_ingreso = r[6]
-                # Movimiento reciente: ingresó llantas dentro del periodo
-                mov_reciente = ult_ingreso is not None and (
-                    fecha_desde is None or ult_ingreso >= fecha_desde
-                )
-                activo = (llantas_planta > 0) or mov_reciente
+                ultima_actividad = r[6]
+                activo = _es_activo(llantas_planta, ultima_actividad, fecha_desde)
                 if filtro == "ACTIVO" and not activo:
                     continue
                 if filtro == "INACTIVO" and activo:
@@ -147,7 +212,9 @@ class _ClientesReports:
                         "id": r[4],
                         "activo": activo,
                         "ultima_vez": (
-                            ult_ingreso.strftime("%Y-%m-%d") if ult_ingreso else "—"
+                            ultima_actividad.strftime("%Y-%m-%d")
+                            if ultima_actividad
+                            else "—"
                         ),
                         "llantas_planta": llantas_planta,
                     }

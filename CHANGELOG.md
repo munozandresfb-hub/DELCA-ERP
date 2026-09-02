@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.2] — 2026-09-02 — Estado Activo/Inactivo de clientes: actividad COMPLETA + coherencia entre pestañas
+
+### Fixed
+- **Clientes activos marcados inactivos (revisión)**: la definición ahora se basa en **TODAS las fechas de actividad en la BD** (unión de ingresos de llantas + cambios de estado + cambios de ubicación/entregas + facturación), no solo el último ingreso. Un cliente es **ACTIVO** si tiene ≥1 llanta en planta/producción **o** tuvo cualquier movimiento en el periodo; **INACTIVO** si no tiene llantas en planta/producción **y** ≥1 año sin movimientos
+- **Inconsistencia entre pestañas corregida**: la pestaña "Clientes → Por Ciudad" mostraba el estado con el campo legacy `Cliente.activo` (marcaba TODOS como "Activo") mientras "Activos/Inactivos" usaba la definición dinámica — un cliente aparecía "Activo" en una y "Inactivo" en otra. Ahora ambas usan la misma definición dinámica (coherentes)
+- **"Última Vez"** muestra la última actividad completa (movimiento más reciente en la BD)
+
+### Verification
+- **Conteos coherentes**: Activos 1,124 · Inactivos 4,115 · Total 5,239 — IDENTICOS en ambas pestañas (verificado)
+- **Diagnóstico**: de los 4,115 inactivos, 0 tenían actividad alternativa reciente (la definición por ingresos era consistente; la ampliación a actividad completa la hace robusta)
+- **Suite de tests**: 151 passed (27.2 s)
+- **EXE recompilado** (exit 0)
+
+---
+
 ## [2.8.1] — 2026-09-02 — Reportes: carga rápida + clientes activos/inactivos con definición correcta
 
 ### Fixed
