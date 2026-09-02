@@ -245,13 +245,13 @@ class DashboardView(QWidget):
                 "🏢",
             ),
             (
-                "Llantas en Planta",
+                "Reencauchada en Planta",
                 str(metrics["en_planta"]),
                 "#3498db",
                 "⚙️",
             ),
             (
-                "En Producción",
+                "Aptas+Pendiente",
                 str(metrics["en_produccion"]),
                 "#e67e22",
                 "🔧",
@@ -310,6 +310,13 @@ class DashboardView(QWidget):
                 "#e74c3c",
                 "⚠️",
                 "Rechazadas del mes / total en planta",
+            ),
+            (
+                "Reparaciones",
+                str(estados["reparaciones"]),
+                "#8e44ad",
+                "🔧",
+                "Llantas reparadas en planta",
             ),
         ]
 

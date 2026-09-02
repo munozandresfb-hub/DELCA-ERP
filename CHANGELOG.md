@@ -7,6 +7,22 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.7.8] — 2026-09-02 — Dashboard: cards con estados y ubicación específicos
+
+### Changed
+- **Card superior "Llantas en Planta" → "Reencauchada en Planta"**: ahora cuenta SOLO llantas `REENCAUCHADA` físicamente en `PLANTA` (780). Antes sumaba todos los estados no entregados (6,465, incluyendo producción)
+- **Card superior "En Producción" → "Aptas+Pendiente"**: ahora cuenta `APTA` + `PENDIENTE` físicamente en `PLANTA` (631 + 308 = 939)
+- **Sección "Llantas por Estado"**: se mantienen las 3 cards existentes (En Proceso 4,620 · En Planta 6,465 · Rechazadas) y se **agrega "Reparaciones"** (126, estado `REPARADA` en `PLANTA`)
+- Los valores son dinámicos (consultan la BD en cada carga) — dependen de la operación y producción de la empresa
+
+### Verification
+- **Métricas verificadas**: Reencauchada en Planta 780 ✓ · Aptas+Pendiente 939 ✓ · Reparaciones 126 ✓ (sin cambios en las cards de estado existentes)
+- **Suite de tests**: 151 passed (34.6 s)
+- **EXE recompilado** (71.6 MB) y arrancando (vivo a los 22 s)
+- **Nota**: el `pyinstaller.exe` del venv quedó dañado (falla con exit 1 sin salida) — se compila con `python -m PyInstaller`
+
+---
+
 ## [2.7.7] — 2026-09-01 — N° de Orden con consecutivo (1-12)
 
 ### Changed

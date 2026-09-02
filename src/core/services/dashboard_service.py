@@ -41,26 +41,23 @@ def obtener_metricas() -> dict:
         clientes_inactivos = total_clientes - clientes_activos
 
         # --- Tire metrics ---
-        # En planta = no entregadas al cliente (flujo correcto 2: estados en
-        # planta y ubicación != CLIENTE).
-        en_planta = (
+        # Reencauchadas FÍSICAMENTE en planta: estado REENCAUCHADA + ubicación PLANTA
+        reencauchadas_planta = (
             db.query(Llanta)
             .filter(
-                Llanta.estado.in_(ESTADOS_EN_PLANTA),
-                (Llanta.ubicacion_actual.is_(None))
-                | (Llanta.ubicacion_actual != "CLIENTE"),
+                Llanta.estado == "REENCAUCHADA",
+                Llanta.ubicacion_actual == "PLANTA",
             )
             .count()
         )
 
-        # En producción = llantas cuya ubicación actual es PRODUCCION
-        # (flujo correcto 2: APTA y REPROCESO residen en PRODUCCION; la
-        # ubicación es la fuente de verdad de dónde está la llanta).
-        en_produccion = (
+        # Aptas + Pendientes FÍSICAMENTE en planta: estados APTA/PENDIENTE
+        # + ubicación PLANTA.
+        aptas_pendientes_planta = (
             db.query(Llanta)
             .filter(
-                Llanta.estado.in_(ESTADOS_EN_PRODUCCION),
-                Llanta.ubicacion_actual == "PRODUCCION",
+                Llanta.estado.in_(("APTA", "PENDIENTE")),
+                Llanta.ubicacion_actual == "PLANTA",
             )
             .count()
         )
@@ -114,8 +111,8 @@ def obtener_metricas() -> dict:
         "clientes_activos": clientes_activos,
         "clientes_inactivos": clientes_inactivos,
         "clientes_totales": total_clientes,
-        "en_planta": en_planta,
-        "en_produccion": en_produccion,
+        "en_planta": reencauchadas_planta,
+        "en_produccion": aptas_pendientes_planta,
         "entregadas_mes": entregadas_mes,
         "facturacion_mes": float(facturacion_mes),
         "cobrado_mes": float(cobrado_mes),
@@ -151,6 +148,16 @@ def obtener_metricas_estados() -> dict:
             .count()
         )
 
+        # Reparadas FÍSICAMENTE en planta: estado REPARADA + ubicación PLANTA
+        reparaciones = (
+            db.query(Llanta)
+            .filter(
+                Llanta.estado == "REPARADA",
+                Llanta.ubicacion_actual == "PLANTA",
+            )
+            .count()
+        )
+
         # Rechazadas en el mes
         rechazadas_mes = (
             db.query(func.count(func.distinct(EstadoLlanta.llanta_id)))
@@ -171,6 +178,7 @@ def obtener_metricas_estados() -> dict:
         return {
             "en_proceso": en_proceso,
             "en_planta": en_planta,
+            "reparaciones": reparaciones,
             "rechazadas_mes": rechazadas_mes,
             "rechazadas_total": rechazadas_total,
         }
