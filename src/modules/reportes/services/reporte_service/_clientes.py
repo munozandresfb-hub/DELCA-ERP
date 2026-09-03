@@ -11,7 +11,6 @@ from sqlalchemy import func
 from src.core.services.cliente_actividad import (
     es_activo as _es_activo,
     sub_llantas_en_planta as _sub_llantas_en_planta,
-    sub_movimientos_en_rango as _sub_movimientos_en_rango,
     sub_ultima_actividad as _sub_ultima_actividad,
 )
 from src.database.engine import get_session
@@ -36,9 +35,7 @@ class _ClientesReports:
         )
         with get_session() as session:
             sub_llantas = _sub_llantas_en_planta(session)
-            sub_mov = _sub_movimientos_en_rango(
-                session, desde, datetime.now()
-            )
+            sub_actividad = _sub_ultima_actividad(session)
             results = (
                 session.query(
                     Cliente.nombre,
@@ -48,10 +45,10 @@ class _ClientesReports:
                     Cliente.email,
                     Cliente.nit,
                     func.coalesce(sub_llantas.c.cnt, 0),
-                    func.coalesce(sub_mov.c.movimientos, 0),
+                    sub_actividad.c.ultima_actividad,
                 )
                 .outerjoin(sub_llantas, Cliente.id == sub_llantas.c.cliente_id)
-                .outerjoin(sub_mov, Cliente.id == sub_mov.c.cliente_id)
+                .outerjoin(sub_actividad, Cliente.id == sub_actividad.c.cliente_id)
                 .order_by(Cliente.ciudad, Cliente.nombre)
                 .all()
             )
@@ -62,7 +59,7 @@ class _ClientesReports:
                     "contacto": r[2] or r[3] or "",
                     "email": r[4] or "",
                     "nit": r[5] or "",
-                    "activo": _es_activo(r[6], r[7]),
+                    "activo": _es_activo(r[6], r[7], datetime.now()),
                     "llantas_planta": r[6],
                 }
                 for r in results
@@ -74,29 +71,26 @@ class _ClientesReports:
         fecha_desde: datetime | None = None,
         fecha_hasta: datetime | None = None,
     ) -> list[dict]:
-        """Clientes con estado Activo/Inactivo (definición operativa confirmada).
+        """Clientes con estado Activo/Inactivo (definición operativa confirmada, opción B).
 
-        Definición (evaluada sobre el segmento de tiempo [fecha_desde, fecha_hasta]):
+        Definición (evaluada con el fin del segmento [fecha_desde, fecha_hasta]):
           ACTIVO   = tiene ≥1 llanta en planta/producción (no entregada)
-                     O tuvo CUALQUIER movimiento (ingresos, estados,
-                     ubicaciones/entregas, facturas) DENTRO del segmento.
-          INACTIVO = sin llantas en planta/producción Y sin movimientos en
-                     el segmento. Con el rango por defecto (desde = hace 12
-                     meses, hasta = hoy): ≥1 año sin movimientos.
+                     O tuvo actividad DESPUÉS del fin del segmento (última
+                     actividad posterior a fecha_hasta — siguió trayendo).
+          INACTIVO = sin llantas en planta/producción Y sin actividad posterior
+                     al fin del segmento (última actividad ≤ fecha_hasta — dejó
+                     de venir a más tardar al final del periodo) Y con historial
+                     previo (alguna vez trajo llantas).
 
         Args:
             filtro: "ACTIVO", "INACTIVO", or None for all.
-            fecha_desde: inicio del segmento de tiempo evaluado.
-            fecha_hasta: fin del segmento de tiempo evaluado.
+            fecha_desde: inicio del segmento de tiempo (delimita el periodo).
+            fecha_hasta: fin del segmento — umbral de la actividad posterior.
         """
         with get_session() as session:
             sub_planta = _sub_llantas_en_planta(session)
-            # Movimientos DENTRO del segmento [fecha_desde, fecha_hasta]:
-            # la clasificación evalúa la actividad en ese tramo de tiempo.
-            sub_mov = _sub_movimientos_en_rango(
-                session, fecha_desde, fecha_hasta
-            )
-            # Última actividad TOTAL (historial completo) para mostrar "Última Vez".
+            # Última actividad TOTAL (historial completo): la clasificación
+            # evalúa si hubo actividad DESPUÉS del fin del segmento.
             sub_actividad = _sub_ultima_actividad(session)
 
             results = (
@@ -107,11 +101,9 @@ class _ClientesReports:
                     Cliente.nit,
                     Cliente.id,
                     func.coalesce(sub_planta.c.cnt, 0),
-                    func.coalesce(sub_mov.c.movimientos, 0),
                     sub_actividad.c.ultima_actividad,
                 )
                 .outerjoin(sub_planta, Cliente.id == sub_planta.c.cliente_id)
-                .outerjoin(sub_mov, Cliente.id == sub_mov.c.cliente_id)
                 .outerjoin(sub_actividad, Cliente.id == sub_actividad.c.cliente_id)
                 .order_by(Cliente.nombre)
                 .all()
@@ -120,18 +112,15 @@ class _ClientesReports:
             filas: list[dict] = []
             for r in results:
                 llantas_planta = r[5] or 0
-                movimientos = r[6] or 0
-                ultima_actividad = r[7]
-                activo = _es_activo(llantas_planta, movimientos)
+                ultima_actividad = r[6]
+                activo = _es_activo(llantas_planta, ultima_actividad, fecha_hasta)
                 if filtro == "ACTIVO" and not activo:
                     continue
                 if filtro == "INACTIVO":
-                    # INACTIVO en el segmento = sin movimientos en [desde, hasta]
-                    # + sin llantas en planta/producción. ADEMÁS debe tener
-                    # historial previo (alguna vez fue cliente activo): los
-                    # clientes sin ningún movimiento registrado nunca trajeron
-                    # llantas — no "cumplieron inactividad en el segmento" y
-                    # no son recuperables.
+                    # INACTIVO = sin llantas en planta/producción + sin actividad
+                    # posterior al fin del segmento (última actividad ≤ hasta) +
+                    # con historial previo (los clientes sin ningún movimiento
+                    # nunca trajeron llantas — no son recuperables).
                     if activo or ultima_actividad is None:
                         continue
                 filas.append(

@@ -7,6 +7,23 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.9] — 2026-09-03 — Clientes Activo/Inactivo: lógica B aplicada en todo el sistema
+
+### Changed
+- **Definición confirmada (opción B) aplicada en TODO el sistema** (reporte Activos/Inactivos, Dashboard, Resumen, Clientes Por Ciudad):
+  - **ACTIVO** = tiene ≥1 llanta en planta/producción **o** tuvo actividad **DESPUÉS del fin del segmento** (última actividad > hasta — el cliente siguió trayendo)
+  - **INACTIVO** = sin llantas en planta/producción **y** última actividad ≤ hasta (dejó de venir a más tardar al final del periodo) **y** con historial previo (alguna vez trajo llantas)
+- **Corrige el error reportado**: clientes con actividad posterior al segmento (ej. ARCOS FREDY MARLON, último movimiento 31/03/2026) ya NO aparecen como inactivos — están activos y no deben llamarse para recuperar
+- El segmento [desde, hasta] define el periodo: **el fin del segmento es el umbral** de la última actividad
+
+### Verification
+- **Segmento [03/09/2023, 03/09/2024]**: 325 inactivos — ARCOS FREDY MARLON y ARGOTI ALEXANDER EXCLUIDOS ✓
+- **Dashboard/Resumen/Por Ciudad coherentes**: 1,040 activos / 4,199 inactivos (con hasta = hoy, activos = llantas en planta)
+- **Suite de tests**: 151 passed
+- **EXE recompilado** (11:51)
+
+---
+
 ## [2.8.8] — 2026-09-03 — Reportes: selectores de fecha robustos + protección de refrescos
 
 ### Fixed
