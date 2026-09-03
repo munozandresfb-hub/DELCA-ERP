@@ -135,57 +135,63 @@ class _ClientesReports:
             return filas
 
     @staticmethod
+    def _sub_saldo_por_cliente(session, fecha_desde, fecha_hasta):
+        """Subquery: saldo pendiente REAL por cliente (suma de facturas).
+
+        El saldo se calcula desde las facturas (estado != ANULADA, saldo > 0)
+        — NO del campo legacy Cliente.saldo — y las fechas filtran DENTRO del
+        subquery (evita que un join vacío elimine todos los clientes).
+        """
+        q = (
+            session.query(
+                Factura.cliente_id,
+                Factura.saldo,
+                Factura.fecha_emision,
+            )
+            .filter(
+                Factura.saldo > 0,
+                Factura.estado != "ANULADA",
+                Factura.cliente_id.isnot(None),
+            )
+        )
+        if fecha_desde:
+            q = q.filter(Factura.fecha_emision >= fecha_desde)
+        if fecha_hasta:
+            q = q.filter(Factura.fecha_emision <= fecha_hasta)
+        fact_sub = q.subquery()
+        return (
+            session.query(
+                fact_sub.c.cliente_id,
+                func.sum(fact_sub.c.saldo).label("saldo"),
+                func.max(fact_sub.c.fecha_emision).label("ultima_factura"),
+            )
+            .group_by(fact_sub.c.cliente_id)
+            .subquery()
+        )
+
+    @staticmethod
     def clientes_con_mayor_saldo(
         limite: int = 10,
         fecha_desde: datetime | None = None,
         fecha_hasta: datetime | None = None,
     ) -> list[dict]:
-        """Clients with highest pending balance, with optional date filter."""
-        from sqlalchemy import desc
-
+        """Clientes con mayor saldo pendiente (calculado de facturas reales)."""
         with get_session() as session:
-            sub_fact = (
-                session.query(
-                    Factura.cliente_id,
-                    Factura.fecha_emision,
-                    func.row_number()
-                    .over(
-                        partition_by=Factura.cliente_id,
-                        order_by=desc(Factura.fecha_emision),
-                    )
-                    .label("rn"),
-                )
-                .filter(Factura.saldo > 0)
-                .subquery()
+            sub_saldo = _ClientesReports._sub_saldo_por_cliente(
+                session, fecha_desde, fecha_hasta
             )
-
             q = (
                 session.query(
                     Cliente.nombre,
                     Cliente.telefono,
                     Cliente.celular,
                     Cliente.nit,
-                    Cliente.saldo,
-                    sub_fact.c.fecha_emision,
+                    func.coalesce(sub_saldo.c.saldo, 0),
+                    sub_saldo.c.ultima_factura,
                 )
-                .outerjoin(
-                    sub_fact,
-                    (Cliente.id == sub_fact.c.cliente_id) & (sub_fact.c.rn == 1),
-                )
-                .filter(Cliente.saldo > 0)
-            )
-
-            if fecha_desde:
-                q = q.filter(
-                    func.date(sub_fact.c.fecha_emision) >= func.date(fecha_desde),
-                )
-            if fecha_hasta:
-                q = q.filter(
-                    func.date(sub_fact.c.fecha_emision) <= func.date(fecha_hasta),
-                )
-
-            results = (
-                q.order_by(Cliente.saldo.desc())
+                .outerjoin(sub_saldo, Cliente.id == sub_saldo.c.cliente_id)
+                .filter(func.coalesce(sub_saldo.c.saldo, 0) > 0)
+                .order_by(func.coalesce(sub_saldo.c.saldo, 0).desc())
                 .limit(limite)
                 .all()
             )
@@ -199,7 +205,7 @@ class _ClientesReports:
                         r[5].strftime("%Y-%m-%d") if r[5] else "—"
                     ),
                 }
-                for r in results
+                for r in q
             ]
 
     @staticmethod
@@ -208,25 +214,11 @@ class _ClientesReports:
         fecha_desde: datetime | None = None,
         fecha_hasta: datetime | None = None,
     ) -> list[dict]:
-        """Clients with highest pending balance, with N° Cliente and date filter."""
-        from sqlalchemy import desc
-
+        """Clientes con mayor saldo pendiente, con N° Cliente (facturas reales)."""
         with get_session() as session:
-            sub_fact = (
-                session.query(
-                    Factura.cliente_id,
-                    Factura.fecha_emision,
-                    func.row_number()
-                    .over(
-                        partition_by=Factura.cliente_id,
-                        order_by=desc(Factura.fecha_emision),
-                    )
-                    .label("rn"),
-                )
-                .filter(Factura.saldo > 0)
-                .subquery()
+            sub_saldo = _ClientesReports._sub_saldo_por_cliente(
+                session, fecha_desde, fecha_hasta
             )
-
             q = (
                 session.query(
                     Cliente.nombre,
@@ -235,27 +227,12 @@ class _ClientesReports:
                     Cliente.nit,
                     Cliente.id,
                     Cliente.email,
-                    Cliente.saldo,
-                    sub_fact.c.fecha_emision,
+                    func.coalesce(sub_saldo.c.saldo, 0),
+                    sub_saldo.c.ultima_factura,
                 )
-                .outerjoin(
-                    sub_fact,
-                    (Cliente.id == sub_fact.c.cliente_id) & (sub_fact.c.rn == 1),
-                )
-                .filter(Cliente.saldo > 0)
-            )
-
-            if fecha_desde:
-                q = q.filter(
-                    func.date(sub_fact.c.fecha_emision) >= func.date(fecha_desde),
-                )
-            if fecha_hasta:
-                q = q.filter(
-                    func.date(sub_fact.c.fecha_emision) <= func.date(fecha_hasta),
-                )
-
-            results = (
-                q.order_by(Cliente.saldo.desc())
+                .outerjoin(sub_saldo, Cliente.id == sub_saldo.c.cliente_id)
+                .filter(func.coalesce(sub_saldo.c.saldo, 0) > 0)
+                .order_by(func.coalesce(sub_saldo.c.saldo, 0).desc())
                 .limit(limite)
                 .all()
             )
@@ -271,5 +248,5 @@ class _ClientesReports:
                         r[7].strftime("%Y-%m-%d") if r[7] else "—"
                     ),
                 }
-                for r in results
+                for r in q
             ]

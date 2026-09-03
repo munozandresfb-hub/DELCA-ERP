@@ -7,6 +7,22 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.5] — 2026-09-02 — Reportes: fix Mayor Saldo + mensajes claros en tablas vacías
+
+### Fixed
+- **Mayor Saldo salía vacío**: el reporte filtraba/ordenaba por el campo legacy `Cliente.saldo` y las fechas se aplicaban sobre un `outerjoin` con facturas → con 0 facturas o fechas fuera de rango eliminaba todo. Ahora el saldo se calcula de las **facturas reales** (suma por cliente, `estado != ANULADA`, `saldo > 0`) y las fechas filtran DENTRO del subquery — robusto con cualquier periodo
+- **Mensajes claros en reportes vacíos** (antes "(sin datos)" genérico): Finanzas por Mes/Estado → **"No hay facturas en el periodo seleccionado"**; Mayor Saldo → **"No hay clientes con saldo pendiente"**
+
+### Contexto
+- **La BD tiene 0 facturas** (la limpieza v2.7.2 eliminó las legacy y no hay facturación nueva desde la app) → los reportes de Finanzas por Mes/Estado están vacíos por falta de datos, no por fallo de la vista. Al facturar desde la app se llenarán solos
+
+### Verification
+- **Prueba interna de 14 tablas**: 11 con datos correctos (Clientes 5,239 · Llantas 741 · Detalles · Inventario · Resumen) y 3 vacías con mensaje claro (por falta de facturas)
+- **Suite de tests**: 151 passed (25.6 s)
+- **EXE recompilado** (exit 0)
+
+---
+
 ## [2.8.4] — 2026-09-02 — Reportes: botón "Visualizar" + conteo visible en la barra
 
 ### Added

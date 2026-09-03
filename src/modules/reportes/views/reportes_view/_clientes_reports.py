@@ -213,7 +213,7 @@ class _ClientesReportView:
                 color="#e74c3c",
             )
         else:
-            self._tab_mayor_saldo.add_row(["(sin datos)"] * 6)
+            self._tab_mayor_saldo.add_row(["(No hay clientes con saldo pendiente)"] * 6)
 
     def _exportar_activos_inactivos(self) -> None:
         self._exportar_tabla(self._tab_act_inact, "clientes_activos_inactivos")

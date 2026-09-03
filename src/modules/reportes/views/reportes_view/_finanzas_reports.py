@@ -150,7 +150,7 @@ class _FinanzasReportView:
                 color="#2c3e50",
             )
         else:
-            self._tab_por_mes.add_row(["(sin datos)"] * 8)
+            self._tab_por_mes.add_row(["(No hay facturas en el periodo seleccionado)"] * 8)
 
     def _refresh_por_estado(self) -> None:
         estado_raw = self._fin_estado_filter.currentText()
@@ -181,7 +181,7 @@ class _FinanzasReportView:
                 color="#2c3e50",
             )
         else:
-            self._tab_por_estado.add_row(["(sin datos)"] * 8)
+            self._tab_por_estado.add_row(["(No hay facturas en el periodo seleccionado)"] * 8)
 
     def _refresh_detalle_llantas(self) -> None:
         busqueda = self._fin_llantas_busqueda.text().strip().lower()
