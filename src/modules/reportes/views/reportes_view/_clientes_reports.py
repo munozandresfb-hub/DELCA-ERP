@@ -153,15 +153,21 @@ class _ClientesReportView:
         from datetime import datetime as dt
         from typing import cast
 
-        filtro_map = {"Todos": None, "Activo": "ACTIVO", "Inactivo": "INACTIVO"}
-        estado = filtro_map.get(self._act_inact_filter.currentText())
-        desde = self._ai_fecha_desde.date().toPython()
-        hasta = self._ai_fecha_hasta.date().toPython()
-        data = ReporteService.clientes_activos_vs_inactivos(
-            filtro=estado,
-            fecha_desde=dt.combine(cast(dt, desde), dt.min.time()),
-            fecha_hasta=dt.combine(cast(dt, hasta), dt.max.time()),
-        )
+        try:
+            filtro_map = {"Todos": None, "Activo": "ACTIVO", "Inactivo": "INACTIVO"}
+            estado = filtro_map.get(self._act_inact_filter.currentText())
+            desde = self._ai_fecha_desde.date().toPython()
+            hasta = self._ai_fecha_hasta.date().toPython()
+            data = ReporteService.clientes_activos_vs_inactivos(
+                filtro=estado,
+                fecha_desde=dt.combine(cast(dt, desde), dt.min.time()),
+                fecha_hasta=dt.combine(cast(dt, hasta), dt.max.time()),
+            )
+        except Exception as e:
+            # Nunca dejar la UI bloqueada ni abortar por un error del service
+            self._tab_act_inact.clear_rows()
+            self._tab_act_inact.add_row([f"(Error al generar el reporte: {e})"] * 6)
+            return
         self._tab_act_inact.clear_rows()
         total_llantas = 0
         for r in data:
@@ -187,13 +193,18 @@ class _ClientesReportView:
         from datetime import datetime as dt
         from typing import cast
 
-        desde = self._ms_fecha_desde.date().toPython()
-        hasta = self._ms_fecha_hasta.date().toPython()
-        data = ReporteService.clientes_con_mayor_saldo_detalle(
-            limite=20,
-            fecha_desde=dt.combine(cast(dt, desde), dt.min.time()),
-            fecha_hasta=dt.combine(cast(dt, hasta), dt.max.time()),
-        )
+        try:
+            desde = self._ms_fecha_desde.date().toPython()
+            hasta = self._ms_fecha_hasta.date().toPython()
+            data = ReporteService.clientes_con_mayor_saldo_detalle(
+                limite=20,
+                fecha_desde=dt.combine(cast(dt, desde), dt.min.time()),
+                fecha_hasta=dt.combine(cast(dt, hasta), dt.max.time()),
+            )
+        except Exception as e:
+            self._tab_mayor_saldo.clear_rows()
+            self._tab_mayor_saldo.add_row([f"(Error al generar el reporte: {e})"] * 6)
+            return
         self._tab_mayor_saldo.clear_rows()
         total_saldo = 0
         for r in data:

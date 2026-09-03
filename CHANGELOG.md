@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.8] — 2026-09-03 — Reportes: selectores de fecha robustos + protección de refrescos
+
+### Fixed
+- **Selectores "Desde"/"Hasta" verificados**: en código aceptan cambio de fecha y refrescan el reporte correctamente (verificado: cambio programático + flujo completo filtro Inactivo + segmento 2024 → 402 filas). El último ajuste (clasificación de inactivos) no tocó la UI de fechas — si el cambio no se reflejaba, era la app abierta con una versión anterior
+- **Refrescos protegidos con try/except** (Clientes ×3, Finanzas ×3): si el service lanza un error con ciertas fechas, la vista muestra "(Error al generar el reporte: ...)" en la tabla en vez de abortar el proceso (PySide6 ≥6.5 aborta las excepciones de slots) o dejar la UI bloqueada
+
+### Verification
+- **Vista + refrescos con protección**: construyen y cargan sin error
+- **Suite de tests**: 151 passed (26.8 s)
+- **EXE recompilado** (11:15)
+
+---
+
 ## [2.8.7] — 2026-09-03 — Reporte inactivos: solo clientes que cumplieron inactividad en el segmento
 
 ### Fixed

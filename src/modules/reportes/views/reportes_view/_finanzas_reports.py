@@ -122,7 +122,12 @@ class _FinanzasReportView:
         sel = self._fin_mes_selector.date()
         mes = sel.month()
         anio = sel.year()
-        data = ReporteService.facturas_detalle_por_mes(anio, mes)
+        try:
+            data = ReporteService.facturas_detalle_por_mes(anio, mes)
+        except Exception as e:
+            self._tab_por_mes.clear_rows()
+            self._tab_por_mes.add_row([f"(Error al generar el reporte: {e})"] * 8)
+            return
         self._tab_por_mes.clear_rows()
         total_valor = 0
         total_saldo = 0
@@ -153,9 +158,14 @@ class _FinanzasReportView:
             self._tab_por_mes.add_row(["(No hay facturas en el periodo seleccionado)"] * 8)
 
     def _refresh_por_estado(self) -> None:
-        estado_raw = self._fin_estado_filter.currentText()
-        estado = estado_raw if estado_raw != "Todos" else None
-        data = ReporteService.facturas_por_estado_detalle(estado=estado)
+        try:
+            estado_raw = self._fin_estado_filter.currentText()
+            estado = estado_raw if estado_raw != "Todos" else None
+            data = ReporteService.facturas_por_estado_detalle(estado=estado)
+        except Exception as e:
+            self._tab_por_estado.clear_rows()
+            self._tab_por_estado.add_row([f"(Error al generar el reporte: {e})"] * 8)
+            return
         self._tab_por_estado.clear_rows()
         total_valor = 0
         total_saldo = 0
@@ -185,7 +195,12 @@ class _FinanzasReportView:
 
     def _refresh_detalle_llantas(self) -> None:
         busqueda = self._fin_llantas_busqueda.text().strip().lower()
-        data = ReporteService.detalle_financiero_llantas()
+        try:
+            data = ReporteService.detalle_financiero_llantas()
+        except Exception as e:
+            self._tab_detalle_llantas.clear_rows()
+            self._tab_detalle_llantas.add_row([f"(Error al generar el reporte: {e})"] * 10)
+            return
         self._tab_detalle_llantas.clear_rows()
         total_costo = 0.0
         total_venta = 0.0
