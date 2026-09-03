@@ -7,6 +7,24 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.10] — 2026-09-03 — Clientes inactivos: excluye actividad reciente (últimos 10 meses)
+
+### Changed
+- **Nueva condición en la lógica de Activo/Inactivo (todo el sistema)**: un cliente con actividad en los **últimos 10 meses** NUNCA se lista como inactivo, sin importar el segmento seleccionado — no se llama a recuperar a quien trajo llantas recientemente
+- **Definición final**:
+  - **ACTIVO** = llantas en planta/producción **o** actividad posterior al fin del segmento **o** actividad en los últimos 10 meses
+  - **INACTIVO** = sin llantas + última actividad ≤ hasta + sin actividad en los últimos 10 meses + con historial previo
+- Corrige: CHAPAL MARCOS (última actividad 24/06/2026) y CHALACAN WILLIAM (09/05/2026) ya NO aparecen en el reporte de inactivos de ningún segmento
+
+### Verification
+- **CHALACAN WILLIAM / CHAPAL MARCOS**: excluidos en los 3 segmentos probados ✓
+- **Último año**: 458 inactivos (antes 519) — 0 con actividad posterior a hace 10 meses
+- **Dashboard/Resumen/Por Ciudad coherentes**: 1,101 activos / 4,138 inactivos
+- **Suite de tests**: 151 passed
+- **EXE recompilado** (16:28)
+
+---
+
 ## [2.8.9] — 2026-09-03 — Clientes Activo/Inactivo: lógica B aplicada en todo el sistema
 
 ### Changed

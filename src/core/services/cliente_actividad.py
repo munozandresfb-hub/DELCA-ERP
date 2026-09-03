@@ -15,6 +15,7 @@ vistas muestren el mismo número.
 
 from datetime import datetime
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, union_all
 
 from src.database.engine import get_session
@@ -24,6 +25,18 @@ from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.services.llanta_service import ESTADOS_EN_PLANTA
+
+# ── Actividad reciente: un cliente con movimiento en este periodo NUNCA se
+# considera inactivo (no se le llama a recuperar si trajo hace poco).
+MESES_RECIENTES = 10
+
+
+def _actividad_reciente(ultima_actividad) -> bool:
+    """True si la última actividad está dentro de los últimos MESES_RECIENTES."""
+    if ultima_actividad is None:
+        return False
+    corte = datetime.now() - relativedelta(months=MESES_RECIENTES)
+    return ultima_actividad > corte
 
 
 def sub_llantas_en_planta(session):
@@ -108,19 +121,23 @@ def sub_ultima_actividad(session):
 def es_activo(
     llantas_planta: int, ultima_actividad, fecha_hasta: datetime | None
 ) -> bool:
-    """Clasifica a un cliente según la definición operativa confirmada (opción B).
+    """Clasifica a un cliente según la definición operativa confirmada.
 
     ACTIVO   = tiene ≥1 llanta en planta/producción (no entregada)
                O tuvo actividad DESPUÉS del fin del segmento (última actividad
-               posterior a fecha_hasta — el cliente siguió trayendo llantas).
-    INACTIVO = sin llantas en planta/producción Y sin actividad posterior al
-               fin del segmento (dejó de venir a más tardar al final del
-               periodo) Y con historial previo.
+               posterior a fecha_hasta)
+               O tuvo actividad en los últimos MESES_RECIENTES (10 meses) —
+               un cliente que trajo recientemente nunca se lista como inactivo.
+    INACTIVO = sin llantas en planta/producción + sin actividad posterior al
+               fin del segmento + sin actividad reciente (10 meses) + con
+               historial previo.
     """
     if llantas_planta > 0:
         return True
     if ultima_actividad is None:
         return False
+    if _actividad_reciente(ultima_actividad):
+        return True
     return fecha_hasta is None or ultima_actividad > fecha_hasta
 
 
