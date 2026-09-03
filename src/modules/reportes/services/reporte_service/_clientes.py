@@ -125,8 +125,15 @@ class _ClientesReports:
                 activo = _es_activo(llantas_planta, movimientos)
                 if filtro == "ACTIVO" and not activo:
                     continue
-                if filtro == "INACTIVO" and activo:
-                    continue
+                if filtro == "INACTIVO":
+                    # INACTIVO en el segmento = sin movimientos en [desde, hasta]
+                    # + sin llantas en planta/producción. ADEMÁS debe tener
+                    # historial previo (alguna vez fue cliente activo): los
+                    # clientes sin ningún movimiento registrado nunca trajeron
+                    # llantas — no "cumplieron inactividad en el segmento" y
+                    # no son recuperables.
+                    if activo or ultima_actividad is None:
+                        continue
                 filas.append(
                     {
                         "nombre": r[0],

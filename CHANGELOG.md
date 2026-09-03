@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.7] — 2026-09-03 — Reporte inactivos: solo clientes que cumplieron inactividad en el segmento
+
+### Fixed
+- **El filtro "Inactivo" incluía a todos los inactivos totales** (incluyendo clientes sin NINGÚN historial — nunca trajeron llantas). Ahora **solo muestra los clientes que cumplen inactividad en el segmento seleccionado**: con historial previo (alguna vez fueron clientes activos de DELCA) y sin movimientos dentro de [desde, hasta] ni llantas en planta/producción
+- **Los clientes sin historial se excluyen** (3,680 de 5,239): nunca trajeron llantas, no son recuperables — llamarlos no tiene sentido
+
+### Verification
+- **Segmento 03/09/25 → 02/09/26**: INACTIVOS = **435** (antes 4,117) — todos con historial previo (0 sin historial)
+- **Suite de tests**: 151 passed
+- **EXE recompilado** (10:58)
+
+---
+
 ## [2.8.6] — 2026-09-03 — Activos/Inactivos: el segmento de fechas define el periodo de inactividad
 
 ### Changed
