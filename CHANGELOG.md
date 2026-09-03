@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.6] — 2026-09-03 — Activos/Inactivos: el segmento de fechas define el periodo de inactividad
+
+### Changed
+- **El filtro de fechas [desde, hasta] define el SEGMENTO donde se evalúa la inactividad**: un cliente es **INACTIVO en ese segmento** si **no tuvo NINGÚN movimiento dentro de él** (ingresos de llantas, cambios de estado, entregas/ubicaciones, facturas) **y** no tiene llantas en planta/producción. Antes solo usaba "desde" como umbral del último movimiento; ahora el rango completo delimita la actividad evaluada
+- **Uso para recuperación de clientes**: al seleccionar "Inactivo" + un periodo (ej. 2024, el último año, o cualquier rango), el reporte carga los clientes sin movimientos en ese tramo — el usuario estructura las llamadas por periodos y arma el plan de recuperación. La columna "Última Vez" muestra su última actividad real para priorizar
+- Dashboard/Resumen usan el rango por defecto (último año) → **coherentes** con el reporte
+
+### Verification
+- **Default (último año)**: 1,122 activos / 4,117 inactivos — dashboard y reporte idénticos
+- **Segmento 2024**: 4,082 inactivos (clientes sin movimientos en 2024) · **Últimos 3 meses**: 1,051 activos
+- **Suite de tests**: 151 passed
+- **EXE recompilado** (10:46)
+
+---
+
 ## [2.8.5] — 2026-09-02 — Reportes: fix Mayor Saldo + mensajes claros en tablas vacías
 
 ### Fixed

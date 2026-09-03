@@ -11,6 +11,7 @@ from sqlalchemy import func
 from src.core.services.cliente_actividad import (
     es_activo as _es_activo,
     sub_llantas_en_planta as _sub_llantas_en_planta,
+    sub_movimientos_en_rango as _sub_movimientos_en_rango,
     sub_ultima_actividad as _sub_ultima_actividad,
 )
 from src.database.engine import get_session
@@ -35,7 +36,9 @@ class _ClientesReports:
         )
         with get_session() as session:
             sub_llantas = _sub_llantas_en_planta(session)
-            sub_actividad = _sub_ultima_actividad(session)
+            sub_mov = _sub_movimientos_en_rango(
+                session, desde, datetime.now()
+            )
             results = (
                 session.query(
                     Cliente.nombre,
@@ -45,12 +48,10 @@ class _ClientesReports:
                     Cliente.email,
                     Cliente.nit,
                     func.coalesce(sub_llantas.c.cnt, 0),
-                    sub_actividad.c.ultima_actividad,
+                    func.coalesce(sub_mov.c.movimientos, 0),
                 )
                 .outerjoin(sub_llantas, Cliente.id == sub_llantas.c.cliente_id)
-                .outerjoin(
-                    sub_actividad, Cliente.id == sub_actividad.c.cliente_id
-                )
+                .outerjoin(sub_mov, Cliente.id == sub_mov.c.cliente_id)
                 .order_by(Cliente.ciudad, Cliente.nombre)
                 .all()
             )
@@ -61,7 +62,7 @@ class _ClientesReports:
                     "contacto": r[2] or r[3] or "",
                     "email": r[4] or "",
                     "nit": r[5] or "",
-                    "activo": _es_activo(r[6], r[7], desde),
+                    "activo": _es_activo(r[6], r[7]),
                     "llantas_planta": r[6],
                 }
                 for r in results
@@ -75,21 +76,27 @@ class _ClientesReports:
     ) -> list[dict]:
         """Clientes con estado Activo/Inactivo (definición operativa confirmada).
 
-        Definición:
+        Definición (evaluada sobre el segmento de tiempo [fecha_desde, fecha_hasta]):
           ACTIVO   = tiene ≥1 llanta en planta/producción (no entregada)
-                     O ingresó llantas dentro del periodo [fecha_desde, fecha_hasta]
-                     (movimiento reciente en la BD).
-          INACTIVO = sin llantas en planta/producción Y su último ingreso de
-                     llantas es anterior a fecha_desde (por defecto en la vista:
-                     hace 12 meses → ≥1 año sin movimientos).
+                     O tuvo CUALQUIER movimiento (ingresos, estados,
+                     ubicaciones/entregas, facturas) DENTRO del segmento.
+          INACTIVO = sin llantas en planta/producción Y sin movimientos en
+                     el segmento. Con el rango por defecto (desde = hace 12
+                     meses, hasta = hoy): ≥1 año sin movimientos.
 
         Args:
             filtro: "ACTIVO", "INACTIVO", or None for all.
-            fecha_desde: inicio de la ventana de actividad (ingresos de llantas).
-            fecha_hasta: fin de la ventana de actividad.
+            fecha_desde: inicio del segmento de tiempo evaluado.
+            fecha_hasta: fin del segmento de tiempo evaluado.
         """
         with get_session() as session:
             sub_planta = _sub_llantas_en_planta(session)
+            # Movimientos DENTRO del segmento [fecha_desde, fecha_hasta]:
+            # la clasificación evalúa la actividad en ese tramo de tiempo.
+            sub_mov = _sub_movimientos_en_rango(
+                session, fecha_desde, fecha_hasta
+            )
+            # Última actividad TOTAL (historial completo) para mostrar "Última Vez".
             sub_actividad = _sub_ultima_actividad(session)
 
             results = (
@@ -100,9 +107,11 @@ class _ClientesReports:
                     Cliente.nit,
                     Cliente.id,
                     func.coalesce(sub_planta.c.cnt, 0),
+                    func.coalesce(sub_mov.c.movimientos, 0),
                     sub_actividad.c.ultima_actividad,
                 )
                 .outerjoin(sub_planta, Cliente.id == sub_planta.c.cliente_id)
+                .outerjoin(sub_mov, Cliente.id == sub_mov.c.cliente_id)
                 .outerjoin(sub_actividad, Cliente.id == sub_actividad.c.cliente_id)
                 .order_by(Cliente.nombre)
                 .all()
@@ -111,8 +120,9 @@ class _ClientesReports:
             filas: list[dict] = []
             for r in results:
                 llantas_planta = r[5] or 0
-                ultima_actividad = r[6]
-                activo = _es_activo(llantas_planta, ultima_actividad, fecha_desde)
+                movimientos = r[6] or 0
+                ultima_actividad = r[7]
+                activo = _es_activo(llantas_planta, movimientos)
                 if filtro == "ACTIVO" and not activo:
                     continue
                 if filtro == "INACTIVO" and activo:

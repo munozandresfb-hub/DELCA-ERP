@@ -43,15 +43,10 @@ def sub_llantas_en_planta(session):
     )
 
 
-def sub_ultima_actividad(session):
-    """Subquery: última fecha de MOVIMIENTO del cliente en la BD.
-
-    Movimiento = cualquier evento con fecha registrada:
-      - Ingreso de llantas (llantas.fecha_ingreso)
-      - Cambios de estado (estados_llanta.fecha)
-      - Cambios de ubicación / entregas (ubicaciones_llanta.fecha)
-      - Facturación (facturas.fecha_emision)
-    """
+def _union_movimientos(session, fecha_desde=None, fecha_hasta=None):
+    """Unión de TODOS los movimientos del cliente (ingresos, estados,
+    ubicaciones/entregas, facturas), opcionalmente filtrada por un segmento
+    de tiempo [fecha_desde, fecha_hasta]."""
     ingresos = (
         session.query(
             Llanta.cliente_id.label("cliente_id"),
@@ -82,13 +77,52 @@ def sub_ultima_actividad(session):
         )
         .filter(Factura.fecha_emision.isnot(None), Factura.cliente_id.isnot(None))
     )
+    if fecha_desde:
+        ingresos = ingresos.filter(Llanta.fecha_ingreso >= fecha_desde)
+        estados = estados.filter(EstadoLlanta.fecha >= fecha_desde)
+        ubicaciones = ubicaciones.filter(UbicacionLlanta.fecha >= fecha_desde)
+        facturas = facturas.filter(Factura.fecha_emision >= fecha_desde)
+    if fecha_hasta:
+        ingresos = ingresos.filter(Llanta.fecha_ingreso <= fecha_hasta)
+        estados = estados.filter(EstadoLlanta.fecha <= fecha_hasta)
+        ubicaciones = ubicaciones.filter(UbicacionLlanta.fecha <= fecha_hasta)
+        facturas = facturas.filter(Factura.fecha_emision <= fecha_hasta)
 
-    union = (
+    return (
         ingresos.union_all(estados)
         .union_all(ubicaciones)
         .union_all(facturas)
         .subquery()
     )
+
+
+def sub_movimientos_en_rango(session, fecha_desde=None, fecha_hasta=None):
+    """Subquery: cantidad de movimientos del cliente DENTRO de [desde, hasta].
+
+    Se usa para la clasificación: un cliente tuvo actividad en el segmento de
+    tiempo si tiene ≥1 movimiento con fecha dentro del rango.
+    """
+    union = _union_movimientos(session, fecha_desde, fecha_hasta)
+    return (
+        session.query(
+            union.c[0].label("cliente_id"),
+            func.count(union.c[1]).label("movimientos"),
+        )
+        .group_by(union.c[0])
+        .subquery()
+    )
+
+
+def sub_ultima_actividad(session):
+    """Subquery: última fecha de MOVIMIENTO del cliente en la BD (historial completo).
+
+    Movimiento = cualquier evento con fecha registrada:
+      - Ingreso de llantas (llantas.fecha_ingreso)
+      - Cambios de estado (estados_llanta.fecha)
+      - Cambios de ubicación / entregas (ubicaciones_llanta.fecha)
+      - Facturación (facturas.fecha_emision)
+    """
+    union = _union_movimientos(session)
     return (
         session.query(
             union.c[0].label("cliente_id"),
@@ -99,23 +133,26 @@ def sub_ultima_actividad(session):
     )
 
 
-def es_activo(llantas_planta: int, ultima_actividad, desde: datetime | None) -> bool:
-    """Clasifica a un cliente según la definición operativa confirmada."""
-    if llantas_planta > 0:
-        return True
-    if ultima_actividad is None:
-        return False
-    return desde is None or ultima_actividad >= desde
+def es_activo(llantas_planta: int, movimientos_en_rango: int) -> bool:
+    """Clasifica a un cliente según la definición operativa confirmada:
+
+    ACTIVO = tiene ≥1 llanta en planta/producción (no entregada)
+             O tuvo movimientos DENTRO del segmento de tiempo evaluado.
+    INACTIVO = sin llantas en planta/producción Y sin movimientos en el segmento.
+    """
+    return llantas_planta > 0 or movimientos_en_rango > 0
 
 
 def contar_clientes_activos_inactivos(
     fecha_desde: datetime | None = None,
+    fecha_hasta: datetime | None = None,
 ) -> tuple[int, int]:
     """Cuenta clientes ACTIVOS e INACTIVOS con la definición central.
 
     Args:
-        fecha_desde: inicio del periodo de actividad. Si es None se usa
-            "hace 1 año" (definición: ≥1 año sin movimientos = inactivo).
+        fecha_desde / fecha_hasta: segmento de tiempo donde se evalúa la
+            actividad. Por defecto: [hace 1 año, hoy] (definición: ≥1 año
+            sin movimientos = inactivo).
 
     Returns:
         (activos, inactivos).
@@ -123,24 +160,24 @@ def contar_clientes_activos_inactivos(
     if fecha_desde is None:
         now = datetime.now()
         fecha_desde = now.replace(year=now.year - 1)
+    if fecha_hasta is None:
+        fecha_hasta = datetime.now()
 
     with get_session() as session:
         sub_planta = sub_llantas_en_planta(session)
-        sub_actividad = sub_ultima_actividad(session)
+        sub_mov = sub_movimientos_en_rango(session, fecha_desde, fecha_hasta)
         total = session.query(Cliente).count()
         activos = 0
-        # Cliente.id en el SELECT ancla la entidad y evita que SQLAlchemy
-        # duplique los subqueries (ambiguous column).
-        for _, cnt, ult in (
+        for _, cnt, mov in (
             session.query(
                 Cliente.id,
                 func.coalesce(sub_planta.c.cnt, 0).label("cnt"),
-                sub_actividad.c.ultima_actividad.label("ult"),
+                func.coalesce(sub_mov.c.movimientos, 0).label("mov"),
             )
             .outerjoin(sub_planta, Cliente.id == sub_planta.c.cliente_id)
-            .outerjoin(sub_actividad, Cliente.id == sub_actividad.c.cliente_id)
+            .outerjoin(sub_mov, Cliente.id == sub_mov.c.cliente_id)
             .all()
         ):
-            if es_activo(cnt, ult, fecha_desde):
+            if es_activo(cnt, mov):
                 activos += 1
         return activos, total - activos
