@@ -65,6 +65,6 @@ Ver: `scripts/corregir_clientes_nit.py` y `scripts/corregir_costos_produccion.py
 
 1. **Costos**: `scripts/corregir_costos_produccion.py` — 24,305 llantas alineadas al catálogo de Facturación-Precios (fuente manual del negocio). Backup: `backups/delca_pre_costos_*.db`.
 2. **Clientes**: `scripts/corregir_clientes_nit.py` — 4,196 llantas realineadas por NIT (0 ambigüedades). Backup: `backups/delca_pre_clientes_20260914_163911.db`.
-3. **18 asignaciones validadas por el negocio**: `scripts/aplicar_asignaciones_clientes.py` — llantas con NIT vacío en legacy, cliente determinado por nombre y validado manualmente. Backup: `backups/delca_pre_asignaciones18_*.db`.
+3. **Pendientes de validación del negocio** (NO aplicadas): 18 llantas con NIT vacío en legacy y nombre distinto (el negocio decidió NO asignar por nombre — se mantienen en el cliente asignado por NIT); 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.
 4. **NO unificados** (decisión del negocio): 11 grupos (318 llantas) donde el nombre legacy existe en DELCA con otro NIT — se dejan como quedaron (por NIT), sin mover ni fusionar.
 5. **Pendientes de validación del negocio**: 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.
