@@ -2,6 +2,21 @@
 
 > Lecciones aprendidas de la migración 2026 — **léelas antes de cualquier futura migración**.
 
+## ✅ Regla #1c: Verificar el identificador contra el valor IMPRESO en el artículo físico
+
+**Lección (septiembre 2026):** el MAE_PROD almacena por llanta DOS campos de tiquete:
+- `TIQUETE` ('J1353') — número de **secuencia interna** del registro (con prefijo J)
+- `TIQUETE2` ('1355') — el **tiquete REAL**, el impreso en la llanta física
+
+La migración original guardó `TIQUETE` → los tiquetes no coincidían con las llantas físicas
+ni con el programa origen (verificado: O.S. 577-1 = tiquete 1355, no 1353). Corregido con
+`scripts/corregir_tiquetes.py` (24,450 llantas, backup `delca_pre_tiquetes_*.db`).
+
+**Regla:** para cualquier migración, verificar el identificador contra el **valor impreso en el
+artículo físico** (o contra el programa origen en uso), NO contra el primer campo con nombre
+similar del DBF. Los sistemas legacy suelen tener campos de secuencia interna junto al
+identificador real. Un tiquete/identificador "que no coincide" es señal de campo equivocado.
+
 ## ✅ Regla #1b: NO unificar clientes por coincidencia de NIT (ni por nombre)
 
 **Lección adicional (septiembre 2026):** aunque dos registros (legacy y DELCA) compartan el mismo NIT,
@@ -67,4 +82,5 @@ Ver: `scripts/corregir_clientes_nit.py` y `scripts/corregir_costos_produccion.py
 2. **Clientes**: `scripts/corregir_clientes_nit.py` — 4,196 llantas realineadas por NIT (0 ambigüedades). Backup: `backups/delca_pre_clientes_20260914_163911.db`.
 3. **Pendientes de validación del negocio** (NO aplicadas): 18 llantas con NIT vacío en legacy y nombre distinto (el negocio decidió NO asignar por nombre — se mantienen en el cliente asignado por NIT); 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.
 4. **NO unificados** (decisión del negocio): 11 grupos (318 llantas) donde el nombre legacy existe en DELCA con otro NIT — se dejan como quedaron (por NIT), sin mover ni fusionar.
-5. **Pendientes de validación del negocio**: 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.
+5. **Tiquetes**: `scripts/corregir_tiquetes.py` — 24,450 llantas realineadas al tiquete real (`TIQUETE2` del MAE_PROD, el impreso en la llanta). Backup: `backups/delca_pre_tiquetes_*.db`. Excepción: `J23489` (sin TIQUETE2 en MAE_PROD) — pendiente de verificar en el origen; la llanta renombrada `23489` colisiona numéricamente con ella en pantalla.
+6. **Pendientes de validación del negocio**: 18 llantas con NIT vacío en legacy y nombre distinto (se mantienen en el cliente asignado por NIT); 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.

@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.14] — 2026-09-14 — Corrección de migración: tiquetes realineados al tiquete físico (TIQUETE2)
+
+### Fixed
+- **Tiquetes incorrectos en las 24,450 llantas**: la migración guardó el campo `TIQUETE` del MAE_PROD (secuencia interna con prefijo J, ej. 'J1353') en vez del `TIQUETE2` — el tiquete REAL impreso en la llanta física (ej. '1355'). Verificado en el origen: O.S. 577-1 = tiquete 1355
+- **Corrección**: `scripts/corregir_tiquetes.py` — mapeo `llanta.tiquete → TIQUETE2` del MAE_PROD (guardado sin J). TIQUETE2 es único (0 duplicados). Backup: `backups/delca_pre_tiquetes_20260914_185512.db`
+- **Post-verificación**: 24,451 tiquetes únicos · 0 duplicados · orden/dimensión/marca **0 discrepancias** vs MAE_PROD (24,450 comparadas) · el reporte funciona (1355 → orden 577-1)
+
+### Pending
+- **Excepción `J23489`**: sin TIQUETE2 en MAE_PROD — requiere verificar su tiquete real en el programa origen. La llanta renombrada `23489` colisiona numéricamente con ella en pantalla (resolver con el dato del origen)
+
+### Docs
+- `docs/MIGRACIONES.md`: regla 1c — verificar el identificador contra el valor **impreso** en el artículo físico (campo TIQUETE vs TIQUETE2)
+
+---
+
 ## [2.8.13] — 2026-09-14 — Clientes: decisión de NO unificar por NIT · 18 asignaciones NO aplicadas (revertidas)
 
 ### Changed (decisión del negocio)
