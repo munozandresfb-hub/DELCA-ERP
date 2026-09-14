@@ -7,6 +7,23 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.12] — 2026-09-14 — Corrección de migración: clientes de llantas realineados por NIT (4,196 llantas)
+
+### Fixed
+- **Cliente incorrecto en 4,196 llantas (17%)**: la migración original insertó los clientes sin id (ids secuenciales de SQLite) y las llantas copiaron el `COD_CLIEN` del legacy convertido a número con corrimientos por bloque → llantas apuntando a clientes existentes pero equivocados. Verificado contra el **MAE_PROD.DBF original** (no solo el CSV): 3,911 discrepancias por nombre, 4,196 por NIT
+- **Corrección**: `scripts/corregir_clientes_nit.py` — mapeo `llanta.tiquete → MAE_PROD.COD_CLIEN → MAE_CLIENTE.NIT_CLIEN → cliente.id` (llave natural NIT, **0 ambigüedades**: 5,239 NITs únicos en DELCA, todos los NITs legacy existen). Backup: `backups/delca_pre_clientes_20260914_163911.db`
+- **Post-verificación**: 24,051 llantas con cliente verificado por NIT · **0 errores reales restantes** (318 casos son el mismo cliente con distinta denominación entre sistemas, ej. `CH-Z Y CIA SCS` = `CHAVEZ ZARAMA FERNANDO`, mismo NIT)
+
+### Pending (requieren validación del negocio — NO corregibles mecánicamente)
+- 18 llantas con NIT vacío en MAE_CLIENTE y nombre legacy distinto (ej. J6106 `ROBERTO LOPEZ` vs `BASTIDAS SILVIO`)
+- 15 llantas sin cliente: 7 con códigos huérfanos (C4872/C4873 no existen en MAE_CLIENTE) + 8 sin código en MAE_PROD
+- Detalle: `correccion_clientes_EXCEPCIONES_2026-09-14.csv`, `verificacion_clientes_POST_2026-09-14.csv`
+
+### Docs
+- **`docs/MIGRACIONES.md`**: lecciones aprendidas para futuras migraciones — nunca usar ids autoincrementales del destino, migrar por llave natural (NIT), verificar siempre contra el DBF origen, chequear referencias huérfanas, patrón dry-run + backup
+
+---
+
 ## [2.8.11] — 2026-09-14 — Corrección de migración: costos alineados al catálogo + reporte de incongruencias de clientes
 
 ### Fixed
