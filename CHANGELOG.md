@@ -7,6 +7,23 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.11] — 2026-09-14 — Corrección de migración: costos alineados al catálogo + reporte de incongruencias de clientes
+
+### Fixed
+- **Costo de fabricación vacío en el reporte de Llantas**: 8,052 llantas (33%) no tenían `costo_produccion`, aunque el costo existía en `precios_producto.costo_fabricacion` (catálogo de Facturación-Precios). Nuevo script `scripts/corregir_costos_produccion.py` alinea TODAS las llantas al costo del catálogo por diseño+dimensión (con backup y dry-run): **24,305/24,451 llantas con costo** (antes 16,399) — el reporte de Llantas ya muestra el costo
+- **Nota**: el costo histórico del DBF no coincidía con el catálogo en ninguna llanta (24,305 cambiaron); se adoptó el catálogo como fuente de verdad (confirmado por el usuario)
+
+### Added
+- **Reporte de incongruencias de clientes**: `incongruencias_clientes_2026-09-14.csv` (carpeta DELCA) — **547 llantas en 143 órdenes con >1 cliente distinto** (el `cliente_id` migrado del ETL legacy es incorrecto en esas filas; la info técnica es correcta). El reporte permite la validación del negocio antes de corregir (NO se corrigieron clientes sin validación)
+
+### Verification
+- **BD**: 24,305/24,451 con costo (146 sin costo = combinaciones sin precio en catálogo)
+- **Reporte de Llantas**: costo visible en las filas
+- **Suite de tests**: 161 passed
+- **EXE recompilado** (exit 0)
+
+---
+
 ## [2.8.10] — 2026-09-03 — Clientes inactivos: excluye actividad reciente (últimos 10 meses)
 
 ### Changed

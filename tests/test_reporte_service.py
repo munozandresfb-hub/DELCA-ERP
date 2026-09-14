@@ -12,11 +12,15 @@ Regression targets:
 
 from decimal import Decimal
 
+from datetime import datetime, timedelta
+
 import pytest
 
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.services.factura_service import FacturaService
+from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.services.llanta_service import LlantaService
 from src.modules.reportes.services.reporte_service import ReporteService
 
@@ -60,6 +64,54 @@ def _crear_factura_nueva(cliente_id: int, total: str = "1500") -> int:
     )
     assert ok, f"crear factura con llanta nueva falló: {res}"
     return res.id
+
+
+def _crear_llanta_cliente(
+    cliente_id: int,
+    tiquete: str,
+    fecha_ingreso: datetime,
+    estado: str = "REENCAUCHADA",
+    fecha_salida: datetime | None = None,
+) -> int:
+    """Crea una llanta con fecha de ingreso, estado final y salida al cliente."""
+    ok, llanta = LlantaService.crear(
+        tiquete=tiquete, cliente_id=cliente_id, fecha_ingreso=fecha_ingreso
+    )
+    assert ok, f"crear llanta falló: {llanta}"
+    with get_session() as session:
+        db_llanta = session.get(Llanta, llanta.id)
+        db_llanta.estado = estado
+        db_llanta.ubicacion_actual = "CLIENTE"
+        session.add(db_llanta)
+        session.flush()
+        if fecha_salida is not None:
+            salida = UbicacionLlanta(
+                llanta_id=db_llanta.id,
+                ubicacion="CLIENTE",
+                fecha=fecha_salida,
+            )
+            session.add(salida)
+    return llanta.id
+
+
+def _crear_cliente_con_contacto(
+    nombre: str = "Nuevo Prospecto", nit: str = "901234599", celular: str = "3001234567"
+) -> int:
+    with get_session() as session:
+        cliente = Cliente(nombre=nombre, nit=nit, celular=celular)
+        session.add(cliente)
+        session.flush()
+        return cliente.id
+
+
+def _crear_cliente_sin_contacto(
+    nombre: str = "Sin Contacto", nit: str = "901234598"
+) -> int:
+    with get_session() as session:
+        cliente = Cliente(nombre=nombre, nit=nit)
+        session.add(cliente)
+        session.flush()
+        return cliente.id
 
 
 class TestMayorSaldoDetalle:
@@ -223,3 +275,135 @@ class TestDetalleFinancieroLlantas:
         FacturaService.anular(factura_id)
         rows = ReporteService.detalle_financiero_llantas()
         assert rows == []
+
+
+class TestClientesInactivos:
+    """ReporteService.clientes_inactivos — reactivación comercial."""
+
+    CORTE = datetime(2026, 9, 3)
+
+    def test_inactivo_con_historial(self):
+        cid = _crear_cliente(nombre="Inactivo Hist", nit="901234580")
+        ingreso = self.CORTE - timedelta(days=400)
+        _crear_llanta_cliente(
+            cid, "RPT-INACT-1", ingreso, estado="REENCAUCHADA",
+            fecha_salida=ingreso + timedelta(days=10),
+        )
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert len(inactivos) == 1
+        assert inactivos[0]["nombre"] == "Inactivo Hist"
+        assert inactivos[0]["ultima_vez"] == (ingreso + timedelta(days=10)).strftime("%Y-%m-%d")
+        assert inactivos[0]["dias_sin_actividad"] == 390
+        assert inactivos[0]["rango_inactividad"] == "366-730 días (1-2 años)"
+
+    def test_inactivo_excluye_reciente(self):
+        cid = _crear_cliente(nombre="Reciente", nit="901234581")
+        _crear_llanta_cliente(
+            cid, "RPT-REC-1", self.CORTE - timedelta(days=100),
+            fecha_salida=self.CORTE - timedelta(days=100),
+        )
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert inactivos == []
+
+    def test_inactivo_excluye_llanta_en_planta(self):
+        cid = _crear_cliente(nombre="En Planta", nit="901234582")
+        # Llanta vieja PERO aún en planta (ubicacion_actual PLANTA, no CLIENTE)
+        ok, llanta = LlantaService.crear(
+            tiquete="RPT-PL-1", cliente_id=cid,
+            fecha_ingreso=self.CORTE - timedelta(days=400),
+        )
+        assert ok
+        with get_session() as session:
+            db_llanta = session.get(Llanta, llanta.id)
+            db_llanta.estado = "REENCAUCHADA"
+            db_llanta.ubicacion_actual = "PLANTA"
+            session.add(db_llanta)
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert inactivos == []
+
+    def test_inactivo_excluye_sin_historial(self):
+        # Cliente sin llantas pero con contacto → NO es inactivo, es 1er venta
+        _crear_cliente_con_contacto(nombre="Solo Prospecto", nit="901234583")
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert inactivos == []
+
+    def test_primer_venta_con_contacto(self):
+        _crear_cliente_con_contacto(nombre="Prospecto Con", nit="901234584")
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        pv = [r for r in rows if r["es_primer_venta"]]
+        assert len(pv) == 1
+        assert pv[0]["nombre"] == "Prospecto Con"
+        assert pv[0]["dias_sin_actividad"] == "1er venta"
+        assert pv[0]["rango_inactividad"] == "1096+ días (3+ años)"
+        assert pv[0]["segmento_dimension"] == "—"
+        assert pv[0]["llantas_aptas"] == 0
+
+    def test_primer_venta_sin_contacto_excluido(self):
+        # Sin historial Y sin contacto → NO aparece (permanece en BD)
+        _crear_cliente_sin_contacto(nombre="Fantasma", nit="901234585")
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        nombres = {r["nombre"] for r in rows}
+        assert "Fantasma" not in nombres
+
+    def test_primer_venta_opcional(self):
+        _crear_cliente_con_contacto(nombre="Prospecto Off", nit="901234586")
+        rows = ReporteService.clientes_inactivos(
+            fecha_corte=self.CORTE, incluir_primer_venta=False
+        )
+        assert all(not r["es_primer_venta"] for r in rows)
+
+    def test_orden_desc(self):
+        c1 = _crear_cliente(nombre="Inactivo Viejo", nit="901234587")
+        c2 = _crear_cliente(nombre="Inactivo Nuevo", nit="901234588")
+        _crear_llanta_cliente(
+            c1, "RPT-ORD-1", self.CORTE - timedelta(days=500),
+            fecha_salida=self.CORTE - timedelta(days=500),
+        )
+        _crear_llanta_cliente(
+            c2, "RPT-ORD-2", self.CORTE - timedelta(days=350),
+            fecha_salida=self.CORTE - timedelta(days=350),
+        )
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert [r["nombre"] for r in inactivos] == ["Inactivo Nuevo", "Inactivo Viejo"]
+
+    def test_llantas_aptas(self):
+        cid = _crear_cliente(nombre="Con Aptas", nit="901234589")
+        base = self.CORTE - timedelta(days=500)
+        # 2 reencauchadas (aptas) + 1 rechazada (no apta)
+        _crear_llanta_cliente(cid, "RPT-APT-1", base, estado="REENCAUCHADA",
+                              fecha_salida=base + timedelta(days=5))
+        _crear_llanta_cliente(cid, "RPT-APT-2", base, estado="REENCAUCHADA",
+                              fecha_salida=base + timedelta(days=5))
+        _crear_llanta_cliente(cid, "RPT-APT-3", base, estado="RECHAZADA",
+                              fecha_salida=base + timedelta(days=5))
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert len(inactivos) == 1
+        assert inactivos[0]["llantas_aptas"] == 2
+
+    def test_segmento_dimension(self):
+        cid = _crear_cliente(nombre="Con Dimension", nit="901234590")
+        base = self.CORTE - timedelta(days=500)
+        # Sin FK de dimensión: usa texto legacy llantas.dimension
+        with get_session() as session:
+            for i, dim in enumerate(["295/80 R22.5", "295/80 R22.5", "11.00-20", "295/80 R22.5"]):
+                ok, llanta = LlantaService.crear(
+                    tiquete=f"RPT-DIM-{i}", cliente_id=cid,
+                    fecha_ingreso=base,
+                )
+                assert ok
+                db_llanta = session.get(Llanta, llanta.id)
+                db_llanta.dimension = dim
+                db_llanta.estado = "REENCAUCHADA"
+                db_llanta.ubicacion_actual = "CLIENTE"
+                session.add(db_llanta)
+            session.flush()
+        rows = ReporteService.clientes_inactivos(fecha_corte=self.CORTE)
+        inactivos = [r for r in rows if not r["es_primer_venta"]]
+        assert len(inactivos) == 1
+        assert inactivos[0]["segmento_dimension"] == "295/80 R22.5"
