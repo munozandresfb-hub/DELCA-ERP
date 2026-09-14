@@ -7,6 +7,23 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.13] — 2026-09-14 — Clientes: 18 asignaciones validadas aplicadas + decisión de NO unificar por NIT
+
+### Added
+- **18 asignaciones de cliente validadas por el negocio** (llantas con NIT vacío en MAE_CLIENTE, resueltas por nombre): ROSELLANTAS LTDA (J1353-54), ROBERTO LOPEZ (J6106, J13298), GIRALDO RIVERA (J7165-67), PEREZ ABELINO (J11917-18), GERARDO BRAVO (J13226, J19334-35, J22961-62), TORO JOSE DOMINGO (J13997, J14402, J14669, J17441). Script `scripts/aplicar_asignaciones_clientes.py` (dry-run + backup `delca_pre_asignaciones18_20260914_173230.db`)
+
+### Changed (decisión del negocio)
+- **NO se unifican clientes por coincidencia de NIT ni nombre**: los 11 grupos (318 llantas) donde el nombre legacy existe en DELCA con NIT distinto se dejan como quedaron post-corrección por NIT. Motivo: la coincidencia de NIT no garantiza la misma persona/empresa (caso RIVERA MANUEL vs RIVERA FAJARDO: conteo por NIT 6, verificación manual 7)
+- **Órdenes**: sin cambios (las 143 órdenes con >1 cliente son fieles al MAE_PROD — no se modificaron)
+
+### Pending
+- 15 llantas sin cliente: 7 con códigos huérfanos (C4872/C4873 — no existen en MAE_CLIENTE) + 8 sin código en MAE_PROD
+
+### Docs
+- `docs/MIGRACIONES.md`: nueva regla — no unificar por coincidencia de NIT; confiar en la verificación manual cuando un conteo no cuadre
+
+---
+
 ## [2.8.12] — 2026-09-14 — Corrección de migración: clientes de llantas realineados por NIT (4,196 llantas)
 
 ### Fixed

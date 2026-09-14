@@ -2,6 +2,17 @@
 
 > Lecciones aprendidas de la migración 2026 — **léelas antes de cualquier futura migración**.
 
+## ✅ Regla #1b: NO unificar clientes por coincidencia de NIT (ni por nombre)
+
+**Lección adicional (septiembre 2026):** aunque dos registros (legacy y DELCA) compartan el mismo NIT,
+**no asumir que son la misma persona/empresa ni unificarlos**. La decisión de unificar es del negocio.
+- El NIT es una llave para *asignar* llantas, pero NO para *fusionar* clientes: personas/empresas
+  distintas pueden compartir NIT en los datos migrados, y unificar causa errores de conteo
+  (ej. RIVERA MANUEL vs RIVERA FAJARDO: el conteo por NIT decía 6, la verificación manual mostró 7).
+- **Dejar los datos como vienen de la migración** (no mover llantas entre clientes por nombre/NIT
+  sin validación explícita del negocio).
+- Cuando un conteo por NIT no cuadre con la verificación manual, **confiar en la verificación manual**.
+
 ## ⚠️ Regla #1: NUNCA usar ids autoincrementales del destino ni ids numéricos derivados del origen
 
 **Problema real encontrado (septiembre 2026):**
@@ -54,4 +65,6 @@ Ver: `scripts/corregir_clientes_nit.py` y `scripts/corregir_costos_produccion.py
 
 1. **Costos**: `scripts/corregir_costos_produccion.py` — 24,305 llantas alineadas al catálogo de Facturación-Precios (fuente manual del negocio). Backup: `backups/delca_pre_costos_*.db`.
 2. **Clientes**: `scripts/corregir_clientes_nit.py` — 4,196 llantas realineadas por NIT (0 ambigüedades). Backup: `backups/delca_pre_clientes_20260914_163911.db`.
-3. **Pendientes de validación del negocio**: 18 llantas con NIT vacío y nombre legacy distinto; 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.
+3. **18 asignaciones validadas por el negocio**: `scripts/aplicar_asignaciones_clientes.py` — llantas con NIT vacío en legacy, cliente determinado por nombre y validado manualmente. Backup: `backups/delca_pre_asignaciones18_*.db`.
+4. **NO unificados** (decisión del negocio): 11 grupos (318 llantas) donde el nombre legacy existe en DELCA con otro NIT — se dejan como quedaron (por NIT), sin mover ni fusionar.
+5. **Pendientes de validación del negocio**: 15 llantas sin cliente (7 con códigos huérfanos C4872/C4873, 8 sin código). Detalle: `verificacion_clientes_POST_2026-09-14.csv`.
