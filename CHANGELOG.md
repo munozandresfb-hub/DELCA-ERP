@@ -15,7 +15,7 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Post-verificación**: 24,451 tiquetes únicos · 0 duplicados · orden/dimensión/marca **0 discrepancias** vs MAE_PROD (24,450 comparadas) · el reporte funciona (1355 → orden 577-1)
 
 ### Pending
-- **Excepción `J23489`**: sin TIQUETE2 en MAE_PROD — requiere verificar su tiquete real en el programa origen. La llanta renombrada `23489` colisiona numéricamente con ella en pantalla (resolver con el dato del origen)
+- ~~Excepción `J23489`~~ → **RESUELTA**: era una llanta **duplicada** (O.S. 10418-1, BLAK 295/80R22.5) — la misma llanta ya existía con tiquete correcto `24922`. Eliminada con sus historiales por orden del negocio (backup `delca_pre_eliminar_duplicada_20260915_093917.db`). **Total: 24,450 llantas · 0 tiquetes duplicados · 0 con prefijo J**
 
 ### Docs
 - `docs/MIGRACIONES.md`: regla 1c — verificar el identificador contra el valor **impreso** en el artículo físico (campo TIQUETE vs TIQUETE2)
