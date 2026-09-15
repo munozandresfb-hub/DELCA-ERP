@@ -78,10 +78,10 @@ Ver: `scripts/corregir_clientes_nit.py` y `scripts/corregir_costos_produccion.py
 
 ## Correcciones aplicadas (2026-09-14/15)
 
-1. **Costos**: `scripts/corregir_costos_produccion.py` — 24,304 llantas alineadas al catálogo de Facturación-Precios (fuente manual del negocio). Backup: `backups/delca_pre_costos_*.db`.
-2. **Clientes**: `scripts/corregir_clientes_nit.py` — 4,196 llantas realineadas por NIT (0 ambigüedades). Backup: `backups/delca_pre_clientes_20260914_163911.db`.
-3. **Tiquetes**: `scripts/corregir_tiquetes.py` — 24,450 llantas realineadas al tiquete real (`TIQUETE2` del MAE_PROD, el impreso en la llanta; sin prefijo J). Backup: `backups/delca_pre_tiquetes_*.db`. La excepción `J23489` era una llanta **duplicada** (misma llanta existía como 24922) → eliminada por orden del negocio.
-4. **18 llantas con NIT vacío en legacy**: `scripts/aplicar_clientes_validados.py` — cliente asignado manualmente por el negocio (ROSELLANTAS LTDA, ROBERTO LOPEZ, GIRALDO RIVERA, PEREZ ABELINO, GERARDO BRAVO, TORO JOSE DOMINGO) + **4 NITs reales corregidos** (los previos derivados del código legacy: 0301→005824600, 0135→0025865400, 060→0025845600, 07213518→901585099). Backup: `backups/delca_pre_clientes_validados_20260915_102656.db`.
+1. **Costos**: `scripts/corregir_costos_produccion.py` — 24,304 llantas alineadas al catálogo de Facturación-Precios (fuente manual del negocio). Backup: `backups/migracion/delca_pre_costos_*.db`.
+2. **Clientes**: `scripts/corregir_clientes_nit.py` — 4,196 llantas realineadas por NIT (0 ambigüedades). Backup: `backups/migracion/delca_pre_clientes_20260914_163911.db`.
+3. **Tiquetes**: `scripts/corregir_tiquetes.py` — 24,450 llantas realineadas al tiquete real (`TIQUETE2` del MAE_PROD, el impreso en la llanta; sin prefijo J). Backup: `backups/migracion/delca_pre_tiquetes_*.db`. La excepción `J23489` era una llanta **duplicada** (misma llanta existía como 24922) → eliminada por orden del negocio.
+4. **18 llantas con NIT vacío en legacy**: `scripts/aplicar_clientes_validados.py` — cliente asignado manualmente por el negocio (ROSELLANTAS LTDA, ROBERTO LOPEZ, GIRALDO RIVERA, PEREZ ABELINO, GERARDO BRAVO, TORO JOSE DOMINGO) + **4 NITs reales corregidos** (los previos derivados del código legacy: 0301→005824600, 0135→0025865400, 060→0025845600, 07213518→901585099). Backup: `backups/migracion/delca_pre_clientes_validados_20260915_102656.db`.
 5. **NO unificados** (decisión del negocio): 11 grupos (318 llantas) donde el nombre legacy existe en DELCA con otro NIT — se dejan como quedaron (por NIT), sin mover ni fusionar.
 
 ## Pendientes de validación del negocio (2026-09-15)
