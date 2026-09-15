@@ -26,6 +26,10 @@ CREAR = {
         "nit": "1085250619", "telefono": "3112563822", "celular": "",
         "tqs": ["25064", "25065"],
     },
+    "HERRERA ESTEBAN 2": {
+        "nit": "1085106383", "telefono": "3206669663", "celular": "",
+        "tqs": ["25042", "25043", "25044", "25045"],
+    },
 }
 
 
@@ -40,14 +44,7 @@ def main() -> None:
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
 
-    # Verificar que el NIT nuevo no exista
-    for nombre, info in CREAR.items():
-        duplicado = con.execute("SELECT id, nombre FROM cliente WHERE nit = ?", (info["nit"],)).fetchone()
-        if duplicado:
-            print("[ERROR] NIT {} ya existe en id={} {!r}. Abortando.".format(info["nit"], duplicado["id"], duplicado["nombre"]))
-            return
-
-    # Resolver existentes
+    # Resolver/crear clientes (idempotente: si ya existe por NIT o nombre, se reutiliza)
     plan = []
     for nombre, tqs in EXISTENTES.items():
         c = con.execute("SELECT id, nombre FROM cliente WHERE UPPER(nombre) = ?", (nombre.upper(),)).fetchone()
@@ -56,6 +53,14 @@ def main() -> None:
             return
         plan.append({"nombre": nombre, "id": c["id"], "crear": False, "tqs": tqs, "extra": None})
     for nombre, info in CREAR.items():
+        c = con.execute("SELECT id, nombre FROM cliente WHERE UPPER(nombre) = ?", (nombre.upper(),)).fetchone()
+        if c:
+            plan.append({"nombre": nombre, "id": c["id"], "crear": False, "tqs": info["tqs"], "extra": None})
+            continue
+        duplicado = con.execute("SELECT id, nombre FROM cliente WHERE nit = ?", (info["nit"],)).fetchone()
+        if duplicado:
+            print("[ERROR] NIT {} ya existe en id={} {!r}. Abortando.".format(info["nit"], duplicado["id"], duplicado["nombre"]))
+            return
         plan.append({"nombre": nombre, "id": None, "crear": True, "tqs": info["tqs"], "extra": info})
 
     print("=== PLAN ===")
