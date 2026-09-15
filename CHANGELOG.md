@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.15] — 2026-09-15 — Clientes: 18 llantas validadas manualmente + NITs reales corregidos
+
+### Added
+- **18 asignaciones de cliente validadas manualmente por el negocio** (llantas con NIT vacío en el legacy): ROSELLANTAS LTDA (1355, 1356), ROBERTO LOPEZ (6142, 13422), GIRALDO RIVERA (7206-08), PEREZ ABELINO (12021-22), GERARDO BRAVO (13351, 19826-27, 23486-87), TORO JOSE DOMINGO (14132, 14540, 15113, 17917). Script `scripts/aplicar_clientes_validados.py` (dry-run + backup `delca_pre_clientes_validados_20260915_102656.db`)
+
+### Fixed
+- **NITs reales corregidos** (los anteriores eran derivados del código legacy): ROSELLANTAS LTDA 07213518 → **901585099** · GIRALDO RIVERA 0301 → **005824600** · PEREZ ABELINO 0135 → **0025865400** · GERARDO BRAVO 060 → **0025845600**
+
+### Pending
+- **15 llantas sin cliente**: 7 con códigos huérfanos (C4872/C4873) + 8 sin código en MAE_PROD — lista entregada al negocio para validación (`completar_clientes_15_2026-09-15.csv`)
+
+---
+
 ## [2.8.14] — 2026-09-14 — Corrección de migración: tiquetes realineados al tiquete físico (TIQUETE2)
 
 ### Fixed
