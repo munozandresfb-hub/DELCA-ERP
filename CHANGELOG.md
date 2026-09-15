@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.16] — 2026-09-15 — Clientes: 11 llantas sin cliente asignadas (DELCA + PORTILLO WILBER)
+
+### Added
+- **11 de las 15 llantas sin cliente asignadas** por indicación del negocio:
+  - **DELCA** (id 4895): 6659, 8251, 9588-90, 12491-92, 12516-17 (9 llantas)
+  - **PORTILLO WILBER** (creado: NIT 1085250619, tel 3112563822): 25064-65 (2 llantas)
+- Script `scripts/aplicar_clientes_15.py` (dry-run + backup `delca_pre_llantas_cliente_20260915_110202.db`)
+
+### Pending
+- **4 llantas sin cliente** (25042-45, O.S. 10545): esperando el NIT de **HERRERA ESTEBAN 2** para crear el cliente y asignarlas
+
+---
+
 ## [2.8.15] — 2026-09-15 — Clientes: 18 llantas validadas manualmente + NITs reales corregidos
 
 ### Added
