@@ -32,24 +32,28 @@ class InventarioKpiService:
             mp_disponible = float(mp_query[0] or 0)
             valor_inventario = float(mp_query[1] or 0)
 
-            # Finished tires in plant (no entregadas al cliente)
-            terminadas = (
-                session.query(
-                    func.count(Llanta.id),
-                    func.sum(Llanta.costo_produccion),
-                    func.sum(Llanta.precio_venta),
-                )
+            # Finished tires in plant (no entregadas al cliente) — costo/precio del catálogo
+            from src.modules.llantas.services.costo_precio import (
+                costo_precio,
+                indice_precios,
+            )
+            idx = indice_precios(session)
+            terminadas_rows = (
+                session.query(Llanta)
                 .filter(
                     Llanta.estado.in_(ESTADOS_TERMINADAS),
                     (Llanta.ubicacion_actual.is_(None))
                     | (Llanta.ubicacion_actual != "CLIENTE"),
                 )
-                .first()
-                or (0, 0, 0)
+                .all()
             )
-            llantas_en_planta = terminadas[0] or 0
-            costo_en_planta = float(terminadas[1] or 0)
-            precio_total = float(terminadas[2] or 0)
+            llantas_en_planta = len(terminadas_rows)
+            costo_en_planta = 0.0
+            precio_total = 0.0
+            for ll in terminadas_rows:
+                costo, precio = costo_precio(ll, idx)
+                costo_en_planta += costo
+                precio_total += precio
             margen_potencial = round(precio_total - costo_en_planta, 2)
 
             # Production capacity
@@ -124,10 +128,14 @@ class InventarioKpiService:
                 .order_by(Llanta.fecha_ingreso.asc())
                 .all()
             )
+            from src.modules.llantas.services.costo_precio import (
+                costo_precio,
+                indice_precios,
+            )
+            idx = indice_precios(session)
             for ll in llantas:
                 dias = (hoy - ll.fecha_ingreso).days if ll.fecha_ingreso else 0
-                costo = float(ll.costo_produccion or 0)
-                precio = float(ll.precio_venta or 0)
+                costo, precio = costo_precio(ll, idx)
                 resultados.append({
                     "id": ll.id,
                     "tiquete": formatear_tiquete(ll.tiquete),
@@ -176,15 +184,20 @@ class InventarioKpiService:
                 .order_by(Llanta.fecha_ingreso.desc())
                 .all()
             )
+            from src.modules.llantas.services.costo_precio import (
+                costo_precio,
+                indice_precios,
+            )
+            idx = indice_precios(session)
             return [
                 {
                     "tiquete": formatear_tiquete(ll.tiquete),
                     "dimension": ll.dimension_obj.display if ll.dimension_obj else ll.dimension,
                     "diseno": ll.diseno_obj.nombre if ll.diseno_obj else "",
                     "cliente": ll.cliente.nombre if ll.cliente else "",
-                    "costo": float(ll.costo_produccion or 0),
-                    "precio": float(ll.precio_venta or 0),
-                    "margen": round(float(ll.precio_venta or 0) - float(ll.costo_produccion or 0), 2),
+                    "costo": round(costo_precio(ll, idx)[0], 2),
+                    "precio": round(costo_precio(ll, idx)[1], 2),
+                    "margen": round(costo_precio(ll, idx)[1] - costo_precio(ll, idx)[0], 2),
                     "estado": ll.estado,
                     "fecha": ll.fecha_ingreso,
                 }

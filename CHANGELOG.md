@@ -7,6 +7,26 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.17] — 2026-09-16 — Reporte de llantas: costo/precio desde el catálogo de Facturación-Precios
+
+### Changed (regla de negocio indicada por el cliente)
+- **Costo** (columna Costo del reporte de llantas) = `precios_producto.costo_fabricacion` por **(diseño + dimensión)** — refleja en vivo los ajustes del catálogo
+- **Precio** (columna Precio) = **precio de venta** (`precio_normal`) por diseño + dimensión; si la referencia no tiene precio normal → **precio mínimo** (`precio_minimo`)
+- **Sin cobertura** en el catálogo → **precio de referencia = 1 peso** (146 llantas; se ajustó también el dato `precio_venta` con backup `delca_pre_precio_sin_cob_20260916_174907.db`)
+- Utilidad, margen y KPIs derivados usan estos valores en **toda la herramienta**
+
+### Implementación (nuevo helper `src/modules/llantas/services/costo_precio.py`)
+- `reporte_llantas` (filas + KPIs: valor_inventario, utilidad_potencial, con/sin precio)
+- `detalle_financiero_llantas` (llantas; las "Llantas nuevas" facturadas conservan su precio real)
+- `indicadores_llantas` (resumen + detalle + por_estado con costos del catálogo)
+- `inventario_kpi_service` (`resumen_kpis`, `terminadas_en_planta`, `reporte_semanal`)
+
+### Verificación
+- 24,304 llantas con cobertura (costo/precio del catálogo validados vs precios_producto) · 146 sin cobertura → precio 1
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.16] — 2026-09-15 — Clientes: 15 llantas sin cliente asignadas (migración 100% completa)
 
 ### Added
