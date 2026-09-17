@@ -20,7 +20,7 @@ from src.modules.inventario.services.producto_service import ProductoService
 class _CrearProductoMPDialog(QDialog):
     """Rápido formulario para crear productos de materia prima desde inventario."""
 
-    UNIDADES = ["UNIDAD", "KG", "LT", "CAJA", "PAQ"]
+    UNIDADES = ["UNIDAD", "KG", "LT", "CAJA", "PAQ", "ROLLO"]
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -38,7 +38,7 @@ class _CrearProductoMPDialog(QDialog):
 
         self.precio_input = QLineEdit()
         self.precio_input.setPlaceholderText("0.00")
-        layout.addRow("Precio Unit. $:", self.precio_input)
+        layout.addRow("Costo Unitario $:", self.precio_input)
 
         self.cantidad_input = QLineEdit()
         self.cantidad_input.setPlaceholderText("0")

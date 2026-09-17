@@ -12,7 +12,7 @@ class Producto(Base):
     __tablename__ = "productos"
 
     __table_args__ = (
-        CheckConstraint("unidad_medida IN ('UNidad','KG','LT','MT','CAJA','PAQ')"),
+        CheckConstraint("unidad_medida IN ('UNidad','KG','LT','MT','CAJA','PAQ','ROLLO')"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

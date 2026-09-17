@@ -7,6 +7,24 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.20] — 2026-09-17 — Migración de Materia Prima (bandas de reencauche) + unidad ROLLO
+
+### Added (datos — migración desde Excel)
+- **74 bandas de reencauche migradas** desde `DELCA INVENTARIO. MIGRAR.xlsx` (hoja "Materia prima") con `scripts/migrar_materia_prima.py` (dry-run + backup `delca_pre_migrar_mp_20260917_153937.db`):
+  - Nombre → `nombre` · Codigo → `sku` (sin código → **generado del nombre**, ej. `BANDAVU165`) · Precio Unitario → `costo_unitario` · KG → `stock_kg` · Rollos → `stock` · Mínimo → `stock_minimo` · Unidad → `ROLLO`
+  - **42 movimientos ENTRADA** (kardex) con la fecha de ingreso del Excel (2026-09-14) para bandas con stock
+  - Excluida la fila vacía "Banda PBA" · UPSERT por SKU (robusto a re-ejecuciones)
+- **Verificación fila a fila: 74/74 coinciden (0 errores)**
+
+### Changed (código)
+- **Unidad de medida "ROLLO"**: agregada al CheckConstraint del modelo `productos` y a la lista del formulario de Materia Prima
+- **Formulario "Nuevo Producto – Materia Prima"**: campo "Precio Unit. $" renombrado a **"Costo Unitario $"** (define claramente que es el costo de la banda, no su precio de venta)
+
+### Verification
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.19] — 2026-09-17 — Unificación de dimensiones + filtros en reporte + stock KG + auto-precio en llanta
 
 ### Changed (datos — indicación del negocio)
