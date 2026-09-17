@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.18] — 2026-09-16 — Facturación: precio de la llanta pre-rellenado desde el catálogo (automático)
+
+### Changed
+- **Diálogo de facturación**: al agregar una llanta, el precio se pre-rellena **desde el catálogo** `precios_producto` (por diseño + dimensión: `precio_normal` → `precio_minimo` → 1 peso sin cobertura) en lugar del dato guardado en la llanta. **Automático, sin botones** — reutiliza el helper `costo_precio`
+- El precio sigue siendo **editable** en el diálogo (precios especiales) y el histórico de facturas creadas no cambia
+- Archivo: `src/modules/finanzas/views/facturacion_view/_factura_form_dialog.py` (1 punto de cambio, línea del precio)
+
+### Verification
+- 24,304 llantas con cobertura → precio del catálogo pre-rellenado (validado vs precios_producto) · 146 sin cobertura → 1 editable
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.17] — 2026-09-16 — Reporte de llantas: costo/precio desde el catálogo de Facturación-Precios
 
 ### Changed (regla de negocio indicada por el cliente)

@@ -19,9 +19,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.database.engine import get_session
 from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.finanzas.services.factura_service import FacturaService
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.costo_precio import costo_precio, indice_precios
 from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 
 
@@ -29,8 +31,9 @@ class FacturaFormDialog(QDialog):
     """Dialog for creating a new invoice from billed tires.
 
     One or more tires can be added; each line pre-fills its price from the
-    tire's ``precio_venta`` (set in "Nueva Llanta") and can be edited. The
-    total pre-fills as the sum of line prices but stays manually editable —
+    price catalog (``precios_producto`` por diseño + dimensión: precio_normal
+    → precio_minimo → 1 peso sin cobertura) and can be edited. The total
+    pre-fills as the sum of line prices but stays manually editable —
     the final total is the amount charged to the client.
     """
 
@@ -41,6 +44,7 @@ class FacturaFormDialog(QDialog):
         self._clientes: list[tuple[int, str]] = []
         self._items: list[dict] = []
         self._llantas_dict: dict[int, Llanta] = {}
+        self._idx_precios: dict[tuple[int, int], dict] = {}
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -175,6 +179,8 @@ class FacturaFormDialog(QDialog):
 
     def _cargar_llantas_disponibles(self) -> None:
         """Load tires not yet billed in an active invoice."""
+        with get_session() as session:
+            self._idx_precios = indice_precios(session)
         disponibles = FacturaService.listar_llantas_facturables()
         self._llantas_dict = {l.id: l for l in disponibles}
         self.llanta_combo.clear()
@@ -200,7 +206,8 @@ class FacturaFormDialog(QDialog):
             QMessageBox.warning(self, "Error", "Llanta no encontrada")
             return
 
-        precio = float(llanta.precio_venta or 0)
+        # Precio desde el catálogo (diseño+dimensión): normal → mínimo → 1 sin cobertura
+        precio = costo_precio(llanta, self._idx_precios)[1]
         self._items.append(
             {
                 "tipo": "Reencauchada",
