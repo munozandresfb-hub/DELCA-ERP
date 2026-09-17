@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 from decimal import Decimal
 from PySide6.QtCore import QDate
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
@@ -39,7 +38,7 @@ class KardexView(QWidget):
     """Kardex — movement ledger with registration and consultation."""
 
     COLUMNAS = [
-        "ID", "Fecha", "Producto", "SKU", "Tipo",
+        "ID", "Fecha", "Producto", "SKU", "Documento de:",
         "Cantidad", "Costo Unit.", "Saldo", "Referencia", "Observaciones",
     ]
 
@@ -142,7 +141,7 @@ class KardexView(QWidget):
         self.producto_combo.currentIndexChanged.connect(self._cargar_datos)
         filter_row.addWidget(self.producto_combo)
 
-        filter_row.addWidget(QLabel("Tipo:"))
+        filter_row.addWidget(QLabel("Documento de:"))
         self.tipo_combo = QComboBox()
         self.tipo_combo.addItems(["Todos", "ENTRADA", "SALIDA", "MERMA", "AJUSTE"])
         self.tipo_combo.currentIndexChanged.connect(self._cargar_datos)
@@ -267,21 +266,6 @@ class KardexView(QWidget):
             self.table.setItem(row, 8, QTableWidgetItem(m.referencia or ""))
             self.table.setItem(row, 9, QTableWidgetItem(m.observaciones or ""))
 
-            # Color coding
-            color = None
-            if m.tipo == "ENTRADA":
-                color = "#d5f5e3"  # soft green
-            elif m.tipo in ("SALIDA", "MERMA"):
-                color = "#fadbd8"  # soft red
-            elif m.tipo == "AJUSTE":
-                color = "#fcf3cf"  # soft yellow
-
-            if color:
-                for col in range(self.table.columnCount()):
-                    item = self.table.item(row, col)
-                    if item:
-                        item.setBackground(QColor(color))
-
         self.table.setColumnHidden(0, True)
 
     def _buscar_producto(self, producto_id: int) -> dict | None:
@@ -393,7 +377,7 @@ class KardexView(QWidget):
         if self.producto_combo.currentIndex() > 0:
             filtros += f" | Producto: {self.producto_combo.currentText()}"
         if self.tipo_combo.currentIndex() > 0:
-            filtros += f" | Tipo: {self.tipo_combo.currentText()}"
+            filtros += f" | Documento de: {self.tipo_combo.currentText()}"
         pdf.cell(0, 6, filtros, align="C", new_x="LMARGIN", new_y="NEXT")
         pdf.ln(4)
 

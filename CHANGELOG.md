@@ -7,6 +7,17 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.21] — 2026-09-17 — Kardex: estilo de tabla igual al inventario + "Documento de:"
+
+### Changed
+- **Kardex**: eliminados los fondos de color por tipo de movimiento (verde/rojo/amarillo suaves) que hacían poco legible el texto de los productos — la tabla ahora usa el **mismo estilo de la vista Inventario** (filas alternas estándar)
+- Columna y filtro "Tipo" renombrados a **"Documento de:"** (filtro, columna y exportación PDF)
+
+### Verification
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.20] — 2026-09-17 — Migración de Materia Prima (bandas de reencauche) + unidad ROLLO
 
 ### Added (datos — migración desde Excel)
