@@ -29,6 +29,8 @@ class _LlantasReports:
         fecha_hasta: datetime | None = None,
         busqueda: str | None = None,
         solo_planta: bool = False,
+        diseno_id: int | None = None,
+        dimension_id: int | None = None,
         limite: int | None = None,
         offset: int = 0,
     ) -> dict:
@@ -95,6 +97,10 @@ class _LlantasReports:
                     | Llanta.marca.ilike(pattern)
                     | Llanta.dimension.ilike(pattern)
                 )
+            if diseno_id is not None:
+                q = q.filter(Llanta.diseno_id == diseno_id)
+            if dimension_id is not None:
+                q = q.filter(Llanta.dimension_id == dimension_id)
 
             # ── KPIs y filas: costo/precio desde el catálogo (diseño+dimensión) ──
             from src.modules.llantas.services.costo_precio import (

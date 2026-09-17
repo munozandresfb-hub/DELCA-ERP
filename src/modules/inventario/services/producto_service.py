@@ -74,6 +74,7 @@ class ProductoService:
         costo_unitario: Decimal = Decimal("0"),
         precio_venta: Decimal = Decimal("0"),
         stock_inicial: Decimal = Decimal("0"),
+        stock_kg: Decimal = Decimal("0"),
         stock_minimo: Decimal = Decimal("0"),
         unidad_medida: str = "UNIDAD",
     ) -> tuple[bool, str | Producto]:
@@ -106,6 +107,7 @@ class ProductoService:
                 else None,
                 categoria=categoria,
                 stock=stock_inicial,
+                stock_kg=stock_kg,
                 stock_minimo=stock_minimo,
                 costo_unitario=costo_unitario,
                 precio_venta=precio_venta,

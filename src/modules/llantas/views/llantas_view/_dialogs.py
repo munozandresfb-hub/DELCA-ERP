@@ -23,7 +23,6 @@ from src.modules.clientes.repositories.cliente_repository import ClienteReposito
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
 from src.modules.llantas.services.llanta_service import ESTADOS_PROCESO, LlantaService
-from src.modules.inventario.services.precio_producto_service import PrecioProductoService
 
 
 class LlantaFormDialog(QDialog):
@@ -249,16 +248,29 @@ class LlantaFormDialog(QDialog):
     # ── Diseños: independientes de la marca (combo cargado al inicio) ──
 
     def _auto_cargar_precio(self) -> None:
-        """Auto-fill precio_venta from PrecioProducto when both combos are selected."""
+        """Auto-fill precio_venta from the price catalog (diseño+dimensión).
+
+        Regla consistente con el resto de la herramienta: precio_normal →
+        precio_minimo → 1 peso si la referencia no tiene cobertura.
+        """
         diseno_id = self.diseno_combo.currentData()
         dimension_id = self.dimension_combo.currentData()
         if not diseno_id or not dimension_id:
             return
-        resultados = PrecioProductoService.listar(diseno_id=diseno_id, dimension_id=dimension_id)
-        if not resultados:
-            return
-        p = resultados[0]
-        self.precio_venta_spin.setValue(float(p.precio_normal))
+        from types import SimpleNamespace
+
+        from src.modules.llantas.services.costo_precio import (
+            costo_precio,
+            indice_precios,
+        )
+        with get_session() as session:
+            idx = indice_precios(session)
+        llanta_proxy = SimpleNamespace(
+            dimension_id=dimension_id, diseno_id=diseno_id,
+            costo_produccion=0, precio_venta=0,
+        )
+        _, precio = costo_precio(llanta_proxy, idx)
+        self.precio_venta_spin.setValue(precio)
 
     # ── Validación en vivo del tiquete ──────────────────────────────
 

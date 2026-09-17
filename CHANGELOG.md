@@ -7,6 +7,27 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.19] — 2026-09-17 — Unificación de dimensiones + filtros en reporte + stock KG + auto-precio en llanta
+
+### Changed (datos — indicación del negocio)
+- **Unificación de dimensiones** (`scripts/unificar_dimensiones.py`, backup `delca_pre_unif_dim_20260917_145115.db`):
+  - `95R17.5` → `9.5R17.5` (0 llantas; 6 refs duplicadas del catálogo eliminadas — 9.5R17.5 conserva sus precios)
+  - `7R15` → `700R15` (232 llantas; 1 ref duplicada eliminada — 700R15 conserva su precio; 8 refs sin equivalente **movidas con sus precios**)
+  - `7R16` → `700R16` (**creada**, 654 llantas; 8 refs movidas con sus precios)
+  - Las 3 dimensiones viejas eliminadas (verificado: 0 referencias restantes)
+
+### Added / Changed (código)
+- **Reporte de Llantas**: nuevos filtros **Diseño** y **Dimensión** (2 combos, sin botones nuevos) — `reporte_llantas(diseno_id, dimension_id)` + vista
+- **Inventario → Nuevo Producto**: "Cantidad inicial" renombrada a "**Cantidad en planta Und**" + nueva casilla "**Cantidad en planta en KG**" (columna `stock_kg` en `productos`, backup `delca_pre_stock_kg.db`)
+- **Registro de Llanta**: auto-precio del catálogo con regla completa (normal → mínimo → 1 sin cobertura) — consistente con reporte/facturación
+
+### Verification
+- Filtros: dimension_id=28 → 232 llantas · +diseño VT50L → 118
+- Producto: stock=10 + stock_kg=250.5 guardado/leído correcto
+- Cobertura: 700R15 y 700R16 con 0 llantas sin precio · 161 tests · EXE recompilado
+
+---
+
 ## [2.8.18] — 2026-09-16 — Facturación: precio de la llanta pre-rellenado desde el catálogo (automático)
 
 ### Changed

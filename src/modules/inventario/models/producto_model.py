@@ -25,6 +25,7 @@ class Producto(Base):
         String(100), nullable=True, index=True
     )
     stock: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    stock_kg: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     costo_unitario: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), default=0
     )

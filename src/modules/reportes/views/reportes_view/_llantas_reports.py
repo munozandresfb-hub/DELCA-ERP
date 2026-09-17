@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from src.modules.llantas.services.llanta_service import (
     ESTADOS_PROCESO,
+    LlantaService,
     UBICACIONES_PLANTA,
 )
 from src.modules.reportes.services.reporte_service import ReporteService
@@ -61,6 +62,26 @@ class _LlantasReportView:
         self._rep_ubicacion = QComboBox()
         self._rep_ubicacion.addItems(["Todas", *UBICACIONES_PLANTA])
         filters.addWidget(self._rep_ubicacion)
+
+        filters.addWidget(QLabel("Diseño:"))
+        self._rep_diseno = QComboBox()
+        self._rep_diseno.addItem("Todos", None)
+        try:
+            for d in LlantaService.listar_disenos():
+                self._rep_diseno.addItem(d.nombre, d.id)
+        except Exception:
+            pass
+        filters.addWidget(self._rep_diseno)
+
+        filters.addWidget(QLabel("Dimensión:"))
+        self._rep_dimension = QComboBox()
+        self._rep_dimension.addItem("Todas", None)
+        try:
+            for m in LlantaService.listar_dimensiones():
+                self._rep_dimension.addItem(m.display, m.id)
+        except Exception:
+            pass
+        filters.addWidget(self._rep_dimension)
 
         layout.addLayout(filters)
 
@@ -134,6 +155,8 @@ class _LlantasReportView:
         estado = estado_raw if estado_raw != "Todos" else None
         ubic_raw = self._rep_ubicacion.currentText()
         ubicacion = ubic_raw if ubic_raw != "Todas" else None
+        diseno_id = self._rep_diseno.currentData()
+        dimension_id = self._rep_dimension.currentData()
         solo_planta = self._rep_solo_planta.isChecked()
         busqueda = self._rep_busqueda.text().strip() or None
 
@@ -150,6 +173,8 @@ class _LlantasReportView:
             fecha_hasta=fecha_hasta,
             busqueda=busqueda,
             solo_planta=solo_planta,
+            diseno_id=diseno_id,
+            dimension_id=dimension_id,
             # Limite de filas en la tabla (los KPIs se calculan en SQL
             # sobre el total, no sobre la pagina). Evita saturar la UI
             # con decenas de miles de filas.

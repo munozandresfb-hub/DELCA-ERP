@@ -42,7 +42,11 @@ class _CrearProductoMPDialog(QDialog):
 
         self.cantidad_input = QLineEdit()
         self.cantidad_input.setPlaceholderText("0")
-        layout.addRow("Cantidad inicial:", self.cantidad_input)
+        layout.addRow("Cantidad en planta Und:", self.cantidad_input)
+
+        self.stock_kg_input = QLineEdit()
+        self.stock_kg_input.setPlaceholderText("0")
+        layout.addRow("Cantidad en planta en KG:", self.stock_kg_input)
 
         self.minimo_input = QLineEdit()
         self.minimo_input.setPlaceholderText("0")
@@ -92,6 +96,15 @@ class _CrearProductoMPDialog(QDialog):
             return
 
         try:
+            stock_kg = Decimal(self.stock_kg_input.text() or "0")
+        except Exception:
+            QMessageBox.warning(self, "Validación", "Cantidad en KG inválida")
+            return
+        if stock_kg < 0:
+            QMessageBox.warning(self, "Validación", "La cantidad en KG no puede ser negativa")
+            return
+
+        try:
             minimo = Decimal(self.minimo_input.text() or "0")
         except Exception:
             QMessageBox.warning(self, "Validación", "Mínimo inválido")
@@ -106,6 +119,7 @@ class _CrearProductoMPDialog(QDialog):
             categoria="MATERIA_PRIMA",
             costo_unitario=precio,
             stock_inicial=cantidad,
+            stock_kg=stock_kg,
             stock_minimo=minimo,
             unidad_medida=self.unidad_combo.currentText(),
         )
@@ -122,6 +136,7 @@ class _CrearProductoMPDialog(QDialog):
             "categoria": "MATERIA_PRIMA",
             "costo_unitario": Decimal(self.precio_input.text() or "0"),
             "stock_inicial": Decimal(self.cantidad_input.text() or "0"),
+            "stock_kg": Decimal(self.stock_kg_input.text() or "0"),
             "stock_minimo": Decimal(self.minimo_input.text() or "0"),
             "unidad_medida": self.unidad_combo.currentText(),
         }
