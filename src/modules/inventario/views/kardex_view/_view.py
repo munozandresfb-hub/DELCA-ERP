@@ -95,17 +95,9 @@ class KardexView(QWidget):
         )
         btn_ajuste.clicked.connect(lambda: self._abrir_formulario("AJUSTE"))
 
-        btn_merma = QPushButton("📋 Merma")
-        btn_merma.setStyleSheet(
-            "QPushButton { background: #e67e22; color: white; font-weight: bold; "
-            "padding: 8px 16px; border-radius: 5px; border: none; }"
-        )
-        btn_merma.clicked.connect(lambda: self._abrir_formulario("MERMA"))
-
         toolbar.addWidget(btn_ingreso)
         toolbar.addWidget(btn_salida)
         toolbar.addWidget(btn_ajuste)
-        toolbar.addWidget(btn_merma)
 
         # ── Export buttons ───────────────────────────────────────────
         separator = QLabel("  │  ")

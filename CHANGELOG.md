@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.22] — 2026-09-17 — Kardex: formulario salida/ajuste simplificado + botón Merma eliminado
+
+### Changed
+- **Formulario "Registrar Salida de MP" (SALIDA)**: eliminado el campo "Costo Unit. $" (usa el costo actual del producto) · campo "Referencia" → **"Unidad de medida"** (autocompletado con la unidad del producto seleccionado)
+- **Formulario "Ajustar Stock" (AJUSTE)**: queda igual que el de salida (sin costo, con "Unidad de medida")
+- **Formulario "Registrar Ingreso de MP" (ENTRADA)**: conserva "Costo Unit. $" y "Referencia" (inalterado)
+- **Botón "Merma" eliminado** de la barra del Kardex (el tipo MERMA sigue disponible solo para consulta de movimientos históricos)
+
+### Verification
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.21] — 2026-09-17 — Kardex: estilo de tabla igual al inventario + "Documento de:"
 
 ### Changed
