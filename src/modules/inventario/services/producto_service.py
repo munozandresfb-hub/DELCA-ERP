@@ -255,6 +255,7 @@ class ProductoService:
             )
             return [
                 {
+                    "id": m.id,
                     "producto": p.nombre,
                     "sku": p.sku,
                     "unidad": p.unidad_medida or "",
@@ -267,6 +268,100 @@ class ProductoService:
                 }
                 for m, p in rows
             ]
+
+    @staticmethod
+    def editar_movimiento(
+        movimiento_id: int,
+        cantidad: Decimal,
+        cantidad_kg: Decimal = Decimal("0"),
+        fecha=None,
+        observaciones: str | None = None,
+    ) -> tuple[bool, str]:
+        """Edita un movimiento de inventario ajustando el stock del producto.
+
+        ENTRADA/SALIDA: revierte el efecto original y aplica el nuevo.
+        AJUSTE: fija el stock al nuevo valor indicado.
+        """
+        from src.modules.inventario.models.movimiento_inventario_model import (
+            MovimientoInventario,
+        )
+
+        with get_session() as session:
+            mov = (
+                session.query(MovimientoInventario)
+                .filter(MovimientoInventario.id == movimiento_id)
+                .first()
+            )
+            if not mov:
+                return False, "Movimiento no encontrado"
+            producto = session.query(Producto).filter(Producto.id == mov.producto_id).first()
+            if not producto:
+                return False, "Producto no encontrado"
+            if cantidad < 0 or cantidad_kg < 0:
+                return False, "Las cantidades no pueden ser negativas"
+
+            # Revertir el efecto original
+            if mov.tipo == "ENTRADA":
+                producto.stock -= mov.cantidad
+                producto.stock_kg -= Decimal(mov.cantidad_kg or 0)
+            elif mov.tipo in ("SALIDA", "MERMA"):
+                producto.stock += mov.cantidad
+                producto.stock_kg += Decimal(mov.cantidad_kg or 0)
+
+            # Validar stock suficiente para la nueva salida
+            if mov.tipo in ("SALIDA", "MERMA") and cantidad > producto.stock:
+                return False, f"Stock insuficiente: {producto.stock}"
+            if mov.tipo in ("SALIDA", "MERMA") and cantidad_kg > producto.stock_kg:
+                return False, f"Stock insuficiente en KG: {producto.stock_kg}"
+
+            # Aplicar el nuevo valor
+            if mov.tipo == "ENTRADA":
+                producto.stock += cantidad
+                producto.stock_kg += cantidad_kg
+            elif mov.tipo in ("SALIDA", "MERMA"):
+                producto.stock -= cantidad
+                producto.stock_kg -= cantidad_kg
+            elif mov.tipo == "AJUSTE":
+                producto.stock = cantidad
+                producto.stock_kg = cantidad_kg
+
+            mov.cantidad = cantidad
+            mov.cantidad_kg = cantidad_kg
+            if fecha is not None:
+                mov.fecha = fecha
+            if observaciones is not None:
+                mov.observaciones = observaciones.strip() or None
+            return True, f"Movimiento actualizado. Stock: {producto.stock}"
+
+    @staticmethod
+    def eliminar_movimiento(movimiento_id: int) -> tuple[bool, str]:
+        """Elimina un movimiento de inventario y revierte su efecto en el stock.
+
+        Un AJUSTE no se puede eliminar (el stock quedó fijado por el ajuste).
+        """
+        from src.modules.inventario.models.movimiento_inventario_model import (
+            MovimientoInventario,
+        )
+
+        with get_session() as session:
+            mov = (
+                session.query(MovimientoInventario)
+                .filter(MovimientoInventario.id == movimiento_id)
+                .first()
+            )
+            if not mov:
+                return False, "Movimiento no encontrado"
+            if mov.tipo == "AJUSTE":
+                return False, "No se puede eliminar un ajuste (el stock quedó fijado)"
+            producto = session.query(Producto).filter(Producto.id == mov.producto_id).first()
+            if mov.tipo == "ENTRADA":
+                producto.stock -= mov.cantidad
+                producto.stock_kg -= Decimal(mov.cantidad_kg or 0)
+            elif mov.tipo in ("SALIDA", "MERMA"):
+                producto.stock += mov.cantidad
+                producto.stock_kg += Decimal(mov.cantidad_kg or 0)
+            session.delete(mov)
+            return True, "Movimiento eliminado y stock revertido"
 
     @staticmethod
     def registrar_movimiento(

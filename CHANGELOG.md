@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.28] — 2026-09-18 — Kardex: editar/eliminar producto del documento + "Ingresar producto"/"Finalizar"
+
+### Added / Changed
+- **Detalle del documento** (Documentos de inventario): nuevo botón **"✏️ Editar"** junto a "Cerrar" — permite **editar un producto del documento** (cantidad Und, KG, fecha, observaciones) o **eliminarlo** (revertiendo el stock). El botón Eliminar no aplica a movimientos de tipo AJUSTE (el stock quedó fijado)
+- **Formularios de movimiento** (Ingreso manual, Salida manual, Ajuste): botón **"📦 Ingresar producto"** — guarda el movimiento y **limpia el formulario para agregar otro producto sin cerrarlo** (el N° de documento permanece constante) · botón **"✅ Finalizar"** — guarda y cierra · "Cancelar" descarta
+- **Servicio**: `editar_movimiento` (revierte y reaplica el efecto en stock/stock_kg; AJUSTE fija) y `eliminar_movimiento` (revierte el stock; no permite eliminar AJUSTE)
+
+### Verification
+- Editar salida 2→4 und / 20→40 kg → stock 6/60 ✓ · eliminar salida → stock revertido a 20/200 ✓
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.27] — 2026-09-18 — Diseños de banda sincronizados con productos MP (Kardex automático)
 
 ### Fixed

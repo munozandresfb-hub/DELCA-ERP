@@ -97,13 +97,28 @@ class _MovimientoFormDialog(QDialog):
         self.obs_input.setPlaceholderText("Observaciones opcionales")
         layout.addRow("Observaciones:", self.obs_input)
 
-        # Buttons
-        btn_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        # Buttons: Ingresar producto (continúa sin cerrar) / Finalizar (cierra) / Cancelar
+        btn_row = QHBoxLayout()
+        btn_ingresar = QPushButton("📦 Ingresar producto")
+        btn_ingresar.setStyleSheet(
+            "QPushButton { background: #27ae60; color: white; font-weight: bold; "
+            "padding: 8px 16px; border-radius: 5px; border: none; }"
         )
-        btn_box.accepted.connect(self._guardar)
-        btn_box.rejected.connect(self.reject)
-        layout.addRow(btn_box)
+        btn_ingresar.clicked.connect(self._guardar_y_continuar)
+        btn_row.addWidget(btn_ingresar)
+
+        btn_finalizar = QPushButton("✅ Finalizar")
+        btn_finalizar.setStyleSheet(
+            "QPushButton { background: #2c3e50; color: white; font-weight: bold; "
+            "padding: 8px 16px; border-radius: 5px; border: none; }"
+        )
+        btn_finalizar.clicked.connect(self._guardar_y_finalizar)
+        btn_row.addWidget(btn_finalizar)
+
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.clicked.connect(self.reject)
+        btn_row.addWidget(btn_cancelar)
+        layout.addRow(btn_row)
 
         self.setLayout(layout)
 
@@ -151,33 +166,48 @@ class _MovimientoFormDialog(QDialog):
         ratio = Decimal(str(stock_kg)) / Decimal(str(stock))
         self.kg_input.setText(f"{und * ratio:.2f}")
 
-    def _guardar(self) -> None:
+    def _guardar_y_continuar(self) -> None:
+        """Guarda el movimiento y limpia el formulario para agregar otro producto
+        (el N° de documento permanece constante)."""
+        if self._procesar():
+            self.cantidad_input.clear()
+            self.kg_input.clear()
+            self.obs_input.clear()
+            self.cantidad_input.setFocus()
+
+    def _guardar_y_finalizar(self) -> None:
+        """Guarda el movimiento y cierra el formulario."""
+        if self._procesar():
+            self.accept()
+
+    def _procesar(self) -> bool:
+        """Valida y registra el movimiento. Devuelve True si se registró."""
         data = self.producto_combo.currentData()
         if data is None:
             QMessageBox.warning(self, "Validación", "Seleccione un producto")
-            return
+            return False
         producto_id, costo_default, unidad, _, _ = data
 
         try:
             cantidad = Decimal(self.cantidad_input.text() or "0")
         except Exception:
             QMessageBox.warning(self, "Validación", "Cantidad Und inválida")
-            return
+            return False
         if cantidad < 0:
             QMessageBox.warning(self, "Validación", "La cantidad Und no puede ser negativa")
-            return
+            return False
         if cantidad == 0 and self._tipo != "AJUSTE":
             QMessageBox.warning(self, "Validación", "La cantidad Und debe ser mayor a cero")
-            return
+            return False
 
         try:
             cantidad_kg = Decimal(self.kg_input.text() or "0")
         except Exception:
             QMessageBox.warning(self, "Validación", "Cantidad KG inválida")
-            return
+            return False
         if cantidad_kg < 0:
             QMessageBox.warning(self, "Validación", "La cantidad KG no puede ser negativa")
-            return
+            return False
 
         # Costo: editable solo en ENTRADA; en SALIDA/AJUSTE se usa el del producto
         if self.costo_input is not None:
@@ -185,7 +215,7 @@ class _MovimientoFormDialog(QDialog):
                 costo = Decimal(self.costo_input.text() or "0")
             except Exception:
                 QMessageBox.warning(self, "Validación", "Costo inválido")
-                return
+                return False
             if costo == 0:
                 costo = costo_default
         else:
@@ -198,7 +228,7 @@ class _MovimientoFormDialog(QDialog):
             if not numero:
                 etiqueta = "N° Factura" if self._tipo == "ENTRADA" else "N° Documento"
                 QMessageBox.warning(self, "Validación", f"El {etiqueta} es obligatorio")
-                return
+                return False
             ok, res = ProductoService.crear_documento(
                 numero_documento=numero,
                 tipo="INGRESO" if self._tipo == "ENTRADA" else "SALIDA",
@@ -206,7 +236,7 @@ class _MovimientoFormDialog(QDialog):
             )
             if not ok:
                 QMessageBox.warning(self, "Error", str(res))
-                return
+                return False
             documento_id = int(res)
             self._numero_guardado = numero
 
@@ -223,10 +253,10 @@ class _MovimientoFormDialog(QDialog):
             observaciones=observaciones,
             documento_id=documento_id,
         )
-        if ok:
-            self.accept()
-        else:
+        if not ok:
             QMessageBox.warning(self, "Error", str(msg))
+            return False
+        return True
 
     @property
     def numero_guardado(self) -> str | None:
@@ -371,6 +401,7 @@ class _DetalleDocumentoDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"Documento {numero_documento}")
         self.resize(720, 400)
+        self._documento_id = documento_id
         layout = QVBoxLayout()
 
         header = QLabel(
@@ -392,15 +423,27 @@ class _DetalleDocumentoDialog(QDialog):
 
         btn_cerrar = QPushButton("Cerrar")
         btn_cerrar.clicked.connect(self.accept)
-        layout.addWidget(btn_cerrar)
+
+        btn_editar = QPushButton("✏️ Editar")
+        btn_editar.setStyleSheet(
+            "QPushButton { background: #2c3e50; color: white; font-weight: bold; "
+            "padding: 8px 18px; border-radius: 5px; border: none; }"
+        )
+        btn_editar.clicked.connect(self._editar_seleccionado)
+
+        btn_row = QHBoxLayout()
+        btn_row.addWidget(btn_editar)
+        btn_row.addStretch()
+        btn_row.addWidget(btn_cerrar)
+        layout.addLayout(btn_row)
 
         self.setLayout(layout)
         self._cargar(documento_id)
 
     def _cargar(self, documento_id: int) -> None:
-        movs = ProductoService.movimientos_por_documento(documento_id)
-        self.table.setRowCount(len(movs))
-        for row, m in enumerate(movs):
+        self._movs = ProductoService.movimientos_por_documento(documento_id)
+        self.table.setRowCount(len(self._movs))
+        for row, m in enumerate(self._movs):
             self.table.setItem(
                 row, 0,
                 QTableWidgetItem(m["fecha"].strftime("%Y-%m-%d %H:%M") if m["fecha"] else ""),
@@ -412,3 +455,112 @@ class _DetalleDocumentoDialog(QDialog):
             self.table.setItem(row, 5, QTableWidgetItem(f"{m['cantidad_kg']:,.2f}"))
             self.table.setItem(row, 6, QTableWidgetItem(m["referencia"] or ""))
             self.table.setItem(row, 7, QTableWidgetItem(m["observaciones"] or ""))
+
+    def _editar_seleccionado(self) -> None:
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self._movs):
+            QMessageBox.warning(self, "Validación", "Seleccione un producto del documento")
+            return
+        mov = self._movs[row]
+        dlg = _EditarMovimientoDialog(mov, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._cargar(self._documento_id)
+
+
+class _EditarMovimientoDialog(QDialog):
+    """Permite editar o eliminar un producto (movimiento) dentro de un documento."""
+
+    def __init__(self, mov: dict, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._mov = mov
+        self.setWindowTitle(f"Editar producto del documento — {mov.get('sku', '')}")
+        self.resize(420, 300)
+        layout = QFormLayout()
+
+        # Producto (solo lectura)
+        producto_lbl = QLabel(f"{mov.get('producto', '')} ({mov.get('sku', '')})")
+        layout.addRow("Producto:", producto_lbl)
+
+        tipo_lbl = QLabel(mov.get("tipo", ""))
+        layout.addRow("Tipo:", tipo_lbl)
+
+        self.cantidad_input = QLineEdit(str(mov.get("cantidad", 0)))
+        layout.addRow("Cantidad Und:", self.cantidad_input)
+
+        self.kg_input = QLineEdit(str(mov.get("cantidad_kg", 0)))
+        layout.addRow("Cantidad KG:", self.kg_input)
+
+        self.fecha_input = QDateEdit()
+        self.fecha_input.setCalendarPopup(True)
+        if mov.get("fecha"):
+            self.fecha_input.setDate(
+                QDate(mov["fecha"].year, mov["fecha"].month, mov["fecha"].day)
+            )
+        layout.addRow("Fecha:", self.fecha_input)
+
+        self.obs_input = QLineEdit(mov.get("observaciones") or "")
+        layout.addRow("Observaciones:", self.obs_input)
+
+        # Botones
+        btn_row = QHBoxLayout()
+        btn_guardar = QPushButton("💾 Guardar cambios")
+        btn_guardar.setStyleSheet(
+            "QPushButton { background: #2e7d32; color: white; font-weight: bold; "
+            "padding: 8px 16px; border-radius: 5px; border: none; }"
+        )
+        btn_guardar.clicked.connect(self._guardar)
+        btn_row.addWidget(btn_guardar)
+
+        btn_eliminar = QPushButton("🗑️ Eliminar producto")
+        btn_eliminar.setStyleSheet(
+            "QPushButton { background: #c0392b; color: white; font-weight: bold; "
+            "padding: 8px 16px; border-radius: 5px; border: none; }"
+        )
+        btn_eliminar.clicked.connect(self._eliminar)
+        btn_row.addWidget(btn_eliminar)
+
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.clicked.connect(self.reject)
+        btn_row.addWidget(btn_cancelar)
+        layout.addRow(btn_row)
+
+        self.setLayout(layout)
+
+        # Un ajuste no se puede eliminar (el stock quedó fijado)
+        if mov.get("tipo") == "AJUSTE":
+            btn_eliminar.setEnabled(False)
+            btn_eliminar.setToolTip("No se puede eliminar un ajuste (el stock quedó fijado)")
+
+    def _guardar(self) -> None:
+        try:
+            cantidad = Decimal(self.cantidad_input.text() or "0")
+            cantidad_kg = Decimal(self.kg_input.text() or "0")
+        except Exception:
+            QMessageBox.warning(self, "Validación", "Cantidades inválidas")
+            return
+        ok, msg = ProductoService.editar_movimiento(
+            movimiento_id=self._mov["id"],
+            cantidad=cantidad,
+            cantidad_kg=cantidad_kg,
+            fecha=self.fecha_input.date().toPython(),
+            observaciones=self.obs_input.text().strip() or None,
+        )
+        if ok:
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Error", str(msg))
+
+    def _eliminar(self) -> None:
+        resp = QMessageBox.question(
+            self, "Eliminar producto",
+            "¿Eliminar este producto del documento? El stock se revertirá.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if resp != QMessageBox.StandardButton.Yes:
+            return
+        ok, msg = ProductoService.eliminar_movimiento(self._mov["id"])
+        if ok:
+            QMessageBox.information(self, "Éxito", str(msg))
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Error", str(msg))
