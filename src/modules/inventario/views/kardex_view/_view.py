@@ -38,8 +38,12 @@ class KardexView(QWidget):
     """Kardex — movement ledger with registration and consultation."""
 
     COLUMNAS = [
-        "ID", "Fecha", "Producto", "SKU", "Documento de:",
-        "Cantidad", "Costo Unit.", "Saldo", "Referencia", "Observaciones",
+        # Columnas del inventario (estado del producto)
+        "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
+        "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
+        # Columnas del movimiento
+        "Fecha", "Documento de:", "Cant. Und", "Cant. KG",
+        "Saldo Und", "Saldo KG", "Referencia", "Observaciones",
     ]
 
     TIPOS_MOVIMIENTO = ["ENTRADA", "SALIDA", "MERMA", "AJUSTE"]
@@ -95,9 +99,17 @@ class KardexView(QWidget):
         )
         btn_ajuste.clicked.connect(lambda: self._abrir_formulario("AJUSTE"))
 
+        btn_documentos = QPushButton("📋 Documentos")
+        btn_documentos.setStyleSheet(
+            "QPushButton { background: #6c757d; color: white; font-weight: bold; "
+            "padding: 8px 16px; border-radius: 5px; border: none; }"
+        )
+        btn_documentos.clicked.connect(self._abrir_documentos)
+
         toolbar.addWidget(btn_ingreso)
         toolbar.addWidget(btn_salida)
         toolbar.addWidget(btn_ajuste)
+        toolbar.addWidget(btn_documentos)
 
         # ── Export buttons ───────────────────────────────────────────
         separator = QLabel("  │  ")
@@ -187,6 +199,12 @@ class KardexView(QWidget):
                 "id": p.id,
                 "nombre": p.nombre,
                 "sku": p.sku,
+                "categoria": p.categoria or "",
+                "unidad": p.unidad_medida or "",
+                "stock": float(p.stock or 0),
+                "stock_kg": float(p.stock_kg or 0),
+                "stock_minimo": float(p.stock_minimo or 0),
+                "costo": float(p.costo_unitario or 0),
             })
 
     def _cargar_datos(self) -> None:
@@ -212,53 +230,78 @@ class KardexView(QWidget):
         movs = self._all_movements
         self.table.setRowCount(len(movs))
 
-        # Running balance: process ASC (oldest first)
+        # Running balance (und y kg): process ASC (oldest first)
         saldo = Decimal("0")
+        saldo_kg = Decimal("0")
         saldos: dict[int, Decimal] = {}
+        saldos_kg: dict[int, Decimal] = {}
         for m in sorted(movs, key=lambda x: x.fecha or datetime.min):
             if m.tipo == "ENTRADA":
                 saldo += m.cantidad
+                saldo_kg += Decimal(m.cantidad_kg or 0)
             elif m.tipo in ("SALIDA", "MERMA"):
                 saldo -= m.cantidad
+                saldo_kg -= Decimal(m.cantidad_kg or 0)
             elif m.tipo == "AJUSTE":
                 saldo = m.cantidad
+                saldo_kg = Decimal(m.cantidad_kg or 0)
             saldos[m.id] = saldo
+            saldos_kg[m.id] = saldo_kg
 
         # Render in DESC order (newest first)
         for row, m in enumerate(movs):
             prod = self._buscar_producto(m.producto_id)
 
-            self.table.setItem(row, 0, QTableWidgetItem(str(m.id)))
+            # ── Columnas del inventario (estado del producto) ──
+            sku = prod["sku"] if prod else ""
+            nombre = prod["nombre"] if prod else ""
+            categoria = prod["categoria"] if prod else ""
+            und = prod["stock"] if prod else 0
+            unidad = prod["unidad"] if prod else ""
+            minimo = prod["stock_minimo"] if prod else 0
+            kg = prod["stock_kg"] if prod else 0
+            costo = prod["costo"] if prod else 0
+
+            self.table.setItem(row, 0, QTableWidgetItem(sku))
+            self.table.setItem(row, 1, QTableWidgetItem(nombre))
+            self.table.setItem(row, 2, QTableWidgetItem(categoria))
+            self.table.setItem(row, 3, QTableWidgetItem(f"{und:,.2f}"))
+            self.table.setItem(row, 4, QTableWidgetItem(unidad))
+            self.table.setItem(row, 5, QTableWidgetItem(f"{minimo:,.2f}"))
+            self.table.setItem(row, 6, QTableWidgetItem(f"{kg:,.2f}"))
+            self.table.setItem(row, 7, QTableWidgetItem(f"${costo:,.2f}" if costo else "$0"))
+            self.table.setItem(row, 8, QTableWidgetItem(f"${und * costo:,.2f}" if costo else "$0"))
+
+            # ── Columnas del movimiento ──
             self.table.setItem(
-                row, 1,
+                row, 9,
                 QTableWidgetItem(m.fecha.strftime("%Y-%m-%d %H:%M") if m.fecha else ""),
             )
-            self.table.setItem(row, 2, QTableWidgetItem(prod["nombre"] if prod else ""))
-            self.table.setItem(row, 3, QTableWidgetItem(prod["sku"] if prod else ""))
-            self.table.setItem(row, 4, QTableWidgetItem(m.tipo or ""))
+            self.table.setItem(row, 10, QTableWidgetItem(m.tipo or ""))
 
-            # Cantidad with sign
+            # Cant. Und con signo
             if m.tipo == "ENTRADA":
                 cant_str = f"+{m.cantidad}"
             elif m.tipo in ("SALIDA", "MERMA"):
                 cant_str = f"-{m.cantidad}"
             else:
                 cant_str = str(m.cantidad)
-            self.table.setItem(row, 5, QTableWidgetItem(cant_str))
+            self.table.setItem(row, 11, QTableWidgetItem(cant_str))
 
-            self.table.setItem(
-                row, 6,
-                QTableWidgetItem(f"${m.costo_unitario:,.2f}" if m.costo_unitario else "$0"),
-            )
+            # Cant. KG con signo
+            mkg = Decimal(m.cantidad_kg or 0)
+            if m.tipo == "ENTRADA":
+                kg_str = f"+{mkg:.2f}"
+            elif m.tipo in ("SALIDA", "MERMA"):
+                kg_str = f"-{mkg:.2f}"
+            else:
+                kg_str = f"{mkg:.2f}"
+            self.table.setItem(row, 12, QTableWidgetItem(kg_str))
 
-            # Saldo
-            saldo_actual = saldos.get(m.id, Decimal("0"))
-            self.table.setItem(row, 7, QTableWidgetItem(f"{saldo_actual:,.2f}"))
-
-            self.table.setItem(row, 8, QTableWidgetItem(m.referencia or ""))
-            self.table.setItem(row, 9, QTableWidgetItem(m.observaciones or ""))
-
-        self.table.setColumnHidden(0, True)
+            self.table.setItem(row, 13, QTableWidgetItem(f"{saldos.get(m.id, Decimal('0')):,.2f}"))
+            self.table.setItem(row, 14, QTableWidgetItem(f"{saldos_kg.get(m.id, Decimal('0')):,.2f}"))
+            self.table.setItem(row, 15, QTableWidgetItem(m.referencia or ""))
+            self.table.setItem(row, 16, QTableWidgetItem(m.observaciones or ""))
 
     def _buscar_producto(self, producto_id: int) -> dict | None:
         for p in self._productos_cache:
@@ -298,39 +341,65 @@ class KardexView(QWidget):
             cell.fill = header_fill
             cell.alignment = openpyxl.styles.Alignment(horizontal="center")
 
+        # Running balance (und y kg) para el export
+        saldo = Decimal("0")
+        saldo_kg = Decimal("0")
+        saldos: dict[int, Decimal] = {}
+        saldos_kg: dict[int, Decimal] = {}
+        for m in sorted(self._all_movements, key=lambda x: x.fecha or datetime.min):
+            if m.tipo == "ENTRADA":
+                saldo += m.cantidad
+                saldo_kg += Decimal(m.cantidad_kg or 0)
+            elif m.tipo in ("SALIDA", "MERMA"):
+                saldo -= m.cantidad
+                saldo_kg -= Decimal(m.cantidad_kg or 0)
+            elif m.tipo == "AJUSTE":
+                saldo = m.cantidad
+                saldo_kg = Decimal(m.cantidad_kg or 0)
+            saldos[m.id] = saldo
+            saldos_kg[m.id] = saldo_kg
+
         # Data rows
         for row, m in enumerate(self._all_movements, 2):
             prod = self._buscar_producto(m.producto_id)
-            ws.cell(row=row, column=1, value=m.id)
+            sku = prod["sku"] if prod else ""
+            nombre = prod["nombre"] if prod else ""
+            categoria = prod["categoria"] if prod else ""
+            und = prod["stock"] if prod else 0
+            unidad = prod["unidad"] if prod else ""
+            minimo = prod["stock_minimo"] if prod else 0
+            kg = prod["stock_kg"] if prod else 0
+            costo = prod["costo"] if prod else 0
+            mkg = float(m.cantidad_kg or 0)
+
+            cant_str = f"+{m.cantidad}" if m.tipo == "ENTRADA" else (
+                f"-{m.cantidad}" if m.tipo in ("SALIDA", "MERMA") else str(m.cantidad))
+            kg_str = f"+{mkg:.2f}" if m.tipo == "ENTRADA" else (
+                f"-{mkg:.2f}" if m.tipo in ("SALIDA", "MERMA") else f"{mkg:.2f}")
+
+            ws.cell(row=row, column=1, value=sku)
+            ws.cell(row=row, column=2, value=nombre)
+            ws.cell(row=row, column=3, value=categoria)
+            ws.cell(row=row, column=4, value=float(und))
+            ws.cell(row=row, column=5, value=unidad)
+            ws.cell(row=row, column=6, value=float(minimo))
+            ws.cell(row=row, column=7, value=float(kg))
+            ws.cell(row=row, column=8, value=float(costo))
+            ws.cell(row=row, column=9, value=float(und) * float(costo))
             ws.cell(
-                row=row, column=2,
+                row=row, column=10,
                 value=m.fecha.strftime("%Y-%m-%d %H:%M") if m.fecha else "",
             )
-            ws.cell(row=row, column=3, value=prod["nombre"] if prod else "")
-            ws.cell(row=row, column=4, value=prod["sku"] if prod else "")
-            ws.cell(row=row, column=5, value=m.tipo or "")
-
-            if m.tipo == "ENTRADA":
-                cant_str = f"+{m.cantidad}"
-            elif m.tipo in ("SALIDA", "MERMA"):
-                cant_str = f"-{m.cantidad}"
-            else:
-                cant_str = str(m.cantidad)
-            ws.cell(row=row, column=6, value=cant_str)
-
-            ws.cell(
-                row=row, column=7,
-                value=float(m.costo_unitario) if m.costo_unitario else 0,
-            )
-            ws.cell(row=row, column=8, value="")
-
-            # Calculate running balance (same logic as _render_tabla)
-            ws.cell(row=row, column=8, value="")  # placeholder
-            ws.cell(row=row, column=9, value=m.referencia or "")
-            ws.cell(row=row, column=10, value=m.observaciones or "")
+            ws.cell(row=row, column=11, value=m.tipo or "")
+            ws.cell(row=row, column=12, value=cant_str)
+            ws.cell(row=row, column=13, value=kg_str)
+            ws.cell(row=row, column=14, value=float(saldos.get(m.id, 0)))
+            ws.cell(row=row, column=15, value=float(saldos_kg.get(m.id, 0)))
+            ws.cell(row=row, column=16, value=m.referencia or "")
+            ws.cell(row=row, column=17, value=m.observaciones or "")
 
         # Column widths
-        widths = [6, 18, 30, 12, 10, 12, 14, 14, 20, 35]
+        widths = [12, 30, 14, 12, 8, 12, 12, 12, 12, 18, 14, 10, 10, 10, 10, 20, 30]
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
 
@@ -374,7 +443,7 @@ class KardexView(QWidget):
         pdf.ln(4)
 
         # Column widths (landscape A4 = 297mm, margins ~10mm each)
-        col_widths = [8, 22, 40, 18, 14, 16, 18, 20, 28, 50]
+        col_widths = [11, 24, 13, 9, 6, 9, 9, 10, 10, 15, 11, 8, 8, 8, 8, 17, 25]
         headers = self.COLUMNAS
 
         # Table header
@@ -391,27 +460,54 @@ class KardexView(QWidget):
 
         # Calculate running balance for PDF
         saldo = Decimal("0")
+        saldo_kg = Decimal("0")
         saldos: dict[int, Decimal] = {}
+        saldos_kg: dict[int, Decimal] = {}
         for m in sorted(self._all_movements, key=lambda x: x.fecha or datetime.min):
             if m.tipo == "ENTRADA":
                 saldo += m.cantidad
+                saldo_kg += Decimal(m.cantidad_kg or 0)
             elif m.tipo in ("SALIDA", "MERMA"):
                 saldo -= m.cantidad
+                saldo_kg -= Decimal(m.cantidad_kg or 0)
             elif m.tipo == "AJUSTE":
                 saldo = m.cantidad
+                saldo_kg = Decimal(m.cantidad_kg or 0)
             saldos[m.id] = saldo
+            saldos_kg[m.id] = saldo_kg
 
         for m in self._all_movements:
             prod = self._buscar_producto(m.producto_id)
+            sku = prod["sku"] if prod else ""
+            nombre = prod["nombre"] if prod else ""
+            categoria = prod["categoria"] if prod else ""
+            und = prod["stock"] if prod else 0
+            unidad = prod["unidad"] if prod else ""
+            minimo = prod["stock_minimo"] if prod else 0
+            kg = prod["stock_kg"] if prod else 0
+            costo = prod["costo"] if prod else 0
+            mkg = float(m.cantidad_kg or 0)
+            cant_str = f"+{m.cantidad}" if m.tipo == "ENTRADA" else (
+                f"-{m.cantidad}" if m.tipo in ("SALIDA", "MERMA") else str(m.cantidad))
+            kg_str = f"+{mkg:.1f}" if m.tipo == "ENTRADA" else (
+                f"-{mkg:.1f}" if m.tipo in ("SALIDA", "MERMA") else f"{mkg:.1f}")
+
             row_data = [
-                str(m.id),
+                sku,
+                nombre,
+                categoria,
+                f"{und:,.0f}",
+                unidad,
+                f"{minimo:,.0f}",
+                f"{kg:,.1f}",
+                f"${costo:,.0f}",
+                f"${und * costo:,.0f}",
                 m.fecha.strftime("%Y-%m-%d") if m.fecha else "",
-                prod["nombre"] if prod else "",
-                prod["sku"] if prod else "",
                 m.tipo or "",
-                str(m.cantidad),
-                f"${m.costo_unitario:,.0f}" if m.costo_unitario else "",
+                cant_str,
+                kg_str,
                 f"{saldos.get(m.id, 0):,.0f}",
+                f"{saldos_kg.get(m.id, 0):,.1f}",
                 m.referencia or "",
                 m.observaciones or "",
             ]
@@ -456,3 +552,10 @@ class KardexView(QWidget):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._cargar_productos()
             self._cargar_datos()
+
+    def _abrir_documentos(self) -> None:
+        """Abre el diálogo de documentos de inventario (ingreso/salida de MP)."""
+        from src.modules.inventario.views.kardex_view._dialog import _DocumentosDialog
+
+        dlg = _DocumentosDialog(self)
+        dlg.exec()

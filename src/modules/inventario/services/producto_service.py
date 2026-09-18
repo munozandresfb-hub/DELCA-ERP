@@ -188,10 +188,61 @@ class ProductoService:
             return True, "Producto eliminado"
 
     @staticmethod
+    def crear_documento(
+        numero_documento: str,
+        tipo: str,
+        fecha=None,
+        observaciones: str | None = None,
+    ) -> tuple[bool, str | int]:
+        """Crea un documento de inventario (INGRESO con factura / SALIDA con consecutivo)."""
+        from datetime import date
+
+        from src.modules.inventario.models.documento_model import DocumentoInventario
+
+        if not numero_documento or not numero_documento.strip():
+            return False, "El número del documento es obligatorio"
+        if tipo not in ("INGRESO", "SALIDA"):
+            return False, f"Tipo de documento inválido: {tipo}"
+        numero = numero_documento.strip()
+        with get_session() as session:
+            existe = (
+                session.query(DocumentoInventario)
+                .filter(DocumentoInventario.numero_documento == numero)
+                .first()
+            )
+            if existe:
+                return False, f"Ya existe un documento con el número {numero}"
+            doc = DocumentoInventario(
+                numero_documento=numero,
+                tipo=tipo,
+                fecha=fecha or date.today(),
+                observaciones=observaciones,
+            )
+            session.add(doc)
+            session.flush()
+            return True, doc.id
+
+    @staticmethod
+    def listar_documentos() -> list:
+        """Lista los documentos de inventario (más recientes primero)."""
+        from src.modules.inventario.models.documento_model import DocumentoInventario
+
+        with get_session() as session:
+            docs = (
+                session.query(DocumentoInventario)
+                .order_by(DocumentoInventario.fecha.desc(), DocumentoInventario.id.desc())
+                .all()
+            )
+            for d in docs:
+                session.expunge(d)
+            return docs
+
+    @staticmethod
     def registrar_movimiento(
         producto_id: int,
         tipo: str,
         cantidad: Decimal,
+        cantidad_kg: Decimal = Decimal("0"),
         costo_unitario: Decimal | None = None,
         referencia: str | None = None,
         observaciones: str | None = None,
@@ -204,6 +255,8 @@ class ProductoService:
             return False, "La cantidad no puede ser negativa"
         if cantidad == 0 and tipo != "AJUSTE":
             return False, "La cantidad debe ser mayor a cero"
+        if cantidad_kg < 0:
+            return False, "La cantidad en KG no puede ser negativa"
 
         with get_session() as session:
             producto = (
@@ -220,16 +273,25 @@ class ProductoService:
                     False,
                     f"Stock insuficiente: {producto.stock}",
                 )
+            if tipo in ("SALIDA", "MERMA") and cantidad_kg > producto.stock_kg:
+                return (
+                    False,
+                    f"Stock insuficiente en KG: {producto.stock_kg}",
+                )
 
-            # Update stock
+            # Update stock (und) y stock_kg
             if tipo == "ENTRADA":
                 producto.stock += cantidad
+                producto.stock_kg += cantidad_kg
             elif tipo == "SALIDA":
                 producto.stock -= cantidad
+                producto.stock_kg -= cantidad_kg
             elif tipo == "MERMA":
                 producto.stock -= cantidad
+                producto.stock_kg -= cantidad_kg
             elif tipo == "AJUSTE":
                 producto.stock = cantidad  # absolute set
+                producto.stock_kg = cantidad_kg
 
             costo = costo_unitario or producto.costo_unitario
 
@@ -237,6 +299,7 @@ class ProductoService:
                 producto_id=producto_id,
                 tipo=tipo,
                 cantidad=cantidad,
+                cantidad_kg=cantidad_kg,
                 costo_unitario=costo,
                 referencia=referencia.strip() if referencia else None,
                 observaciones=observaciones.strip()

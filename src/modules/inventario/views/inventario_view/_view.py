@@ -44,8 +44,8 @@ class InventarioView(QWidget):
     """Inventory dashboard with KPIs, raw materials, and finished tires."""
 
     COLUMNAS_MP = [
-        "ID", "SKU", "Nombre", "Categoría", "Unidad", "Stock",
-        "Mínimo", "Costo Unit.", "Valor Total",
+        "ID", "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
+        "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
     ]
     COLUMNAS_TERMINADAS = [
         "ID", "Tiquete", "Diseño", "Dimensión", "Costo Fabr.",
@@ -240,21 +240,23 @@ class InventarioView(QWidget):
         self.tabla_mp.setRowCount(len(productos))
         for row, p in enumerate(productos):
             stock = float(p.stock or 0)
+            stock_kg = float(p.stock_kg or 0)
             minimo = float(p.stock_minimo or 0)
             costo = float(p.costo_unitario or 0)
             valor = stock * costo
-            self.tabla_mp.setItem(row, 0, QTableWidgetItem(str(p.id)))           # ID (hidden)
-            self.tabla_mp.setItem(row, 1, QTableWidgetItem(p.sku or ""))          # SKU
-            self.tabla_mp.setItem(row, 2, QTableWidgetItem(p.nombre or ""))       # Nombre
-            self.tabla_mp.setItem(row, 3, QTableWidgetItem(p.categoria or ""))    # Categoría
-            self.tabla_mp.setItem(row, 4, QTableWidgetItem(p.unidad_medida or ""))# Unidad
-            self.tabla_mp.setItem(row, 5, QTableWidgetItem(str(stock)))           # Stock
-            self.tabla_mp.setItem(row, 6, QTableWidgetItem(str(minimo)))          # Mínimo
+            self.tabla_mp.setItem(row, 0, QTableWidgetItem(str(p.id)))            # ID (hidden)
+            self.tabla_mp.setItem(row, 1, QTableWidgetItem(p.sku or ""))           # SKU
+            self.tabla_mp.setItem(row, 2, QTableWidgetItem(p.nombre or ""))        # Nombre
+            self.tabla_mp.setItem(row, 3, QTableWidgetItem(p.categoria or ""))     # Categoría
+            self.tabla_mp.setItem(row, 4, QTableWidgetItem(f"{stock:,.2f}"))       # Cantidad UND
+            self.tabla_mp.setItem(row, 5, QTableWidgetItem(p.unidad_medida or "")) # Unidad
+            self.tabla_mp.setItem(row, 6, QTableWidgetItem(f"{minimo:,.2f}"))      # Q minima en planta
+            self.tabla_mp.setItem(row, 7, QTableWidgetItem(f"{stock_kg:,.2f}"))    # Cantidad KG
             self.tabla_mp.setItem(
-                row, 7, QTableWidgetItem(f"${costo:,.2f}")                       # Costo Unit.
+                row, 8, QTableWidgetItem(f"${costo:,.2f}")                         # Costo Unit.
             )
             self.tabla_mp.setItem(
-                row, 8, QTableWidgetItem(f"${valor:,.2f}")                       # Valor Total
+                row, 9, QTableWidgetItem(f"${valor:,.2f}")                         # Valor Total
             )
 
     def _filtrar_mp(self) -> None:

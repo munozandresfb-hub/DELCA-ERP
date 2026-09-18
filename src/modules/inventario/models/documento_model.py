@@ -14,7 +14,7 @@ class DocumentoInventario(Base):
     __tablename__ = "documentos_inventario"
 
     __table_args__ = (
-        CheckConstraint("tipo IN ('COMPRA','PRODUCCION','MERMA','AJUSTE')"),
+        CheckConstraint("tipo IN ('COMPRA','PRODUCCION','MERMA','AJUSTE','INGRESO','SALIDA')"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

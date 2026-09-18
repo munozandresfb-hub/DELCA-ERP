@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.24] — 2026-09-18 — Kardex: Cantidad Und + Cantidad KG + Documentos de inventario
+
+### Changed (código + datos)
+- **Formularios del Kardex** (Ingreso, Salida, Ajuste): "Cantidad" → **"Cantidad Und"** + nueva casilla **"Cantidad KG"** (con auto-sugerencia según el ratio KG/und del producto). El movimiento actualiza `stock` (und) y `stock_kg`. Columna `cantidad_kg` agregada a `movimientos_inventario` (backup `delca_pre_cantidad_kg.db`)
+- **Tabla Inventario (Materia Prima)**: columnas → SKU, Nombre, Categoría, **Cantidad UND** (era Stock), Unidad, **Q minima en planta** (era Mínimo), **Cantidad KG**, Costo Unit., Valor Total
+- **Kardex**: columnas = inventario (SKU, Nombre, Categoría, Cantidad UND, Unidad, Q minima, Cantidad KG, Costo, Valor Total) + movimiento (Fecha, Documento de:, Cant. Und, Cant. KG, Saldo Und, Saldo KG, Referencia, Observaciones) · export Excel/PDF actualizados
+- **Botón "📋 Documentos"** en el Kardex: documentos de **Ingreso** (N° de factura) y **Salida** (N° consecutivo digitado por el usuario) en `documentos_inventario` (tabla recreada con CHECK ampliado: INGRESO/SALIDA — backup `delca_pre_recrear_docs.db`). Los formularios de movimiento piden el N° de factura/documento y vinculan el movimiento al documento
+
+### Verification
+- Movimientos Und+KG: ENTRADA +2/+130.1 → stock 12 · SALIDA -3/-195 → 9 · AJUSTE → 5/300 ✓
+- Documentos INGRESO/SALIDA creados y listados ✓ · stock_kg migrado del Excel verificado (44 productos con KG, suma 11,836 kg)
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.23] — 2026-09-17 — Fix: botones Salida manual y Ajuste del Kardex no respondían
 
 ### Fixed

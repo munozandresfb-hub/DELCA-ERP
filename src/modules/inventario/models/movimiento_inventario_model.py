@@ -25,6 +25,7 @@ class MovimientoInventario(Base):
     )
     tipo: Mapped[str] = mapped_column(String(20))
     cantidad: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    cantidad_kg: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     costo_unitario: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     referencia: Mapped[str | None] = mapped_column(
         String(200), nullable=True
