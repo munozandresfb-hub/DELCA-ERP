@@ -211,7 +211,8 @@ class ProductoService:
                 .first()
             )
             if existe:
-                return False, f"Ya existe un documento con el número {numero}"
+                # Un documento puede agrupar varios productos: se REUTILIZA
+                return True, existe.id
             doc = DocumentoInventario(
                 numero_documento=numero,
                 tipo=tipo,

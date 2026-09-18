@@ -33,10 +33,16 @@ class _MovimientoFormDialog(QDialog):
     AJUSTE: sin documento; fija stock y stock_kg al valor indicado.
     """
 
-    def __init__(self, tipo: str, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        tipo: str,
+        parent: QWidget | None = None,
+        numero_documento_inicial: str | None = None,
+    ) -> None:
         super().__init__(parent)
         self._tipo = tipo
         self._es_salida_ajuste = tipo in ("SALIDA", "AJUSTE")
+        self._numero_guardado: str | None = None
         self.setWindowTitle(self._titulo_para_tipo())
         self.resize(420, 340)
         layout = QFormLayout()
@@ -81,6 +87,10 @@ class _MovimientoFormDialog(QDialog):
         elif self._tipo == "SALIDA":
             self.doc_input.setPlaceholderText("Consecutivo del documento")
             layout.addRow("N° Documento *:", self.doc_input)
+
+        # Mantener el número del documento anterior (constante hasta cambiarlo)
+        if numero_documento_inicial and self._tipo in ("ENTRADA", "SALIDA"):
+            self.doc_input.setText(numero_documento_inicial)
 
         # Observations
         self.obs_input = QLineEdit()
@@ -198,6 +208,7 @@ class _MovimientoFormDialog(QDialog):
                 QMessageBox.warning(self, "Error", str(res))
                 return
             documento_id = int(res)
+            self._numero_guardado = numero
 
         referencia = self.referencia_input.text().strip() or None
         observaciones = self.obs_input.text().strip() or None
@@ -216,6 +227,11 @@ class _MovimientoFormDialog(QDialog):
             self.accept()
         else:
             QMessageBox.warning(self, "Error", str(msg))
+
+    @property
+    def numero_guardado(self) -> str | None:
+        """Número de factura/documento usado en este movimiento (para recordarlo)."""
+        return self._numero_guardado
 
 
 class _DocumentosDialog(QDialog):

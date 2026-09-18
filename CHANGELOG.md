@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.25] — 2026-09-18 — Kardex: número de documento constante entre movimientos (documentos multi-producto)
+
+### Changed
+- **N° de Factura / Documento se mantiene constante** entre movimientos del mismo tipo (ENTRADA/SALIDA): el último número usado se recuerda y se pre-rellena en el siguiente formulario, hasta que el usuario lo **cambie manualmente**
+- **`crear_documento` reutiliza** el documento si el número ya existe (antes devolvía error) → un documento agrupa **varios productos** (mismo documento_id para varios movimientos)
+- Verificado: 2 movimientos de productos distintos bajo el mismo documento (1 documento) · número inicial pre-rellenado
+
+### Verification
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.24] — 2026-09-18 — Kardex: Cantidad Und + Cantidad KG + Documentos de inventario
 
 ### Changed (código + datos)

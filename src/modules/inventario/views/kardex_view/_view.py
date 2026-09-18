@@ -52,6 +52,10 @@ class KardexView(QWidget):
         super().__init__()
         self._productos_cache: list[dict] = []
         self._all_movements: list[MovimientoInventario] = []
+        # Últimos números de documento usados (se mantienen constantes hasta
+        # que el usuario los cambie manualmente — un documento agrupa varios productos)
+        self._ultimo_doc_entrada: str | None = None
+        self._ultimo_doc_salida: str | None = None
         self.setup_ui()
         self._safe_cargar_inicial()
 
@@ -548,8 +552,21 @@ class KardexView(QWidget):
     # ── Registration ────────────────────────────────────────────────
 
     def _abrir_formulario(self, tipo: str) -> None:
-        dlg = _MovimientoFormDialog(tipo, self)
+        # El número de documento se mantiene constante entre movimientos del
+        # mismo tipo (un documento agrupa varios productos) hasta cambiarlo.
+        inicial = None
+        if tipo == "ENTRADA":
+            inicial = self._ultimo_doc_entrada
+        elif tipo == "SALIDA":
+            inicial = self._ultimo_doc_salida
+        dlg = _MovimientoFormDialog(tipo, self, numero_documento_inicial=inicial)
         if dlg.exec() == QDialog.DialogCode.Accepted:
+            num = dlg.numero_guardado
+            if num:
+                if tipo == "ENTRADA":
+                    self._ultimo_doc_entrada = num
+                elif tipo == "SALIDA":
+                    self._ultimo_doc_salida = num
             self._cargar_productos()
             self._cargar_datos()
 
