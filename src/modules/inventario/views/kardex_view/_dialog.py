@@ -295,6 +295,7 @@ class _DocumentosDialog(QDialog):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setColumnHidden(0, True)
+        self.table.cellDoubleClicked.connect(self._ver_documento)
         layout.addWidget(self.table)
 
         # Cerrar
@@ -344,3 +345,70 @@ class _DocumentosDialog(QDialog):
             self._cargar_documentos()
         else:
             QMessageBox.warning(self, "Error", str(res))
+
+    def _ver_documento(self, row: int) -> None:
+        """Doble clic sobre un número de documento -> detalle de sus movimientos."""
+        item = self.table.item(row, 0)
+        if item is None:
+            return
+        doc_id = int(item.text())
+        numero = self.table.item(row, 1).text() if self.table.item(row, 1) else ""
+        tipo = self.table.item(row, 2).text() if self.table.item(row, 2) else ""
+        dlg = _DetalleDocumentoDialog(doc_id, numero, tipo, self)
+        dlg.exec()
+
+
+class _DetalleDocumentoDialog(QDialog):
+    """Muestra la información que almacena un documento (productos, cantidades, fechas)."""
+
+    def __init__(
+        self,
+        documento_id: int,
+        numero_documento: str,
+        tipo: str,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(f"Documento {numero_documento}")
+        self.resize(720, 400)
+        layout = QVBoxLayout()
+
+        header = QLabel(
+            f"<b>Documento:</b> {numero_documento} &nbsp;|&nbsp; "
+            f"<b>Tipo:</b> {tipo} &nbsp;|&nbsp; <b>Movimientos:</b>"
+        )
+        layout.addWidget(header)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels(
+            ["Fecha", "Producto", "SKU", "Tipo", "Cant. Und", "Cant. KG", "Referencia", "Observaciones"]
+        )
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        layout.addWidget(self.table)
+
+        btn_cerrar = QPushButton("Cerrar")
+        btn_cerrar.clicked.connect(self.accept)
+        layout.addWidget(btn_cerrar)
+
+        self.setLayout(layout)
+        self._cargar(documento_id)
+
+    def _cargar(self, documento_id: int) -> None:
+        movs = ProductoService.movimientos_por_documento(documento_id)
+        self.table.setRowCount(len(movs))
+        for row, m in enumerate(movs):
+            self.table.setItem(
+                row, 0,
+                QTableWidgetItem(m["fecha"].strftime("%Y-%m-%d %H:%M") if m["fecha"] else ""),
+            )
+            self.table.setItem(row, 1, QTableWidgetItem(m["producto"] or ""))
+            self.table.setItem(row, 2, QTableWidgetItem(m["sku"] or ""))
+            self.table.setItem(row, 3, QTableWidgetItem(m["tipo"] or ""))
+            self.table.setItem(row, 4, QTableWidgetItem(f"{m['cantidad']:,.2f}"))
+            self.table.setItem(row, 5, QTableWidgetItem(f"{m['cantidad_kg']:,.2f}"))
+            self.table.setItem(row, 6, QTableWidgetItem(m["referencia"] or ""))
+            self.table.setItem(row, 7, QTableWidgetItem(m["observaciones"] or ""))

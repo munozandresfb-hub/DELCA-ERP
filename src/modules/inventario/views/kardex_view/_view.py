@@ -274,7 +274,7 @@ class KardexView(QWidget):
             self.table.setItem(row, 5, QTableWidgetItem(f"{minimo:,.2f}"))
             self.table.setItem(row, 6, QTableWidgetItem(f"{kg:,.2f}"))
             self.table.setItem(row, 7, QTableWidgetItem(f"${costo:,.2f}" if costo else "$0"))
-            self.table.setItem(row, 8, QTableWidgetItem(f"${und * costo:,.2f}" if costo else "$0"))
+            self.table.setItem(row, 8, QTableWidgetItem(f"${kg * costo:,.2f}" if costo else "$0"))
 
             # ── Columnas del movimiento ──
             self.table.setItem(
@@ -389,7 +389,7 @@ class KardexView(QWidget):
             ws.cell(row=row, column=6, value=float(minimo))
             ws.cell(row=row, column=7, value=float(kg))
             ws.cell(row=row, column=8, value=float(costo))
-            ws.cell(row=row, column=9, value=float(und) * float(costo))
+            ws.cell(row=row, column=9, value=float(kg) * float(costo))
             ws.cell(
                 row=row, column=10,
                 value=m.fecha.strftime("%Y-%m-%d %H:%M") if m.fecha else "",
@@ -505,7 +505,7 @@ class KardexView(QWidget):
                 f"{minimo:,.0f}",
                 f"{kg:,.1f}",
                 f"${costo:,.0f}",
-                f"${und * costo:,.0f}",
+                f"${kg * costo:,.0f}",
                 m.fecha.strftime("%Y-%m-%d") if m.fecha else "",
                 m.tipo or "",
                 cant_str,

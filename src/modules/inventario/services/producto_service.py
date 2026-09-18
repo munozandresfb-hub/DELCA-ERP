@@ -239,6 +239,36 @@ class ProductoService:
             return docs
 
     @staticmethod
+    def movimientos_por_documento(documento_id: int) -> list[dict]:
+        """Movimientos de un documento con la información del producto."""
+        from src.modules.inventario.models.movimiento_inventario_model import (
+            MovimientoInventario,
+        )
+
+        with get_session() as session:
+            rows = (
+                session.query(MovimientoInventario, Producto)
+                .join(Producto, MovimientoInventario.producto_id == Producto.id)
+                .filter(MovimientoInventario.documento_id == documento_id)
+                .order_by(MovimientoInventario.fecha)
+                .all()
+            )
+            return [
+                {
+                    "producto": p.nombre,
+                    "sku": p.sku,
+                    "unidad": p.unidad_medida or "",
+                    "tipo": m.tipo or "",
+                    "cantidad": m.cantidad,
+                    "cantidad_kg": m.cantidad_kg or 0,
+                    "fecha": m.fecha,
+                    "referencia": m.referencia or "",
+                    "observaciones": m.observaciones or "",
+                }
+                for m, p in rows
+            ]
+
+    @staticmethod
     def registrar_movimiento(
         producto_id: int,
         tipo: str,

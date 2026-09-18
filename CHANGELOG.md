@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.26] — 2026-09-18 — Kardex: Valor Total = costo × KG + detalle del documento al hacer clic
+
+### Changed
+- **Columna "Valor Total" del Kardex**: ahora usa la fórmula **costo unitario × cantidad de KG** (antes stock × costo) — en la tabla y en las exportaciones Excel/PDF
+- **Ventana "Documentos de inventario"**: al hacer **doble clic sobre el número de documento** (entrada, salida o ajuste) se abre una nueva ventana con la **información que almacena el documento**: producto (nombre/SKU), cantidad en unidades y en KG, fecha, tipo, referencia y observaciones de cada movimiento vinculado
+
+### Verification
+- `movimientos_por_documento` devuelve los movimientos con su producto · diálogos construyen correctamente (2 movimientos → 2 filas)
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.25] — 2026-09-18 — Kardex: número de documento constante entre movimientos (documentos multi-producto)
 
 ### Changed
