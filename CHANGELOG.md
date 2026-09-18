@@ -7,6 +7,17 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.23] — 2026-09-17 — Fix: botones Salida manual y Ajuste del Kardex no respondían
+
+### Fixed
+- **Bug en `_MovimientoFormDialog`**: `_cargar_productos()` se ejecutaba ANTES de crear `referencia_input`, y el autocompletado de "Unidad de medida" (SALIDA/AJUSTE) accedía a un atributo inexistente → `AttributeError` al abrir el diálogo → los botones "Salida manual" y "Ajuste" no respondían (ENTRADA funcionaba porque no usa el autocompletado)
+- **Solución**: se crean todos los widgets del formulario ANTES de cargar los productos (y se conecta la señal al final). Verificado: los 3 diálogos construyen correctamente (SALIDA/AJUSTE con unidad "Rollo" autocompletada)
+
+### Verification
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.22] — 2026-09-17 — Kardex: formulario salida/ajuste simplificado + botón Merma eliminado
 
 ### Changed

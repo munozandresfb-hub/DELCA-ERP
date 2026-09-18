@@ -31,10 +31,8 @@ class _MovimientoFormDialog(QDialog):
         self.resize(400, 280)
         layout = QFormLayout()
 
-        # Product selector
+        # Product selector (se carga al final, cuando ya existen todos los widgets)
         self.producto_combo = QComboBox()
-        self._cargar_productos()
-        self.producto_combo.currentIndexChanged.connect(self._on_producto_cambiado)
         layout.addRow("Producto *:", self.producto_combo)
 
         # Quantity
@@ -73,6 +71,10 @@ class _MovimientoFormDialog(QDialog):
         layout.addRow(btn_box)
 
         self.setLayout(layout)
+
+        # Cargar productos al final (referencia_input ya existe para el autocompletado)
+        self.producto_combo.currentIndexChanged.connect(self._on_producto_cambiado)
+        self._cargar_productos()
 
     def _titulo_para_tipo(self) -> str:
         titulos = {
