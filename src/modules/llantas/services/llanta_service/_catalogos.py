@@ -172,6 +172,10 @@ class _CatalogosMixin:
             if existe:
                 return False, f"El diseño '{nombre}' ya existe"
             session.add(DisenoLlanta(nombre=nombre.strip(), tipo=tipo))
+            session.flush()
+            # Sincronización automática: el diseño de banda queda disponible como
+            # producto de Materia Prima en el Kardex (Ingreso/Salida/Ajuste).
+            _crear_producto_mp_si_falta(session, nombre.strip())
             return True, f"Diseño '{nombre}' ({tipo}) creado"
 
     @staticmethod
@@ -280,3 +284,53 @@ class _CatalogosMixin:
                 return False, "Causa no encontrada"
             session.delete(causa)
             return True, "Causa eliminada"
+
+
+# ======================================================================
+# Sincronización Diseños de Banda → Producto de Materia Prima
+# ======================================================================
+
+def _sku_diseno(nombre_diseno: str) -> str:
+    """Genera un SKU legible a partir del nombre del diseño de banda."""
+    import re
+    import unicodedata
+
+    s = unicodedata.normalize("NFD", nombre_diseno)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^0-9A-Za-z]", "", s.upper())[:50]
+
+
+def _crear_producto_mp_si_falta(session, nombre_diseno: str) -> None:
+    """Crea el producto de MP 'Banda {diseño}' para el Kardex si no existe.
+
+    Un diseño ya tiene producto si algún producto de MP contiene su nombre
+    (ej. diseño 'DVRT4' -> 'Banda DVRT4 242') o si el SKU generado ya existe.
+    """
+    from src.modules.inventario.models.producto_model import Producto
+
+    nombre_banda = f"Banda {nombre_diseno}"
+    sku = f"BANDA{_sku_diseno(nombre_diseno)}"
+    existe = (
+        session.query(Producto)
+        .filter(
+            (Producto.nombre.like(f"%{nombre_diseno}%"))
+            | (Producto.sku == sku)
+        )
+        .first()
+    )
+    if existe:
+        return
+    session.add(
+        Producto(
+            nombre=nombre_banda,
+            sku=sku,
+            categoria="MATERIA_PRIMA",
+            stock=0,
+            stock_kg=0,
+            stock_minimo=0,
+            costo_unitario=0,
+            precio_venta=0,
+            unidad_medida="ROLLO",
+            activo=True,
+        )
+    )

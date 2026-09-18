@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.27] — 2026-09-18 — Diseños de banda sincronizados con productos MP (Kardex automático)
+
+### Fixed
+- **Un diseño de banda nuevo no aparecía en el Kardex** (Ingreso manual): los diseños se guardan en `disenos_llanta` y el Kardex carga productos de MP — el diseño no tenía producto asociado
+- **Sincronización automática**: al **crear un diseño de banda** en Catálogos → Diseños de Banda, se crea automáticamente su producto MP **"Banda {diseño}"** (SKU `BANDA{...}`, unidad ROLLO, stock 0) → queda disponible al instante en el Kardex
+- **32 diseños existentes sin producto sincronizados** (`scripts/sincronizar_disenos_productos.py`, backup `delca_pre_sync_disenos_20260918_174754.db`) — verificado: no duplica los diseños que ya tienen producto (búsqueda por nombre contenido, ej. 'DVRT4' → 'Banda DVRT4 242')
+
+### Verification
+- `Banda RZE1 190` (id 98, SKU BANDARZE1190) disponible en productos MP · crear_diseno genera su producto automáticamente
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.26] — 2026-09-18 — Kardex: Valor Total = costo × KG + detalle del documento al hacer clic
 
 ### Changed
