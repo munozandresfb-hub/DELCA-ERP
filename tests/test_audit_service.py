@@ -55,17 +55,17 @@ class TestAuditService:
         assert entry.usuario_id is None
 
     def test_registrar_login_exitoso(self, db_session):
-        entry = registrar_login(usuario_id=1, exitoso=True)
+        entry = registrar_login(usuario_id=1, exitoso=True, session=db_session)
         db_session.flush()
         assert entry.accion == "LOGIN"
 
     def test_registrar_login_fallido(self, db_session):
-        entry = registrar_login(usuario_id=1, exitoso=False)
+        entry = registrar_login(usuario_id=1, exitoso=False, session=db_session)
         db_session.flush()
         assert entry.accion == "FALLO_LOGIN"
 
     def test_registrar_logout(self, db_session):
-        entry = registrar_logout(usuario_id=1)
+        entry = registrar_logout(usuario_id=1, session=db_session)
         db_session.flush()
         assert entry.accion == "LOGOUT"
 
@@ -75,6 +75,7 @@ class TestAuditService:
             entidad="clientes",
             accion="CREATE",
             objeto_id=42,
+            session=db_session,
         )
         db_session.flush()
         assert entry.detalle is not None
@@ -92,6 +93,7 @@ class TestAuditService:
             accion="UPDATE",
             objeto_id=7,
             cambios=changes,
+            session=db_session,
         )
         db_session.flush()
         assert entry.payload_json is not None

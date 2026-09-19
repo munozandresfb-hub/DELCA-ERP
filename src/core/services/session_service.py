@@ -75,11 +75,11 @@ class SessionManager:
         except Exception:
             return self.INACTIVITY_TIMEOUT_SECONDS
 
-    def clear_session(self) -> None:
+    def clear_session(self, session: Any | None = None) -> None:
         """Clear the session (logout). Records audit if user was set."""
         user_id = self.get_user_id()
         if user_id is not None:
-            registrar_logout(user_id)
+            registrar_logout(user_id, session=session)
         self._user = None
         self._last_activity = time.time()
         self._locked = False

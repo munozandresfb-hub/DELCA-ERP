@@ -62,7 +62,7 @@ def create_backup() -> tuple[bool, str]:
         if not DB_PATH.exists():
             return False, f"Database not found: {DB_PATH}"
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         backup_path = BACKUP_DIR / f"{BACKUP_PREFIX}{timestamp}.db"
 
         shutil.copy2(str(DB_PATH), str(backup_path))

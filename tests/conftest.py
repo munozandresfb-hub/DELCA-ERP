@@ -44,6 +44,7 @@ def service_db(monkeypatch, tmp_path):
 @pytest.fixture(scope="function")
 def db_session() -> Iterator[Session]:
     """Create a fresh in-memory SQLite database for each test."""
+    import src.database.registry  # noqa: F401  — registers ALL models
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(engine)
 

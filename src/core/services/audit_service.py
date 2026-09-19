@@ -57,7 +57,9 @@ def registrar_auditoria(
     return audit
 
 
-def registrar_login(usuario_id: int, exitoso: bool, ip: str | None = None) -> Auditoria:
+def registrar_login(
+    usuario_id: int, exitoso: bool, ip: str | None = None, session: Session | None = None
+) -> Auditoria:
     """Record a login attempt."""
     return registrar_auditoria(
         usuario_id=usuario_id if exitoso else None,
@@ -66,26 +68,31 @@ def registrar_login(usuario_id: int, exitoso: bool, ip: str | None = None) -> Au
         detalle=f"Inicio de sesión {'exitoso' if exitoso else 'fallido'}"
         if exitoso
         else None,
+        session=session,
     )
 
 
-def registrar_logout(usuario_id: int) -> Auditoria:
+def registrar_logout(usuario_id: int, session: Session | None = None) -> Auditoria:
     """Record a logout."""
     return registrar_auditoria(
         usuario_id=usuario_id,
         entidad="usuarios",
         accion="LOGOUT",
         detalle="Cierre de sesión",
+        session=session,
     )
 
 
-def registrar_cambio_password(usuario_id: int) -> Auditoria:
+def registrar_cambio_password(
+    usuario_id: int, session: Session | None = None
+) -> Auditoria:
     """Record a password change."""
     return registrar_auditoria(
         usuario_id=usuario_id,
         entidad="usuarios",
         accion="UPDATE",
         detalle="Cambio de contraseña",
+        session=session,
     )
 
 

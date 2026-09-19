@@ -1,7 +1,21 @@
 # DELCA ERP
 
+[![Python](https://img.shields.io/badge/Python-3.13%2B-3776AB)](https://www.python.org/)
+[![PySide6](https://img.shields.io/badge/PySide6-6.11-blue)](https://doc.qt.io/qtforpython-6/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red)](https://www.sqlalchemy.org/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Tests](https://github.com/munozandresfb-hub/DELCA-ERP/actions/workflows/ci.yml/badge.svg)](https://github.com/munozandresfb-hub/DELCA-ERP/actions/workflows/ci.yml)
+
 Sistema de planificación de recursos empresariales (ERP) para el reencauche de llantas.
 Construido con Python + PySide6 + SQLAlchemy + SQLite.
+
+## Capturas
+
+![Dashboard con KPIs](assets/screenshots/01-dashboard.png)
+![Facturación](assets/screenshots/02-facturacion.png)
+![Producción y trazabilidad](assets/screenshots/03-produccion.png)
+![Planta y ubicaciones](assets/screenshots/04-planta.png)
+![Reportes](assets/screenshots/05-reportes.png)
 
 ## Stack Tecnológico
 
@@ -22,8 +36,8 @@ Construido con Python + PySide6 + SQLAlchemy + SQLite.
 
 ```bash
 # 1. Clonar el repositorio
-git clone <repo-url>
-cd "Programacion DELCA"
+git clone https://github.com/munozandresfb-hub/DELCA-ERP.git
+cd DELCA-ERP
 
 # 2. Crear entorno virtual
 python -m venv .venv
