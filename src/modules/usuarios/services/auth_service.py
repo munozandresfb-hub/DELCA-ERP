@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import bcrypt
 
 PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 64  # bcrypt solo usa los primeros 72 bytes
 PASSWORD_EXPIRY_DAYS = 90
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
@@ -16,18 +17,29 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash a password using bcrypt with SHA-256 pre-hash."""
+        """Hash a password using bcrypt."""
         password_bytes = password.encode("utf-8")
+        if len(password_bytes) > 72:
+            raise ValueError("La contraseña supera el límite de 72 bytes")
         hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
         return hashed.decode("utf-8")
 
     @staticmethod
     def verify_password(password: str, hashed_password: str) -> bool:
-        """Verify a password against its bcrypt hash."""
-        return bcrypt.checkpw(
-            password.encode("utf-8"),
-            hashed_password.encode("utf-8"),
-        )
+        """Verify a password against its bcrypt hash.
+
+        Robust: un hash corrupto/vacío no rompe el login (devuelve False).
+        """
+        try:
+            password_bytes = password.encode("utf-8")
+            if len(password_bytes) > 72:
+                return False
+            return bcrypt.checkpw(
+                password_bytes,
+                hashed_password.encode("utf-8"),
+            )
+        except (ValueError, TypeError):
+            return False
 
     # ── Password Policy ────────────────────────────────────────────────
 
@@ -42,6 +54,11 @@ class AuthService:
             return (
                 False,
                 f"La contraseña debe tener al menos {PASSWORD_MIN_LENGTH} caracteres",
+            )
+        if len(password) > PASSWORD_MAX_LENGTH:
+            return (
+                False,
+                f"La contraseña no puede superar {PASSWORD_MAX_LENGTH} caracteres",
             )
         if not re.search(r"[A-Z]", password):
             return False, "La contraseña debe contener al menos una mayúscula"

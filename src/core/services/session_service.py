@@ -25,8 +25,7 @@ class SessionManager:
 
     # Timeout por rol (segundos). None = nunca expira.
     ROLE_TIMEOUTS = {
-        "Administrador": 1800,   # 30 min
-        "ADMIN": 1800,           # 30 min (rol real en la BD)
+        "ADMIN": 1800,           # 30 min
         "Gerencia": 10800,       # 3 horas
         "Operador": None,        # sin cierre
     }

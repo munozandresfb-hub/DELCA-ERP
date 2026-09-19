@@ -66,6 +66,12 @@ Todo script de corrección de datos debe tener:
 
 Ver: `scripts/corregir_clientes_nit.py` y `scripts/corregir_costos_produccion.py` (ejemplos del patrón).
 
+## ✅ Regla #6: Migraciones — fuente única
+
+- Las migraciones de esquema se declaran en `main.py` (`_MIGRACIONES` → `scripts/migrate_*.py`) y corren una sola vez (`run_migration_once`).
+- El `engine` (`src/database/engine.py`) solo aplica columnas críticas como **fallback idempotente** (`_migrate_sqlite_schema`) — no agregar columnas nuevas ahí: agregarlas en un script `migrate_vX_Y_Z_*.py` y registrarlo en `main.py`.
+- Evitar duplicar numeraciones (ej. dos `v1.4.0`).
+
 ## Archivos clave del origen (carpeta DELCA)
 
 | Archivo | Contenido | Llaves |

@@ -8,6 +8,13 @@ from src.modules.usuarios.repositories.usuario_repository import UsuarioReposito
 from src.modules.usuarios.services.auth_service import AuthService
 from src.core.services.audit_service import registrar_login
 
+# Hash dummy (bcrypt) para igualar el tiempo de respuesta cuando el usuario
+# NO existe — evita que un atacante distinga usuarios válidos por el tiempo
+# de respuesta (mitigación de enumeración de usuarios).
+DUMMY_BCRYPT_HASH = (
+    "$2b$12$2HBCUCt9/JmaJ14W21XEiOOFRxoVyJR02Ik8HcrdK0B4932L0oS3y"
+)
+
 
 def login_user(username: str, password: str) -> dict:
     """
@@ -33,6 +40,9 @@ def login_user(username: str, password: str) -> dict:
         )
 
         if not user:
+            # Igualar el tiempo de respuesta (bcrypt dummy) para no revelar
+            # si el usuario existe.
+            AuthService.verify_password(password, DUMMY_BCRYPT_HASH)
             return {
                 "success": False,
                 "user": None,

@@ -69,8 +69,5 @@ class Settings:
         os.getenv("DATA_DIR", str(PROJECT_ROOT / "data"))
     )
 
-    # ── Security ─────────────────────────────────────────────────
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
-
 
 settings = Settings()

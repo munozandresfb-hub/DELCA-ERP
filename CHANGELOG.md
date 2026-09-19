@@ -7,6 +7,27 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.29] — 2026-09-19 — Login rápido (carga lazy) + correcciones de seguridad del reporte forense
+
+### Fixed (rendimiento)
+- **Entrada al sistema ~4.5× más rápida**: el `MainWindow` instanciaba TODAS las 14 vistas al entrar (3.1 s medido). Ahora la carga es **LAZY** — cada vista se instancia al hacer clic en el sidebar (medido: **0.68 s** al entrar, solo el Dashboard)
+
+### Security
+- **Contraseña admin no hardcodeada**: `bootstrap_admin` genera una contraseña temporal **aleatoria** (secrets) al crear el admin (se registra en el log; se fuerza el cambio en el primer ingreso)
+- **Mitigación de enumeración de usuarios**: `login_user` ejecuta un **bcrypt dummy** cuando el usuario no existe (tiempo de respuesta igualado ~400 ms)
+- **`verify_password` robusto**: hash corrupto/vacío → devuelve False (sin crash ni fuga de detalles)
+- **Límite de contraseña**: máximo 64 caracteres (bcrypt solo usa 72 bytes) — validación en `hash_password`/`verify_password`/`validate_password_strength`
+
+### Cleanup (código muerto)
+- Eliminados `test_estados.py` y `test_ubicaciones.py` (scripts de prueba dentro del paquete de producción)
+- Quitado `"Administrador"` duplicado de `ROLE_TIMEOUTS` · `SECRET_KEY` sin uso eliminado de `config.py`
+- `docs/MIGRACIONES.md`: regla de fuente única de migraciones (scripts vs engine)
+
+### Verification
+- MainWindow: 3.1 s → **0.68 s** (lazy) · 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.28] — 2026-09-18 — Kardex: editar/eliminar producto del documento + "Ingresar producto"/"Finalizar"
 
 ### Added / Changed

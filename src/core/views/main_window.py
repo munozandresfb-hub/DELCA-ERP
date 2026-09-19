@@ -153,21 +153,15 @@ class MainWindow(QMainWindow):
         self.sidebar.currentRowChanged.connect(self.change_page)
 
         # =========================
-        # STACK — only authorized pages
+        # STACK — only authorized pages (carga LAZY: la vista se instancia
+        # al hacer clic en el sidebar, no al entrar — login rápido)
         # =========================
         self.stack = QStackedWidget()
-        self._idx_to_widget: dict[int, QWidget] = {}
-        for real_idx in self._visible_indices:
-            label, perm, factory = self._sidebar_items[real_idx]
-            try:
-                widget = factory()
-            except Exception as e:
-                print(f"[MainWindow] Error cargando '{label}': {e}")
-                widget = PlaceholderPage(label, str(e))
-            self._idx_to_widget[real_idx] = widget
-            self.stack.addWidget(widget)
+        self._idx_to_widget: dict[int, QWidget | None] = {
+            real_idx: None for real_idx in self._visible_indices
+        }
 
-        # Initial selection
+        # Initial selection (dispara change_page -> carga el Dashboard)
         self.sidebar.setCurrentRow(0)
 
         # Add to layout
@@ -180,10 +174,24 @@ class MainWindow(QMainWindow):
         """Map the visible sidebar row to the actual backend page."""
         if 0 <= visible_index < len(self._visible_indices):
             real_idx = self._visible_indices[visible_index]
-            widget = self._idx_to_widget.get(real_idx)
+            widget = self._obtener_widget(real_idx)
             if widget:
                 self.stack.setCurrentWidget(widget)
                 self._recargar_vista(widget)
+
+    def _obtener_widget(self, real_idx: int) -> QWidget | None:
+        """Instancia la vista bajo demanda (lazy) y la cachea en el stack."""
+        widget = self._idx_to_widget.get(real_idx)
+        if widget is None:
+            label, perm, factory = self._sidebar_items[real_idx]
+            try:
+                widget = factory()
+            except Exception as e:
+                print(f"[MainWindow] Error cargando '{label}': {e}")
+                widget = PlaceholderPage(label, str(e))
+            self._idx_to_widget[real_idx] = widget
+            self.stack.addWidget(widget)
+        return widget
 
     def _recargar_vista(self, widget: QWidget) -> None:
         """Recarga los datos de la vista entrante para reflejar cambios

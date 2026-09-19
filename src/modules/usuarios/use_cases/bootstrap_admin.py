@@ -31,7 +31,13 @@ def _ensure_admin_user(session, admin_role: Rol):
     """Create the default admin user if no user exists."""
     admin_user = UsuarioRepository.get_user_by_username(session, "admin")
     if not admin_user:
-        password_hash = AuthService.hash_password("admin123")
+        # Contraseña inicial ALEATORIA (nunca hardcodeada). El usuario debe
+        # cambiarla al primer ingreso (requires_password_change=True).
+        import logging
+        import secrets
+
+        temp_password = secrets.token_urlsafe(12)
+        password_hash = AuthService.hash_password(temp_password)
         admin_user = Usuario(
             nombre="Administrador Principal",
             username="admin",
@@ -41,6 +47,10 @@ def _ensure_admin_user(session, admin_role: Rol):
         )
         session.add(admin_user)
         session.flush()
+        logging.getLogger("delca.startup").warning(
+            "Admin creado con contraseña temporal: %s (cámbiela en el primer ingreso)",
+            temp_password,
+        )
 
 
 def bootstrap_admin():
