@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.31] — 2026-09-19 — Botón Imprimir en el formulario de registro + especificación de impresión
+
+### Added
+- **Botón "🖨 Imprimir"** en el formulario "Registrar Llanta" (al lado de Guardar): al crear la llanta, guarda y **abre el diálogo de impresión de la hoja de proceso inmediatamente** — sin modificar ningún criterio de impresión
+- En modo **edición**, el botón Imprimir se **oculta** (solo aplica al registrar llantas nuevas)
+- Servicio/ViewModel: `obtener_por_tiquete` (para imprimir la llanta recién creada)
+- **Documento "espeficificacion impresion de tiquetes.docx"** en la carpeta DELCA: especificación completa de la impresión de tiquetes — hoja física (103×279 mm), estrategia (Carta + zona izquierda, 300 DPI), calibración (`impresion_config.json`), campos/posiciones (talón y cuerpo), fuentes (15/10/20 pt), marcas sigla→completa, flujo de uso y **sección de código con los parámetros maestros** (referencia para futuros ajustes)
+
+### Verification
+- Formulario crear: botón Imprimir presente · edición: oculto · bandera `imprimir` activa al pulsarlo
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.30] — 2026-09-19 — Módulo Llantas: botón EDITAR (editar características de la llanta)
 
 ### Added

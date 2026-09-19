@@ -149,6 +149,10 @@ class LlantaViewModel:
             return True, str(resultado)
         return False, str(resultado)
 
+    def obtener_por_tiquete(self, tiquete: str) -> Llanta | None:
+        """Busca una llanta por su tiquete (para imprimir la recién creada)."""
+        return LlantaService.obtener_por_tiquete(tiquete)
+
     def cambiar_estado(self, llanta_id: int, estado: str) -> tuple[bool, str]:
         resultado = LlantaService.cambiar_estado(llanta_id, estado)
         if resultado[0]:

@@ -111,6 +111,14 @@ class _GestionLlantasMixin:
             return llanta
 
     @staticmethod
+    def obtener_por_tiquete(tiquete: str) -> Llanta | None:
+        with get_session() as session:
+            llanta = LlantaRepository.get_by_tiquete(session, (tiquete or "").strip())
+            if llanta:
+                session.expunge(llanta)
+            return llanta
+
+    @staticmethod
     def tiquete_existe(tiquete: str) -> bool:
         """Return True if a tire with the given tiquete already exists.
 

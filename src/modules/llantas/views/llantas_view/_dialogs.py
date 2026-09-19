@@ -36,6 +36,7 @@ class LlantaFormDialog(QDialog):
     def __init__(self, parent: QWidget | None = None, llanta: Llanta | None = None) -> None:
         super().__init__(parent)
         self._llanta = llanta
+        self._imprimir = False
         self.setWindowTitle("Editar Llanta" if llanta else "Registrar Llanta")
         self.resize(520, 620)
         self._clientes_dict: dict[str, int] = {}
@@ -214,6 +215,18 @@ class LlantaFormDialog(QDialog):
             "padding: 8px 24px; border-radius: 4px; border: none; }"
         )
         self.guardar_btn.clicked.connect(self._guardar)
+
+        # Imprimir (solo al registrar): guarda la llanta y envía la hoja de
+        # proceso a la impresora inmediatamente (criterios de impresión intactos).
+        self.imprimir_btn = QPushButton("🖨 Imprimir")
+        self.imprimir_btn.setStyleSheet(
+            "QPushButton { background: #2c3e50; color: white; font-weight: bold; "
+            "padding: 8px 24px; border-radius: 4px; border: none; }"
+        )
+        self.imprimir_btn.clicked.connect(self._guardar_y_imprimir)
+        if self._llanta:
+            self.imprimir_btn.setVisible(False)  # solo al registrar llantas nuevas
+
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.setStyleSheet(
             "QPushButton { padding: 8px 24px; border-radius: 4px; }"
@@ -221,10 +234,21 @@ class LlantaFormDialog(QDialog):
         cancelar_btn.clicked.connect(self.reject)
         btn_layout.addStretch()
         btn_layout.addWidget(self.guardar_btn)
+        btn_layout.addWidget(self.imprimir_btn)
         btn_layout.addWidget(cancelar_btn)
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def _guardar_y_imprimir(self) -> None:
+        """Guarda la llanta y marca que se debe imprimir al terminar."""
+        self._imprimir = True
+        self._guardar()
+
+    @property
+    def imprimir(self) -> bool:
+        """True si el usuario pidió imprimir el tiquete tras guardar."""
+        return self._imprimir
 
     def _cargar_llanta(self, llanta: Llanta) -> None:
         """Carga los datos de una llanta existente (modo edición).

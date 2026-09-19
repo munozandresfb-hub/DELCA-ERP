@@ -227,11 +227,22 @@ class LlantasView(QWidget):
             return
 
         data = dialog.get_data()
+        tiquete_creado = data.get("tiquete")
         ok, msg = self.viewmodel.crear(**data)
 
         if ok:
             self._poblar_tabla()
             QMessageBox.information(self, "Éxito", msg)
+            # Si el usuario pidió imprimir desde el formulario, imprime el
+            # tiquete de la llanta recién creada (criterios de impresión intactos).
+            if getattr(dialog, "imprimir", False) and tiquete_creado:
+                llanta_nueva = self.viewmodel.obtener_por_tiquete(tiquete_creado)
+                if llanta_nueva:
+                    ok_imp, msg_imp = TiquetePrinter.print_tiquete(llanta_nueva, self)
+                    if ok_imp:
+                        QMessageBox.information(self, "Impresión", msg_imp)
+                    else:
+                        QMessageBox.warning(self, "Impresión", msg_imp)
         else:
             QMessageBox.warning(self, "Error", msg)
 
