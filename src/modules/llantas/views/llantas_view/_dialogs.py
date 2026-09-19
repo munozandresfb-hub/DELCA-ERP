@@ -26,16 +26,24 @@ from src.modules.llantas.services.llanta_service import ESTADOS_PROCESO, LlantaS
 
 
 class LlantaFormDialog(QDialog):
-    """Dialog for registering a new tire — simplified form for shop-floor use."""
+    """Dialog for registering a new tire or editing an existing one.
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    Modo edición (llanta != None): carga los datos de la llanta y BLOQUEA el
+    tiquete y el precio de venta (inalterables). Se pueden editar: cliente,
+    diseño de banda, número de orden, marca, dimensión, DOT, asesor, etc.
+    """
+
+    def __init__(self, parent: QWidget | None = None, llanta: Llanta | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Registrar Llanta")
+        self._llanta = llanta
+        self.setWindowTitle("Editar Llanta" if llanta else "Registrar Llanta")
         self.resize(520, 620)
         self._clientes_dict: dict[str, int] = {}
         self._clientes_info: dict[int, dict] = {}
         self._tiquete_duplicado = False
         self.setup_ui()
+        if llanta:
+            self._cargar_llanta(llanta)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -218,6 +226,51 @@ class LlantaFormDialog(QDialog):
 
         self.setLayout(layout)
 
+    def _cargar_llanta(self, llanta: Llanta) -> None:
+        """Carga los datos de una llanta existente (modo edición).
+
+        El tiquete y el precio de venta quedan BLOQUEADOS (inalterables).
+        """
+        self.tiquete_input.setText(llanta.tiquete or "")
+        self.tiquete_input.setReadOnly(True)
+
+        self.numero_orden_input.setText(llanta.numero_orden or "")
+        self.consecutivo_input.setText(llanta.consecutivo or "")
+        if llanta.fecha_ingreso:
+            self.fecha_ingreso_edit.setDate(
+                QDate(
+                    llanta.fecha_ingreso.year,
+                    llanta.fecha_ingreso.month,
+                    llanta.fecha_ingreso.day,
+                )
+            )
+
+        if llanta.cliente:
+            label = f"{llanta.cliente.nombre} ({llanta.cliente.nit})"
+            self.cliente_input.setText(label)
+            self._on_cliente_selected(label)
+
+        if llanta.marca_id:
+            idx = self.marca_combo.findData(llanta.marca_id)
+            if idx >= 0:
+                self.marca_combo.setCurrentIndex(idx)
+        if llanta.dimension_id:
+            idx = self.dimension_combo.findData(llanta.dimension_id)
+            if idx >= 0:
+                self.dimension_combo.setCurrentIndex(idx)
+        if llanta.diseno_id:
+            idx = self.diseno_combo.findData(llanta.diseno_id)
+            if idx >= 0:
+                self.diseno_combo.setCurrentIndex(idx)
+
+        self.dot_input.setText(llanta.dot or "")
+        self.asesor_input.setText(llanta.asesor or "")
+        self.observaciones_input.setPlainText(llanta.observaciones or "")
+
+        # Precio: bloqueado (muestra el valor actual, no editable)
+        self.precio_venta_spin.setEnabled(False)
+        self.precio_venta_spin.setValue(float(llanta.precio_venta or 0))
+
     # ── Client events ──────────────────────────────────────────────
 
     def _on_cliente_edited(self, text: str) -> None:
@@ -276,6 +329,8 @@ class LlantaFormDialog(QDialog):
 
     def _on_tiquete_cambiado(self) -> None:
         """Reinicia el debounce: solo se consulta la BD tras 400 ms sin escribir."""
+        if self._llanta:
+            return  # modo edición: el tiquete es fijo, no validar duplicado
         self._tiquete_timer.start()
 
     def _verificar_tiquete_en_vivo(self) -> None:
@@ -337,8 +392,7 @@ class LlantaFormDialog(QDialog):
     def get_data(self) -> dict:
         cliente_texto = self.cliente_input.text().strip()
         cliente_id = self._clientes_dict.get(cliente_texto)
-        return {
-            "tiquete": self.tiquete_input.text().strip(),
+        data = {
             "numero_orden": self.numero_orden_input.text().strip() or None,
             "consecutivo": self.consecutivo_input.text().strip() or None,
             "fecha_ingreso": self.fecha_ingreso_edit.date().toPython(),
@@ -347,10 +401,14 @@ class LlantaFormDialog(QDialog):
             "diseno_id": self.diseno_combo.currentData(),
             "dot": self.dot_input.text().strip() or None,
             "asesor": self.asesor_input.text().strip() or None,
-            "precio_venta": self.precio_venta_spin.value() or None,
             "observaciones": self.observaciones_input.toPlainText().strip() or None,
             "cliente_id": cliente_id,
         }
+        if not self._llanta:
+            # Solo al registrar: tiquete y precio
+            data["tiquete"] = self.tiquete_input.text().strip()
+            data["precio_venta"] = self.precio_venta_spin.value() or None
+        return data
 
 
 class HistorialDialog(QDialog):

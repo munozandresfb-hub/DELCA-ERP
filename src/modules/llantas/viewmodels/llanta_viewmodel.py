@@ -140,6 +140,15 @@ class LlantaViewModel:
             return True, f"Llanta '{resultado.tiquete}' creada"
         return False, str(resultado)
 
+    def actualizar(self, llanta_id: int, **datos) -> tuple[bool, str]:
+        """Actualiza características editables de una llanta (cliente, diseño,
+        número de orden, marca, dimensión, dot, asesor, observaciones...)."""
+        ok, resultado = LlantaService.actualizar_llanta(llanta_id, **datos)
+        if ok:
+            self.cargar_llantas()
+            return True, str(resultado)
+        return False, str(resultado)
+
     def cambiar_estado(self, llanta_id: int, estado: str) -> tuple[bool, str]:
         resultado = LlantaService.cambiar_estado(llanta_id, estado)
         if resultado[0]:

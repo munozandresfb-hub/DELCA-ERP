@@ -215,6 +215,79 @@ class _GestionLlantasMixin:
             return True, llanta
 
     @staticmethod
+    def actualizar_llanta(
+        llanta_id: int,
+        cliente_id: int | None = None,
+        diseno_id: int | None = None,
+        numero_orden: str | None = None,
+        consecutivo: str | None = None,
+        marca_id: int | None = None,
+        dimension_id: int | None = None,
+        dot: str | None = None,
+        asesor: str | None = None,
+        observaciones: str | None = None,
+        fecha_ingreso=None,
+    ) -> tuple[bool, str]:
+        """Actualiza características editables de una llanta.
+
+        NO modifica: tiquete, precio_venta ni costo_produccion (bloqueados).
+        Registra la edición en auditoría.
+        """
+        from src.core.services.audit_service import registrar_crud
+        from src.core.services.session_service import get_session_manager
+
+        with get_session() as session:
+            llanta = LlantaRepository.get_by_id(session, llanta_id)
+            if not llanta:
+                return False, "Llanta no encontrada"
+
+            # Textos legacy (para reportes que usan l.marca / l.dimension)
+            marca_text = None
+            dimension_text = None
+            if marca_id:
+                marcas = LlantaRepository.get_all_marcas(session)
+                marca_obj = next((m for m in marcas if m.id == marca_id), None)
+                marca_text = marca_obj.nombre if marca_obj else None
+            if dimension_id:
+                dimensiones = LlantaRepository.get_all_dimensiones(session)
+                dimension_obj = next(
+                    (d for d in dimensiones if d.id == dimension_id), None
+                )
+                dimension_text = dimension_obj.display if dimension_obj else None
+
+            llanta.cliente_id = cliente_id
+            llanta.diseno_id = diseno_id
+            llanta.numero_orden = numero_orden
+            llanta.consecutivo = consecutivo
+            llanta.marca_id = marca_id
+            llanta.marca = marca_text
+            llanta.dimension_id = dimension_id
+            llanta.dimension = dimension_text
+            llanta.dot = dot
+            llanta.asesor = asesor
+            llanta.observaciones = observaciones
+            if fecha_ingreso is not None:
+                llanta.fecha_ingreso = fecha_ingreso
+
+            # Auditoría (solo si hay usuario en sesión — no romper si no existe)
+            uid = get_session_manager().get_user_id()
+            if uid is not None:
+                registrar_crud(
+                    usuario_id=uid,
+                    entidad="llanta",
+                    accion="UPDATE",
+                    objeto_id=llanta.id,
+                    cambios={
+                        "cliente_id": cliente_id,
+                        "diseno_id": diseno_id,
+                        "numero_orden": numero_orden,
+                        "consecutivo": consecutivo,
+                    },
+                    session=session,
+                )
+            return True, f"Llanta '{llanta.tiquete}' actualizada"
+
+    @staticmethod
     def cambiar_estado(
         llanta_id: int, nuevo_estado: str
     ) -> tuple[bool, str]:

@@ -102,6 +102,14 @@ class LlantasView(QWidget):
         imprimir_btn.clicked.connect(self._imprimir_tiquete)
         row2.addWidget(imprimir_btn)
 
+        editar_btn = QPushButton("✏️ EDITAR")
+        editar_btn.setStyleSheet(
+            "QPushButton { background: #2c3e50; color: white; font-weight: bold; "
+            "padding: 6px 14px; border-radius: 4px; border: none; }"
+        )
+        editar_btn.clicked.connect(self._editar_llanta)
+        row2.addWidget(editar_btn)
+
         catalogos_btn = QPushButton("📋 Catálogos")
         catalogos_btn.setStyleSheet(
             "QPushButton { background: #6c757d; color: white; font-weight: bold; "
@@ -220,6 +228,30 @@ class LlantasView(QWidget):
 
         data = dialog.get_data()
         ok, msg = self.viewmodel.crear(**data)
+
+        if ok:
+            self._poblar_tabla()
+            QMessageBox.information(self, "Éxito", msg)
+        else:
+            QMessageBox.warning(self, "Error", msg)
+
+    def _editar_llanta(self) -> None:
+        """Edita la llanta seleccionada (cliente, diseño, orden...).
+        El tiquete y el precio no se pueden modificar."""
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self.viewmodel.llantas):
+            QMessageBox.warning(
+                self, "Validación", "Seleccione una llanta de la tabla"
+            )
+            return
+
+        llanta = self.viewmodel.llantas[row]
+        dialog = LlantaFormDialog(self, llanta=llanta)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        data = dialog.get_data()
+        ok, msg = self.viewmodel.actualizar(llanta.id, **data)
 
         if ok:
             self._poblar_tabla()

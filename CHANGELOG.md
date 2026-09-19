@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.30] — 2026-09-19 — Módulo Llantas: botón EDITAR (editar características de la llanta)
+
+### Added
+- **Botón "✏️ EDITAR"** en el módulo Llantas: selecciona una llanta de la tabla → abre el formulario en **modo edición**
+- **Editable**: Cliente · Diseño de banda/Diseño · Número de orden (+ consecutivo) · Marca · Dimensión · DOT · Asesor · Observaciones · Fecha de ingreso
+- **Bloqueado (inalterable)**: **Tiquete** (solo lectura) y **Precio de venta** (deshabilitado)
+- Servicio `LlantaService.actualizar_llanta` (no toca tiquete/precio/costo; registra auditoría UPDATE cuando hay sesión) + ViewModel `actualizar`
+- Cambiar el diseño de banda actualiza el costo/precio de **referencia** del reporte automáticamente (catálogo por diseño+dimensión) — el precio guardado no se toca
+
+### Verification
+- Editar llanta: cliente y orden actualizados · **tiquete/precio/costo intactos** · auditoría solo con sesión
+- 161 tests passing · EXE recompilado
+
+---
+
 ## [2.8.29] — 2026-09-19 — Login rápido (carga lazy) + correcciones de seguridad del reporte forense
 
 ### Fixed (rendimiento)
