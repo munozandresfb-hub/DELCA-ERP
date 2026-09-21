@@ -41,12 +41,13 @@ UBICACIONES_DISPLAY: dict[str, str] = {
 #   APTA      → REENCAUCHADA | REPARADA | RECHAZADA | REPROCESO
 #                                              (inspección final: 4 veredictos)
 #   REPROCESO → REENCAUCHADA | REPARADA | RECHAZADA (inspección final repetida)
-#   REENCAUCHADA/REPARADA/RECHAZADA → terminales (solo cambian de ubicación)
+#   REENCAUCHADA → REPROCESO | RECHAZADA       (re-inspección final de terminada)
+#   REPARADA/RECHAZADA → terminales (solo cambian de ubicación)
 TRANSICIONES_VALIDAS: dict[str, set[str]] = {
     "PENDIENTE": {"APTA", "RECHAZADA"},
     "APTA": {"REENCAUCHADA", "REPARADA", "RECHAZADA", "REPROCESO"},
     "REPROCESO": {"REENCAUCHADA", "REPARADA", "RECHAZADA"},
-    "REENCAUCHADA": set(),
+    "REENCAUCHADA": {"REPROCESO", "RECHAZADA"},
     "REPARADA": set(),
     "RECHAZADA": set(),
 }
@@ -58,6 +59,12 @@ VEREDICTOS_INSPECCION_FINAL = (
     "REPARADA",
     "REPROCESO",
 )
+
+# ── Estados admitidos en Inspección Final (producción) ────────────
+# La inspección final solo admite llantas con diseño de banda REP y en
+# alguno de estos estados (APTA: primera inspección; REENCAUCHADA/REPROCESO:
+# re-inspección). "REP" es el diseño (DISENO_REPARADA), no un estado.
+ESTADOS_INSPECCION_FINAL = ("APTA", "REENCAUCHADA", "REPROCESO")
 
 # ── Ubicaciones de cambio manual en Planta (opciones fijas en la UI) ──
 # El cambio de ubicación manual en el módulo Planta ofrece siempre estas

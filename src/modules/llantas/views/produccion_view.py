@@ -1,5 +1,7 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QCompleter,
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -19,7 +21,9 @@ from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
 from src.modules.llantas.services.llanta_service import (
     DISENO_REPARADA,
+    ESTADOS_INSPECCION_FINAL,
     ESTADOS_PROCESO,
+    TRANSICIONES_VALIDAS,
     UBICACIONES_DISPLAY,
     VEREDICTOS_INSPECCION_FINAL,
     LlantaService,
@@ -42,7 +46,7 @@ class _InspeccionFinalDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Inspección Final")
-        self.resize(460, 220)
+        self.resize(460, 290)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
 
@@ -62,15 +66,30 @@ class _InspeccionFinalDialog(QDialog):
         self.info_label.setStyleSheet("color: #666; font-size: 13px;")
         form.addRow(self.info_label)
 
+        # Veredictos: se cargan dinámicamente según el estado de la llanta
+        # encontrada (solo las transiciones válidas del flujo).
         self.veredicto_combo = QComboBox()
         self.veredicto_combo.setEnabled(False)
         self.veredicto_combo.setStyleSheet(
             "font-size: 14px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;"
         )
-        # Veredictos fijos de inspección final (flujo correcto 2)
-        for v in VEREDICTOS_INSPECCION_FINAL:
-            self.veredicto_combo.addItem(v, v)
+        self.veredicto_combo.currentIndexChanged.connect(
+            self._actualizar_veredicto_causa
+        )
         form.addRow("Veredicto:", self.veredicto_combo)
+
+        # Causa de rechazo — obligatoria cuando el veredicto es RECHAZADA.
+        # Se selecciona por número o por texto (autocompletado sobre ambos).
+        self.causa_combo = QComboBox()
+        self.causa_combo.setEditable(True)
+        self.causa_combo.setEnabled(False)
+        self.causa_combo.setStyleSheet(
+            "QComboBox { font-size: 13px; padding: 4px; border: 1px solid #ccc; "
+            "border-radius: 4px; }"
+        )
+        self.causa_combo.lineEdit().setPlaceholderText("Número o texto de la causa...")
+        self._cargar_causas()
+        form.addRow("Causa de Rechazo:", self.causa_combo)
 
         self.nota_rep = QLabel("")
         self.nota_rep.setStyleSheet("color: #e65100; font-size: 12px;")
@@ -116,13 +135,52 @@ class _InspeccionFinalDialog(QDialog):
 
         self.setLayout(layout)
 
+    def _cargar_causas(self) -> None:
+        """Carga las causas de rechazo del catálogo (código — descripción)."""
+        self.causa_combo.clear()
+        causas = LlantaService.listar_causas_rechazo()
+        for c in causas:
+            self.causa_combo.addItem(f"{c.codigo} — {c.descripcion}", c.id)
+        completer = QCompleter(
+            [self.causa_combo.itemText(i) for i in range(self.causa_combo.count())],
+            self,
+        )
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.causa_combo.setCompleter(completer)
+
+    def _actualizar_veredicto_causa(self) -> None:
+        """Habilita la causa de rechazo solo cuando el veredicto es RECHAZADA."""
+        es_rechazada = self.veredicto_combo.currentData() == "RECHAZADA"
+        self.causa_combo.setEnabled(
+            es_rechazada and self._llanta_encontrada is not None
+        )
+
+    def _resolver_causa_id(self) -> int | None:
+        """Resuelve la causa de rechazo escrita (por número o texto)."""
+        causa = LlantaService.buscar_causa_rechazo(
+            self.causa_combo.currentText()
+        )
+        return causa.id if causa else None
+
     def _aplicar_operacion(self) -> bool:
         """Aplica el veredicto de inspección final. True si fue OK."""
         if not self._llanta_encontrada:
             QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
             return False
+        causa_id = None
+        if self.veredicto == "RECHAZADA":
+            causa_id = self._resolver_causa_id()
+            if causa_id is None:
+                QMessageBox.warning(
+                    self,
+                    "Validación",
+                    "Para rechazar la llanta debe seleccionar una causa de "
+                    "rechazo válida (número o texto)",
+                )
+                return False
         ok, msg = LlantaService.aplicar_veredicto(
-            self._llanta_encontrada.id, self.veredicto
+            self._llanta_encontrada.id, self.veredicto, causa_id
         )
         if ok:
             QMessageBox.information(self, "Éxito", msg)
@@ -146,6 +204,8 @@ class _InspeccionFinalDialog(QDialog):
             self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
             self._llanta_encontrada = None
             self.tiquete_input.setFocus()
 
@@ -175,6 +235,8 @@ class _InspeccionFinalDialog(QDialog):
             self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
             return
 
         marca_text = (
@@ -192,21 +254,51 @@ class _InspeccionFinalDialog(QDialog):
             f"Estado: {estado}"
         )
         self.info_label.setStyleSheet("color: #2e7d32; font-size: 13px;")
+        self.nota_rep.setText("")
 
-        # Veredictos de inspección final: opciones fijas ya cargadas en setup_ui.
-        # Regla R5: REPARADA solo con diseño REP → avisar (la validación
-        # final la hace el servicio)
-        tiene_rep = (llanta.diseno_obj.nombre if llanta.diseno_obj else None) == DISENO_REPARADA
-        if not tiene_rep:
-            self.nota_rep.setText(
-                f"  Reparada requiere diseño '{DISENO_REPARADA}' (diseño actual: {diseno_text})"
+        # Admisión: la inspección final solo admite llantas con diseño de
+        # banda REP (reparables) y en estado APTA/REENCAUCHADA/REPROCESO.
+        if diseno_text != DISENO_REPARADA:
+            self.info_label.setText(
+                f"  ✗ Inspección final solo admite llantas con diseño "
+                f"'{DISENO_REPARADA}' (diseño actual: {diseno_text})"
             )
-        else:
-            self.nota_rep.setText("")
+            self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
+            self.veredicto_combo.clear()
+            self.veredicto_combo.setEnabled(False)
+            self.aplicar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
+            return
+        if estado not in ESTADOS_INSPECCION_FINAL:
+            self.info_label.setText(
+                f"  ✗ Inspección final aplica a llantas en estado "
+                f"{', '.join(ESTADOS_INSPECCION_FINAL)} (actual: {estado})"
+            )
+            self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
+            self.veredicto_combo.clear()
+            self.veredicto_combo.setEnabled(False)
+            self.aplicar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
+            return
+
+        # Veredictos alcanzables desde el estado actual (fix: se recargan en
+        # cada búsqueda — antes quedaba vacío tras una búsqueda fallida).
+        permitidos = TRANSICIONES_VALIDAS.get(estado, set())
+        self.veredicto_combo.clear()
+        for v in VEREDICTOS_INSPECCION_FINAL:
+            if v in permitidos:
+                self.veredicto_combo.addItem(v, v)
+        if self.veredicto_combo.count() == 1:
+            self.veredicto_combo.setCurrentIndex(0)
 
         self.veredicto_combo.setEnabled(True)
         self.aplicar_btn.setEnabled(True)
         self.rapido_btn.setEnabled(True)
+        self._actualizar_veredicto_causa()
 
     @property
     def llanta_encontrada(self) -> Llanta | None:

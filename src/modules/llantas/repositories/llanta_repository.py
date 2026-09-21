@@ -21,6 +21,12 @@ class LlantaRepository:
         return session.query(Llanta).filter(Llanta.tiquete == tiquete).first()
 
     @staticmethod
+    def obtener_causa_rechazo(session: Session, causa_id: int):
+        from src.modules.llantas.models.causa_rechazo_model import CausaRechazo
+
+        return session.query(CausaRechazo).filter(CausaRechazo.id == causa_id).first()
+
+    @staticmethod
     def search(
         session: Session,
         term: str = "",

@@ -1,3 +1,5 @@
+from sqlalchemy import or_
+
 from src.database.engine import get_session
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
@@ -230,6 +232,27 @@ class _CatalogosMixin:
         from src.modules.llantas.models.causa_rechazo_model import CausaRechazo
         with get_session() as session:
             return session.query(CausaRechazo).order_by(CausaRechazo.codigo).all()
+
+    @staticmethod
+    def buscar_causa_rechazo(termino: str):
+        """Resuelve una causa de rechazo por su código o descripción
+        (coincidencia exacta, sin distinguir mayúsculas). None si no coincide."""
+        from src.modules.llantas.models.causa_rechazo_model import CausaRechazo
+
+        t = (termino or "").strip()
+        if not t:
+            return None
+        with get_session() as session:
+            return (
+                session.query(CausaRechazo)
+                .filter(
+                    or_(
+                        CausaRechazo.codigo == t,
+                        CausaRechazo.descripcion == t.upper(),
+                    )
+                )
+                .first()
+            )
 
     @staticmethod
     def crear_causa_rechazo(codigo: str, descripcion: str, categoria: str = "") -> tuple[bool, str]:

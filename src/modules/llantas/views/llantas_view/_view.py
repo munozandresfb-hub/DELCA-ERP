@@ -43,6 +43,7 @@ class LlantasView(QWidget):
         "Dimensión",
         "Diseño",
         "Estado",
+        "Causa",
         "Ubicación Actual",
         "Fecha de Ingreso",
     ]
@@ -198,15 +199,21 @@ class LlantasView(QWidget):
             dis = l.diseno_obj.nombre if l.diseno_obj else "—"
             self.table.setItem(row, 5, QTableWidgetItem(dis))
             self.table.setItem(row, 6, QTableWidgetItem(l.estado or ""))
+            # Causa de rechazo (asignada en Inspección Inicial cuando RECHAZADA)
+            causa = l.causa_rechazo
+            causa_str = (
+                f"{causa.codigo} — {causa.descripcion}" if causa else "—"
+            )
+            self.table.setItem(row, 7, QTableWidgetItem(causa_str))
             ubic_raw = l.ubicacion_actual or "—"
             ubic_str = (
                 UBICACIONES_DISPLAY.get(ubic_raw, ubic_raw)
                 if ubic_raw != "—"
                 else "—"
             )
-            self.table.setItem(row, 7, QTableWidgetItem(ubic_str))
+            self.table.setItem(row, 8, QTableWidgetItem(ubic_str))
             fecha = l.fecha_ingreso.strftime("%Y-%m-%d") if l.fecha_ingreso else "—"
-            self.table.setItem(row, 8, QTableWidgetItem(fecha))
+            self.table.setItem(row, 9, QTableWidgetItem(fecha))
 
         self.table.setColumnHidden(0, True)
         self._actualizar_paginacion()

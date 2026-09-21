@@ -297,7 +297,7 @@ class _GestionLlantasMixin:
 
     @staticmethod
     def cambiar_estado(
-        llanta_id: int, nuevo_estado: str
+        llanta_id: int, nuevo_estado: str, causa_rechazo_id: int | None = None
     ) -> tuple[bool, str]:
         if nuevo_estado not in ESTADOS_PROCESO:
             return False, f"Estado inválido: {nuevo_estado}"
@@ -316,7 +316,24 @@ class _GestionLlantasMixin:
                     f"directamente a '{nuevo_estado}'"
                 )
 
+            # Causa de rechazo obligatoria cuando el estado es RECHAZADA
+            # (ESPECIFICACIONES_DELCA_v2.1.docx — sección 5.1)
+            if nuevo_estado == "RECHAZADA":
+                if causa_rechazo_id is None:
+                    return False, (
+                        "Debe seleccionar la causa de rechazo para cambiar "
+                        "el estado a RECHAZADA"
+                    )
+                causa = LlantaRepository.obtener_causa_rechazo(
+                    session, causa_rechazo_id
+                )
+                if not causa:
+                    return False, "La causa de rechazo seleccionada no existe"
+
             llanta.estado = nuevo_estado
+            llanta.causa_rechazo_id = (
+                causa_rechazo_id if nuevo_estado == "RECHAZADA" else None
+            )
             historial = EstadoLlanta(
                 llanta_id=llanta_id, estado=nuevo_estado
             )
@@ -353,7 +370,7 @@ class _GestionLlantasMixin:
 
     @staticmethod
     def aplicar_veredicto(
-        llanta_id: int, veredicto: str
+        llanta_id: int, veredicto: str, causa_rechazo_id: int | None = None
     ) -> tuple[bool, str]:
         """Aplica un veredicto de inspección: cambia estado y ubicación
         de forma atómica según "flujo correcto 2".
@@ -362,7 +379,7 @@ class _GestionLlantasMixin:
           - APTA         → estado APTA, ubicación PRODUCCION
           - REENCAUCHADA → estado REENCAUCHADA, ubicación PLANTA
           - REPARADA     → estado REPARADA, ubicación PLANTA (solo diseño REP)
-          - RECHAZADA    → estado RECHAZADA, ubicación PLANTA
+          - RECHAZADA    → estado RECHAZADA, ubicación PLANTA (causa obligatoria)
           - REPROCESO    → estado REPROCESO, ubicación PRODUCCION (R7)
         """
         if veredicto not in VEREDICTO_UBICACION:
@@ -375,6 +392,20 @@ class _GestionLlantasMixin:
             llanta = LlantaRepository.get_by_id(session, llanta_id)
             if not llanta:
                 return False, "Llanta no encontrada"
+
+            # Causa de rechazo obligatoria cuando el veredicto es RECHAZADA
+            # (ESPECIFICACIONES_DELCA_v2.1.docx — sección 5.1)
+            if veredicto == "RECHAZADA":
+                if causa_rechazo_id is None:
+                    return False, (
+                        "Debe seleccionar la causa de rechazo para aplicar "
+                        "el veredicto RECHAZADA"
+                    )
+                causa = LlantaRepository.obtener_causa_rechazo(
+                    session, causa_rechazo_id
+                )
+                if not causa:
+                    return False, "La causa de rechazo seleccionada no existe"
 
             # Regla R5: REPARADA solo cuando el diseño de banda es REP
             if veredicto == "REPARADA":
@@ -401,6 +432,9 @@ class _GestionLlantasMixin:
             nueva_ubicacion = VEREDICTO_UBICACION[veredicto]
             llanta.estado = veredicto
             llanta.ubicacion_actual = nueva_ubicacion
+            llanta.causa_rechazo_id = (
+                causa_rechazo_id if veredicto == "RECHAZADA" else None
+            )
 
             session.add(
                 EstadoLlanta(llanta_id=llanta_id, estado=veredicto)

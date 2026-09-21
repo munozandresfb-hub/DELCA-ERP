@@ -110,6 +110,35 @@ class TestCambiarEstado:
         assert len(historial) == 2  # PENDIENTE (crear) + APTA
         assert str(historial[0].estado) == "APTA"
 
+    def test_estado_rechazada_sin_causa(self):
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.cambiar_estado(llanta.id, "RECHAZADA")
+        assert not ok
+        assert "causa" in msg.lower()
+
+    def test_estado_rechazada_con_causa(self):
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.crear_causa_rechazo("93", "CAUSA CAMBIO ESTADO")
+        assert ok, msg
+        causa = LlantaService.buscar_causa_rechazo("93")
+        assert causa is not None
+        ok, msg = LlantaService.cambiar_estado(llanta.id, "RECHAZADA", causa.id)
+        assert ok
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.estado == "RECHAZADA"
+        assert llanta_actual.causa_rechazo_id == causa.id
+
+    def test_estado_no_rechazada_no_guarda_causa(self):
+        # Una causa pasada con un estado que no es RECHAZADA no se guarda
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.crear_causa_rechazo("92", "CAUSA NO GUARDAR")
+        assert ok, msg
+        causa = LlantaService.buscar_causa_rechazo("92")
+        ok, msg = LlantaService.cambiar_estado(llanta.id, "APTA", causa.id)
+        assert ok
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.causa_rechazo_id is None
+
 
 class TestMoverUbicacion:
     """LlantaService.mover_ubicacion — location tracking."""
@@ -154,9 +183,27 @@ class TestAplicarVeredicto:
 
     def test_veredicto_rechazada_mueve_a_planta(self):
         llanta = _crear_llanta()
-        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA")
+        ok, msg = LlantaService.crear_causa_rechazo("99", "CAUSA TEST")
+        assert ok, msg
+        causa = LlantaService.buscar_causa_rechazo("99")
+        assert causa is not None
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA", causa.id)
         assert ok
         assert "PLANTA" in msg
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.causa_rechazo_id == causa.id
+
+    def test_veredicto_rechazada_sin_causa(self):
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA")
+        assert not ok
+        assert "causa" in msg.lower()
+
+    def test_veredicto_rechazada_con_causa_invalida(self):
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA", 99999)
+        assert not ok
+        assert "no existe" in msg
 
     def test_veredicto_invalido(self):
         llanta = _crear_llanta()
@@ -199,11 +246,44 @@ class TestAplicarVeredicto:
         llanta = _crear_llanta()
         LlantaService.aplicar_veredicto(llanta.id, "APTA")
         LlantaService.aplicar_veredicto(llanta.id, "REPROCESO")
-        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA")
+        ok, msg = LlantaService.crear_causa_rechazo("95", "CAUSA REPROCESO")
+        assert ok, msg
+        causa = LlantaService.buscar_causa_rechazo("95")
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA", causa.id)
         assert ok
         assert "PLANTA" in msg
+
+    def test_veredicto_reencauchada_re_inspeccion(self):
+        # REENCAUCHADA (terminada) admite re-inspección final → REPROCESO
+        llanta = _crear_llanta()
+        LlantaService.aplicar_veredicto(llanta.id, "APTA")
+        LlantaService.aplicar_veredicto(llanta.id, "REENCAUCHADA")
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "REPROCESO")
+        assert ok
+        assert "PRODUCCION" in msg
+
+    def test_veredicto_reencauchada_a_rechazada(self):
+        # REENCAUCHADA re-inspección → RECHAZADA (con causa obligatoria)
+        llanta = _crear_llanta(tiquete="TQ-RE2")
+        LlantaService.aplicar_veredicto(llanta.id, "APTA")
+        LlantaService.aplicar_veredicto(llanta.id, "REENCAUCHADA")
+        ok, msg = LlantaService.crear_causa_rechazo("94", "CAUSA REENCAUCHADA")
+        assert ok, msg
+        causa = LlantaService.buscar_causa_rechazo("94")
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA", causa.id)
+        assert ok
+        assert "PLANTA" in msg
+
+    def test_veredicto_reparada_desde_reencauchada_invalido(self):
+        # REENCAUCHADA no admite REPARADA (solo REPROCESO/RECHAZADA)
+        llanta = _crear_llanta()
+        LlantaService.aplicar_veredicto(llanta.id, "APTA")
+        LlantaService.aplicar_veredicto(llanta.id, "REENCAUCHADA")
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "REPARADA")
+        assert not ok
         llanta_actual = LlantaService.obtener_por_id(llanta.id)
-        assert llanta_actual.estado == "RECHAZADA"
+        # El veredicto inválido no modifica el estado
+        assert llanta_actual.estado == "REENCAUCHADA"
         assert llanta_actual.ubicacion_actual == "PLANTA"
 
 
@@ -396,7 +476,8 @@ class TestMatriz:
         assert TRANSICIONES_VALIDAS["REPROCESO"] == {
             "REENCAUCHADA", "REPARADA", "RECHAZADA",
         }
-        assert TRANSICIONES_VALIDAS["REENCAUCHADA"] == set()
+        # Re-inspección final de llantas reencauchadas → REPROCESO | RECHAZADA
+        assert TRANSICIONES_VALIDAS["REENCAUCHADA"] == {"REPROCESO", "RECHAZADA"}
         assert TRANSICIONES_VALIDAS["REPARADA"] == set()
         assert TRANSICIONES_VALIDAS["RECHAZADA"] == set()
 

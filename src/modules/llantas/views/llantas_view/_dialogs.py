@@ -515,7 +515,21 @@ class CambioRapidoDialog(QDialog):
         for est in ESTADOS_PROCESO:
             self.estado_combo.addItem(est)
         self.estado_combo.setEnabled(False)
+        self.estado_combo.currentIndexChanged.connect(self._actualizar_estado_causa)
         form.addRow("Nuevo Estado:", self.estado_combo)
+
+        # Causa de rechazo — obligatoria cuando el nuevo estado es RECHAZADA.
+        # Se selecciona por número o por texto (autocompletado sobre ambos).
+        self.causa_combo = QComboBox()
+        self.causa_combo.setEditable(True)
+        self.causa_combo.setEnabled(False)
+        self.causa_combo.setStyleSheet(
+            "QComboBox { font-size: 13px; padding: 4px; border: 1px solid #ccc; "
+            "border-radius: 4px; }"
+        )
+        self.causa_combo.lineEdit().setPlaceholderText("Número o texto de la causa...")
+        self._cargar_causas()
+        form.addRow("Causa de Rechazo:", self.causa_combo)
         layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
@@ -542,13 +556,52 @@ class CambioRapidoDialog(QDialog):
 
         self.setLayout(layout)
 
+    def _cargar_causas(self) -> None:
+        """Carga las causas de rechazo del catálogo (código — descripción)."""
+        self.causa_combo.clear()
+        causas = LlantaService.listar_causas_rechazo()
+        for c in causas:
+            self.causa_combo.addItem(f"{c.codigo} — {c.descripcion}", c.id)
+        completer = QCompleter(
+            [self.causa_combo.itemText(i) for i in range(self.causa_combo.count())],
+            self,
+        )
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.causa_combo.setCompleter(completer)
+
+    def _actualizar_estado_causa(self) -> None:
+        """Habilita la causa de rechazo solo cuando el estado es RECHAZADA."""
+        es_rechazada = self.estado_combo.currentText() == "RECHAZADA"
+        self.causa_combo.setEnabled(
+            es_rechazada and self._llanta_encontrada is not None
+        )
+
+    def _resolver_causa_id(self) -> int | None:
+        """Resuelve la causa de rechazo escrita (por número o texto)."""
+        causa = LlantaService.buscar_causa_rechazo(
+            self.causa_combo.currentText()
+        )
+        return causa.id if causa else None
+
     def _aplicar_cambio(self) -> bool:
         """Aplica el cambio de estado de la llanta encontrada. True si fue OK."""
         if not self._llanta_encontrada:
             QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
             return False
+        causa_id = None
+        if self.nuevo_estado == "RECHAZADA":
+            causa_id = self._resolver_causa_id()
+            if causa_id is None:
+                QMessageBox.warning(
+                    self,
+                    "Validación",
+                    "Para rechazar la llanta debe seleccionar una causa de "
+                    "rechazo válida (número o texto)",
+                )
+                return False
         ok, msg = LlantaService.cambiar_estado(
-            self._llanta_encontrada.id, self.nuevo_estado
+            self._llanta_encontrada.id, self.nuevo_estado, causa_id
         )
         if ok:
             QMessageBox.information(self, "Éxito", msg)
@@ -571,6 +624,8 @@ class CambioRapidoDialog(QDialog):
             self.estado_combo.setEnabled(False)
             self.guardar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
             self._llanta_encontrada = None
             self.tiquete_input.setFocus()
 
@@ -580,6 +635,9 @@ class CambioRapidoDialog(QDialog):
             self.info_label.setText("")
             self.estado_combo.setEnabled(False)
             self.guardar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
             self._llanta_encontrada = None
             return
 
@@ -601,12 +659,15 @@ class CambioRapidoDialog(QDialog):
             self.estado_combo.setEnabled(True)
             self.guardar_btn.setEnabled(True)
             self.rapido_btn.setEnabled(True)
+            self._actualizar_estado_causa()
         else:
             self.info_label.setText("✗ Llanta no encontrada")
             self.info_label.setStyleSheet("color: #c62828;")
             self.estado_combo.setEnabled(False)
             self.guardar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
+            self.causa_combo.setCurrentText("")
+            self.causa_combo.setEnabled(False)
 
     @property
     def llanta_encontrada(self) -> Llanta | None:

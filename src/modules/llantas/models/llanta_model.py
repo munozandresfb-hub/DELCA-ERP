@@ -76,6 +76,15 @@ class Llanta(Base):
         String(50), nullable=True, comment="Última ubicación conocida (PRODUCCION/PLANTA/CLIENTE)"
     )
 
+    # Causa de rechazo (obligatoria cuando estado = RECHAZADA, según
+    # ESPECIFICACIONES_DELCA_v2.1.docx — sección 5.1)
+    causa_rechazo_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("causas_rechazo.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Causa de rechazo asignada en inspección (obligatoria si estado = RECHAZADA)",
+    )
+
     cliente_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("cliente.id", ondelete="RESTRICT"), nullable=True)
 
     cliente = relationship("Cliente", back_populates="llantas", lazy="selectin")
@@ -87,6 +96,9 @@ class Llanta(Base):
     )
     diseno_obj = relationship(
         DisenoLlanta, foreign_keys=[diseno_id], lazy="selectin"
+    )
+    causa_rechazo = relationship(
+        "CausaRechazo", lazy="selectin"
     )
 
     historial_estados = relationship(

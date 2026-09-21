@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.34] — 2026-09-21 — Causa de rechazo (RECHAZADA) + columna "Causa" + Inspección Final solo diseño REP
+
+### Added
+- **Inspección Inicial**: al seleccionar "RECHAZADA" en Nuevo Estado, se habilita el campo **"Causa de Rechazo"** — carga las 41 causas del catálogo (`código — texto`, autocompletado por **número o texto**). La causa es **obligatoria** para rechazar y queda registrada en la llanta
+- **Módulo Llantas**: nueva columna **"Causa"** entre "Estado" y "Ubicación Actual" — muestra la causa de rechazo asignada en Inspección Inicial (`código — texto`)
+- **Inspección Final (Producción)**: solo admite llantas con **diseño de banda REP** y en estado **APTA/REENCAUCHADA/REPROCESO** (aviso claro si no aplica). Los **veredictos se cargan dinámicamente** según el estado (fix del veredicto vacío tras una búsqueda fallida). Veredicto RECHAZADA → causa de rechazo obligatoria (mismo selector)
+- **Re-inspección de reencauchadas**: las llantas en estado REENCAUCHADA admiten veredictos REPROCESO/RECHAZADA
+- BD: columna `llantas.causa_rechazo_id` (FK → `causas_rechazo`, obligatoria cuando estado = RECHAZADA, según ESPECIFICACIONES_DELCA_v2.1.docx §5.1) — script `scripts/migrar_causa_rechazo.py` (backup + idempotente)
+
+### Verification
+- 41 causas cargadas · resolución por número y por texto · 169 tests (8 nuevos) · EXE recompilado
+
+---
+
 ## [2.8.33] — 2026-09-19 — Botón "⚡ Cambio Rápido" en Inspección Final (Producción) y Cambio de Ubicación (Planta)
 
 ### Added
