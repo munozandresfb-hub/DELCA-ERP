@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.33] — 2026-09-19 — Botón "⚡ Cambio Rápido" en Inspección Final (Producción) y Cambio de Ubicación (Planta)
+
+### Added
+- **Producción → Inspección Final**: botón **"⚡ Cambio Rápido"** junto a "Aplicar" — aplica el veredicto y limpia el formulario para la siguiente llanta **sin cerrar el recuadro** (inspección continua). "Aplicar" aplica y cierra
+- **Planta → Cambio de Ubicación**: botón **"⚡ Cambio Rápido"** junto a "Mover" — aplica el movimiento y limpia para la siguiente llanta **sin cerrar el recuadro** (cambio continuo). "Mover" aplica y cierra
+- En ambos, el diálogo aplica la operación él mismo (`aplicar_veredicto` / `mover_ubicacion`) y la vista refresca la tabla al cerrar
+
+### Verification
+- Tiquete sin J encontrado en ambos formularios ✓ · botones habilitados al encontrar la llanta ✓ · 161 tests · EXE recompilado
+
+---
+
 ## [2.8.32] — 2026-09-19 — Fix tiquete sin "J" (Inspección Inicial/Final/Planta) + botón Cambio Rápido
 
 ### Fixed

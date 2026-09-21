@@ -84,8 +84,20 @@ class _UbicacionRapidaDialog(QDialog):
             "QPushButton:hover { background-color: #2980b9; }"
             "QPushButton:disabled { background-color: #bdc3c7; }"
         )
-        self.mover_btn.clicked.connect(self.accept)
+        self.mover_btn.clicked.connect(self._aplicar_y_cerrar)
         self.mover_btn.setEnabled(False)
+
+        # Cambio Rápido: aplica el movimiento y limpia para la siguiente llanta
+        # sin cerrar el recuadro (cambio de ubicación continuo).
+        self.rapido_btn = QPushButton("⚡ Cambio Rápido")
+        self.rapido_btn.setStyleSheet(
+            "QPushButton { background-color: #2c3e50; color: white; font-size: 13px; "
+            "font-weight: bold; padding: 8px 16px; border-radius: 5px; border: none; }"
+            "QPushButton:disabled { background-color: #bdc3c7; }"
+        )
+        self.rapido_btn.clicked.connect(self._cambio_rapido_aplicar)
+        self.rapido_btn.setEnabled(False)
+
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.setStyleSheet(
             "QPushButton { background-color: #95a5a6; color: white; font-size: 14px; "
@@ -95,11 +107,44 @@ class _UbicacionRapidaDialog(QDialog):
         cancelar_btn.clicked.connect(self.reject)
         btn_layout.addStretch()
         btn_layout.addWidget(self.mover_btn)
+        btn_layout.addWidget(self.rapido_btn)
         btn_layout.addWidget(cancelar_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def _aplicar_operacion(self) -> bool:
+        """Aplica el cambio de ubicación. True si fue OK."""
+        if not self._llanta_encontrada:
+            QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
+            return False
+        ok, msg = LlantaService.mover_ubicacion(
+            self._llanta_encontrada.id, self.nueva_ubicacion
+        )
+        if ok:
+            QMessageBox.information(self, "Éxito", msg)
+            return True
+        QMessageBox.warning(self, "Error", msg)
+        return False
+
+    def _aplicar_y_cerrar(self) -> None:
+        """Aplica el movimiento y cierra el formulario."""
+        if self._aplicar_operacion():
+            self.accept()
+
+    def _cambio_rapido_aplicar(self) -> None:
+        """Aplica el movimiento y limpia el formulario para la siguiente llanta
+        (el recuadro permanece abierto — cambio continuo)."""
+        if self._aplicar_operacion():
+            self.tiquete_input.clear()
+            self.info_label.setText("")
+            self.info_label.setStyleSheet("color: #666; font-size: 13px;")
+            self.ubicacion_combo.setEnabled(False)
+            self.mover_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self._llanta_encontrada = None
+            self.tiquete_input.setFocus()
 
     def _buscar_llanta(self) -> None:
         tiquete = self.tiquete_input.text().strip()
@@ -145,11 +190,13 @@ class _UbicacionRapidaDialog(QDialog):
                 self.ubicacion_combo.setCurrentIndex(idx)
             self.ubicacion_combo.setEnabled(True)
             self.mover_btn.setEnabled(True)
+            self.rapido_btn.setEnabled(True)
         else:
             self.info_label.setText("  Llanta no encontrada")
             self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
             self.ubicacion_combo.setEnabled(False)
             self.mover_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
 
     @property
     def llanta_encontrada(self) -> Llanta | None:
@@ -442,19 +489,11 @@ class PlantaView(QWidget):
             QMessageBox.warning(self, "Error", msg)
 
     def _ubicacion_rapida(self) -> None:
+        """Abre el diálogo de cambio de ubicación rápida por tiquete.
+
+        El diálogo aplica el movimiento (y permite cambio continuo con el botón
+        "⚡ Cambio Rápido"). Al cerrar se refresca la tabla.
+        """
         dialog = _UbicacionRapidaDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-
-        llanta = dialog.llanta_encontrada
-        if not llanta:
-            return
-
-        ok, msg = self.viewmodel.mover_ubicacion(
-            llanta.id, dialog.nueva_ubicacion
-        )
-        if ok:
-            self._cargar_datos()
-            QMessageBox.information(self, "Éxito", msg)
-        else:
-            QMessageBox.warning(self, "Error", msg)
+        dialog.exec()
+        self._cargar_datos()

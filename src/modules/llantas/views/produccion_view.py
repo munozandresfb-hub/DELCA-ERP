@@ -86,8 +86,20 @@ class _InspeccionFinalDialog(QDialog):
             "QPushButton:hover { background-color: #229954; }"
             "QPushButton:disabled { background-color: #bdc3c7; }"
         )
-        self.aplicar_btn.clicked.connect(self.accept)
+        self.aplicar_btn.clicked.connect(self._aplicar_y_cerrar)
         self.aplicar_btn.setEnabled(False)
+
+        # Cambio Rápido: aplica el veredicto y limpia para la siguiente llanta
+        # sin cerrar el recuadro (inspección continua).
+        self.rapido_btn = QPushButton("⚡ Cambio Rápido")
+        self.rapido_btn.setStyleSheet(
+            "QPushButton { background-color: #2c3e50; color: white; font-size: 13px; "
+            "font-weight: bold; padding: 8px 16px; border-radius: 5px; border: none; }"
+            "QPushButton:disabled { background-color: #bdc3c7; }"
+        )
+        self.rapido_btn.clicked.connect(self._cambio_rapido_aplicar)
+        self.rapido_btn.setEnabled(False)
+
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.setStyleSheet(
             "QPushButton { background-color: #95a5a6; color: white; font-size: 14px; "
@@ -97,11 +109,45 @@ class _InspeccionFinalDialog(QDialog):
         cancelar_btn.clicked.connect(self.reject)
         btn_layout.addStretch()
         btn_layout.addWidget(self.aplicar_btn)
+        btn_layout.addWidget(self.rapido_btn)
         btn_layout.addWidget(cancelar_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def _aplicar_operacion(self) -> bool:
+        """Aplica el veredicto de inspección final. True si fue OK."""
+        if not self._llanta_encontrada:
+            QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
+            return False
+        ok, msg = LlantaService.aplicar_veredicto(
+            self._llanta_encontrada.id, self.veredicto
+        )
+        if ok:
+            QMessageBox.information(self, "Éxito", msg)
+            return True
+        QMessageBox.warning(self, "Error", msg)
+        return False
+
+    def _aplicar_y_cerrar(self) -> None:
+        """Aplica el veredicto y cierra el formulario."""
+        if self._aplicar_operacion():
+            self.accept()
+
+    def _cambio_rapido_aplicar(self) -> None:
+        """Aplica el veredicto y limpia el formulario para la siguiente llanta
+        (el recuadro permanece abierto — inspección continua)."""
+        if self._aplicar_operacion():
+            self.tiquete_input.clear()
+            self.info_label.setText("")
+            self.info_label.setStyleSheet("color: #666; font-size: 13px;")
+            self.veredicto_combo.setEnabled(False)
+            self.aplicar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self.nota_rep.setText("")
+            self._llanta_encontrada = None
+            self.tiquete_input.setFocus()
 
     def _buscar_llanta(self) -> None:
         tiquete = self.tiquete_input.text().strip()
@@ -127,6 +173,7 @@ class _InspeccionFinalDialog(QDialog):
             self.veredicto_combo.clear()
             self.veredicto_combo.setEnabled(False)
             self.aplicar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
             return
 
@@ -159,6 +206,7 @@ class _InspeccionFinalDialog(QDialog):
 
         self.veredicto_combo.setEnabled(True)
         self.aplicar_btn.setEnabled(True)
+        self.rapido_btn.setEnabled(True)
 
     @property
     def llanta_encontrada(self) -> Llanta | None:
@@ -295,23 +343,14 @@ class ProduccionView(QWidget):
         self._cargar_datos()
 
     def _inspeccion_final(self) -> None:
-        """Abre el diálogo de inspección final rápida por tiquete."""
+        """Abre el diálogo de inspección final rápida por tiquete.
+
+        El diálogo aplica el veredicto (y permite inspección continua con el
+        botón "⚡ Cambio Rápido"). Al cerrar se refresca la tabla.
+        """
         dialog = _InspeccionFinalDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-
-        llanta = dialog.llanta_encontrada
-        if not llanta:
-            return
-
-        ok, msg = self.viewmodel.aplicar_veredicto(
-            llanta.id, dialog.veredicto
-        )
-        if ok:
-            self._cargar_datos()
-            QMessageBox.information(self, "Éxito", msg)
-        else:
-            QMessageBox.warning(self, "Error", msg)
+        dialog.exec()
+        self._cargar_datos()
 
     def _poblar_tabla(self) -> None:
         llantas = self.viewmodel.llantas
