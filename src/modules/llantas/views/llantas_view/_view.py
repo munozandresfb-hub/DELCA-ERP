@@ -271,22 +271,11 @@ class LlantasView(QWidget):
             QMessageBox.warning(self, "Error", msg)
 
     def _cambio_rapido(self) -> None:
+        # El diálogo aplica el cambio de estado (y permite inspección continua
+        # con el botón "⚡ Cambio Rápido"). Al cerrar se refresca la tabla.
         dialog = CambioRapidoDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-
-        llanta = dialog.llanta_encontrada
-        if not llanta:
-            return
-
-        ok, msg = self.viewmodel.cambiar_estado(
-            llanta.id, dialog.nuevo_estado
-        )
-        if ok:
-            self._poblar_tabla()
-            QMessageBox.information(self, "Éxito", msg)
-        else:
-            QMessageBox.warning(self, "Error", msg)
+        dialog.exec()
+        self._poblar_tabla()
 
     def _ver_historial(self) -> None:
         row = self.table.currentRow()

@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.32] — 2026-09-19 — Fix tiquete sin "J" (Inspección Inicial/Final/Planta) + botón Cambio Rápido
+
+### Fixed
+- **"Llanta no encontrada" al ingresar un tiquete válido**: los formularios de Inspección Inicial, Inspección Final (Producción) y Planta buscaban el tiquete **anteponiendo "J"** (código antiguo de cuando la BD guardaba la serie con J). Desde v2.8.14 la BD guarda el tiquete **sin la J** → no se encontraba. Ahora se busca el tiquete **tal cual** (con fallback a "J" solo por compatibilidad con datos antiguos)
+- **Auditoría de tiquetes**: verificado que **0 tiquetes con "J"** existen en la BD y que todos los puntos de ingreso/búsqueda/visualización trabajan sin la J
+
+### Added
+- **Botón "⚡ Cambio Rápido"** en el formulario **INSPECCION INICIAL** (al lado de "Cambiar"): aplica el cambio de estado y **limpia el formulario para la siguiente llanta sin cerrar el recuadro** (inspección continua). "Cambiar" aplica y cierra; el diálogo ahora aplica el cambio él mismo y la vista refresca al cerrar
+
+### Verification
+- Tiquete real sin J encontrado en Inspección Inicial ✓ · 0 tiquetes con J en la BD · 161 tests · EXE recompilado
+
+---
+
 ## [2.8.31] — 2026-09-19 — Botón Imprimir en el formulario de registro + especificación de impresión
 
 ### Added

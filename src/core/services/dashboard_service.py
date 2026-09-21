@@ -8,6 +8,7 @@ from src.modules.finanzas.models.factura_model import Factura
 from src.modules.finanzas.models.pago_model import Pago  # noqa: F401 - needed for relationship resolution
 from src.modules.llantas.models.estado_llanta_model import EstadoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta  # noqa: F401
 from src.core.services.cliente_actividad import contar_clientes_activos_inactivos
 from src.modules.llantas.services.llanta_service import (
@@ -186,7 +187,7 @@ def obtener_actividad_reciente(limite: int = 10) -> list[dict]:
         return [
             {
                 "llanta_id": r.EstadoLlanta.llanta_id,
-                "tiquete": r.tiquete,
+                "tiquete": formatear_tiquete(r.tiquete),
                 "estado": r.EstadoLlanta.estado,
                 "fecha": r.EstadoLlanta.fecha.strftime("%Y-%m-%d %H:%M")
                 if r.EstadoLlanta.fecha

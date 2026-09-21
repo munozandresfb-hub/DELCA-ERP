@@ -520,15 +520,59 @@ class CambioRapidoDialog(QDialog):
 
         btn_layout = QHBoxLayout()
         self.guardar_btn = QPushButton("Cambiar")
-        self.guardar_btn.clicked.connect(self.accept)
+        self.guardar_btn.clicked.connect(self._cambiar_y_cerrar)
         self.guardar_btn.setEnabled(False)
+
+        # Cambio Rápido: aplica la inspección y limpia para la siguiente llanta
+        # sin cerrar el recuadro (proceso continuo para el usuario).
+        self.rapido_btn = QPushButton("⚡ Cambio Rápido")
+        self.rapido_btn.setStyleSheet(
+            "QPushButton { background: #2c3e50; color: white; font-weight: bold; "
+            "padding: 6px 14px; border-radius: 4px; border: none; }"
+        )
+        self.rapido_btn.clicked.connect(self._cambio_rapido_aplicar)
+        self.rapido_btn.setEnabled(False)
+
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.clicked.connect(self.reject)
         btn_layout.addWidget(self.guardar_btn)
+        btn_layout.addWidget(self.rapido_btn)
         btn_layout.addWidget(cancelar_btn)
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def _aplicar_cambio(self) -> bool:
+        """Aplica el cambio de estado de la llanta encontrada. True si fue OK."""
+        if not self._llanta_encontrada:
+            QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
+            return False
+        ok, msg = LlantaService.cambiar_estado(
+            self._llanta_encontrada.id, self.nuevo_estado
+        )
+        if ok:
+            QMessageBox.information(self, "Éxito", msg)
+            return True
+        QMessageBox.warning(self, "Error", msg)
+        return False
+
+    def _cambiar_y_cerrar(self) -> None:
+        """Aplica el cambio y cierra el formulario."""
+        if self._aplicar_cambio():
+            self.accept()
+
+    def _cambio_rapido_aplicar(self) -> None:
+        """Aplica el cambio y limpia el formulario para la siguiente llanta
+        (el recuadro permanece abierto — inspección continua)."""
+        if self._aplicar_cambio():
+            self.tiquete_input.clear()
+            self.info_label.setText("")
+            self.info_label.setStyleSheet("color: #666;")
+            self.estado_combo.setEnabled(False)
+            self.guardar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self._llanta_encontrada = None
+            self.tiquete_input.setFocus()
 
     def _buscar_llanta(self) -> None:
         tiquete = self.tiquete_input.text().strip()
@@ -539,11 +583,12 @@ class CambioRapidoDialog(QDialog):
             self._llanta_encontrada = None
             return
 
-        # Acepta el tiquete con o sin el prefijo "J" de la serie (la BD lo guarda con "J")
-        tiquete_bd = tiquete if tiquete.startswith("J") else "J" + tiquete
-
+        # La BD guarda el tiquete SIN el prefijo "J" (tiquete físico real, desde v2.8.14).
+        # Se acepta también con "J" por compatibilidad con datos antiguos.
         with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete_bd)
+            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+            if not llanta and not tiquete.startswith("J"):
+                llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
         self._llanta_encontrada = llanta
         if llanta:
             self.info_label.setText(
@@ -555,11 +600,13 @@ class CambioRapidoDialog(QDialog):
                 self.estado_combo.setCurrentIndex(idx)
             self.estado_combo.setEnabled(True)
             self.guardar_btn.setEnabled(True)
+            self.rapido_btn.setEnabled(True)
         else:
             self.info_label.setText("✗ Llanta no encontrada")
             self.info_label.setStyleSheet("color: #c62828;")
             self.estado_combo.setEnabled(False)
             self.guardar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
 
     @property
     def llanta_encontrada(self) -> Llanta | None:

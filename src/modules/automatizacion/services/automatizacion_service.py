@@ -10,6 +10,7 @@ from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_model import Factura
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.llantas.models.llanta_model import Llanta
+from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 
 
 class AutomatizacionService:
@@ -325,7 +326,7 @@ class AutomatizacionService:
                     for ll in llantas:
                         if AutomatizacionService._crear_alerta(
                             tipo="LLANTAS_LISTAS",
-                            mensaje=f"Llanta {ll.tiquete} — "
+                            mensaje=f"Llanta {formatear_tiquete(ll.tiquete)} — "
                             f"{ll.marca or 'N/M'} — lista para entrega",
                             nivel=regla.nivel,
                             entidad_tipo="llanta",

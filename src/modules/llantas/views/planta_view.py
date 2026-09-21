@@ -110,11 +110,12 @@ class _UbicacionRapidaDialog(QDialog):
             self._llanta_encontrada = None
             return
 
-        # Acepta el tiquete con o sin el prefijo "J" de la serie (la BD lo guarda con "J")
-        tiquete_bd = tiquete if tiquete.startswith("J") else "J" + tiquete
-
+        # La BD guarda el tiquete SIN el prefijo "J" (tiquete físico real, desde v2.8.14).
+        # Se acepta también con "J" por compatibilidad con datos antiguos.
         with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete_bd)
+            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+            if not llanta and not tiquete.startswith("J"):
+                llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
             ultima_ubicacion = (
                 s.query(UbicacionLlanta)
                 .filter(UbicacionLlanta.llanta_id == llanta.id)
