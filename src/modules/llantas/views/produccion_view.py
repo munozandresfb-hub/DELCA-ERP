@@ -1,7 +1,5 @@
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
-    QCompleter,
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -46,7 +44,7 @@ class _InspeccionFinalDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Inspección Final")
-        self.resize(460, 290)
+        self.resize(460, 240)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
 
@@ -73,23 +71,7 @@ class _InspeccionFinalDialog(QDialog):
         self.veredicto_combo.setStyleSheet(
             "font-size: 14px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;"
         )
-        self.veredicto_combo.currentIndexChanged.connect(
-            self._actualizar_veredicto_causa
-        )
         form.addRow("Veredicto:", self.veredicto_combo)
-
-        # Causa de rechazo — obligatoria cuando el veredicto es RECHAZADA.
-        # Se selecciona por número o por texto (autocompletado sobre ambos).
-        self.causa_combo = QComboBox()
-        self.causa_combo.setEditable(True)
-        self.causa_combo.setEnabled(False)
-        self.causa_combo.setStyleSheet(
-            "QComboBox { font-size: 13px; padding: 4px; border: 1px solid #ccc; "
-            "border-radius: 4px; }"
-        )
-        self.causa_combo.lineEdit().setPlaceholderText("Número o texto de la causa...")
-        self._cargar_causas()
-        form.addRow("Causa de Rechazo:", self.causa_combo)
 
         self.nota_rep = QLabel("")
         self.nota_rep.setStyleSheet("color: #e65100; font-size: 12px;")
@@ -135,61 +117,13 @@ class _InspeccionFinalDialog(QDialog):
 
         self.setLayout(layout)
 
-    def _cargar_causas(self) -> None:
-        """Carga las causas de rechazo del catálogo (código — descripción)."""
-        self.causa_combo.clear()
-        causas = LlantaService.listar_causas_rechazo()
-        for c in causas:
-            self.causa_combo.addItem(f"{c.codigo} — {c.descripcion}", c.id)
-        completer = QCompleter(
-            [self.causa_combo.itemText(i) for i in range(self.causa_combo.count())],
-            self,
-        )
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.causa_combo.setCompleter(completer)
-
-    def _actualizar_veredicto_causa(self) -> None:
-        """Habilita la causa de rechazo solo cuando el veredicto es RECHAZADA."""
-        es_rechazada = self.veredicto_combo.currentData() == "RECHAZADA"
-        self.causa_combo.setEnabled(
-            es_rechazada and self._llanta_encontrada is not None
-        )
-
-    def _resolver_causa_id(self) -> int | None:
-        """Resuelve la causa de rechazo escrita (por número o texto).
-
-        Primero busca coincidencia exacta con un item del catálogo (cubre el
-        autocompletado del completer, p.ej. "23 — MISCELANEOS") y luego por
-        código o descripción (texto libre, p.ej. "23" o "MISCELANEOS").
-        """
-        texto = self.causa_combo.currentText().strip()
-        if not texto:
-            return None
-        for i in range(self.causa_combo.count()):
-            if self.causa_combo.itemText(i).strip().lower() == texto.lower():
-                return self.causa_combo.itemData(i)
-        causa = LlantaService.buscar_causa_rechazo(texto)
-        return causa.id if causa else None
-
     def _aplicar_operacion(self) -> bool:
         """Aplica el veredicto de inspección final. True si fue OK."""
         if not self._llanta_encontrada:
             QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
             return False
-        causa_id = None
-        if self.veredicto == "RECHAZADA":
-            causa_id = self._resolver_causa_id()
-            if causa_id is None:
-                QMessageBox.warning(
-                    self,
-                    "Validación",
-                    "Para rechazar la llanta debe seleccionar una causa de "
-                    "rechazo válida (número o texto)",
-                )
-                return False
         ok, msg = LlantaService.aplicar_veredicto(
-            self._llanta_encontrada.id, self.veredicto, causa_id
+            self._llanta_encontrada.id, self.veredicto
         )
         if ok:
             QMessageBox.information(self, "Éxito", msg)
@@ -213,8 +147,6 @@ class _InspeccionFinalDialog(QDialog):
             self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
-            self.causa_combo.setCurrentText("")
-            self.causa_combo.setEnabled(False)
             self._llanta_encontrada = None
             self.tiquete_input.setFocus()
 
@@ -244,8 +176,6 @@ class _InspeccionFinalDialog(QDialog):
             self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
-            self.causa_combo.setCurrentText("")
-            self.causa_combo.setEnabled(False)
             return
 
         marca_text = (
@@ -277,8 +207,6 @@ class _InspeccionFinalDialog(QDialog):
             self.veredicto_combo.setEnabled(False)
             self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
-            self.causa_combo.setCurrentText("")
-            self.causa_combo.setEnabled(False)
             return
 
         # Regla R5 (validada por el servicio): REPARADA solo con diseño REP.
@@ -305,7 +233,6 @@ class _InspeccionFinalDialog(QDialog):
         self.veredicto_combo.setEnabled(True)
         self.aplicar_btn.setEnabled(True)
         self.rapido_btn.setEnabled(True)
-        self._actualizar_veredicto_causa()
 
     @property
     def llanta_encontrada(self) -> Llanta | None:

@@ -7,6 +7,16 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.38] — 2026-09-21 — Inspección Final sin "Causa de Rechazo"
+
+### Changed
+- **Producción → Inspección Final**: se elimina el campo **"Causa de Rechazo"** del formulario. El veredicto RECHAZADA se aplica sin exigir causa (la causa de rechazo queda **exclusiva de la Inspección Inicial**, donde es obligatoria)
+
+### Verification
+- Formulario sin causa_combo ✓ · RECHAZADA sin causa aplica y guarda `causa_rechazo_id = NULL` ✓ · 169 tests · EXE recompilado
+
+---
+
 ## [2.8.37] — 2026-09-21 — Inspección Final acepta cualquier diseño de banda
 
 ### Changed

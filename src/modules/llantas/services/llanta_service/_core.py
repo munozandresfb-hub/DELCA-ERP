@@ -393,14 +393,10 @@ class _GestionLlantasMixin:
             if not llanta:
                 return False, "Llanta no encontrada"
 
-            # Causa de rechazo obligatoria cuando el veredicto es RECHAZADA
-            # (ESPECIFICACIONES_DELCA_v2.1.docx — sección 5.1)
-            if veredicto == "RECHAZADA":
-                if causa_rechazo_id is None:
-                    return False, (
-                        "Debe seleccionar la causa de rechazo para aplicar "
-                        "el veredicto RECHAZADA"
-                    )
+            # La causa de rechazo es OBLIGATORIA solo en la inspección inicial
+            # (cambiar_estado). En la inspección final (veredicto) no se exige;
+            # si se pasa una causa_rechazo_id válida, se guarda.
+            if veredicto == "RECHAZADA" and causa_rechazo_id is not None:
                 causa = LlantaRepository.obtener_causa_rechazo(
                     session, causa_rechazo_id
                 )

@@ -194,10 +194,15 @@ class TestAplicarVeredicto:
         assert llanta_actual.causa_rechazo_id == causa.id
 
     def test_veredicto_rechazada_sin_causa(self):
+        # En la inspección final la causa NO es obligatoria (solo en la
+        # inspección inicial vía cambiar_estado).
         llanta = _crear_llanta()
         ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA")
-        assert not ok
-        assert "causa" in msg.lower()
+        assert ok
+        assert "PLANTA" in msg
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.estado == "RECHAZADA"
+        assert llanta_actual.causa_rechazo_id is None
 
     def test_veredicto_rechazada_con_causa_invalida(self):
         llanta = _crear_llanta()
