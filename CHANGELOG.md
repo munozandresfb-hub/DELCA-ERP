@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.40] — 2026-09-22 — Cambio de Ubicación con Fecha de Salida y Número de Documento + columna Marca
+
+### Added
+- **Planta → Cambio de Ubicación**: sección **"Fecha de Salida"** — la primera vez que se abre el formulario carga la **fecha del día** (sistema); con **⚡ Cambio Rápido se conserva**; al salir y volver a entrar se reinicia a la fecha del día
+- Sección **"Número de Documento"** (ingreso manual): con ⚡ Cambio Rápido se conserva; al volver a abrir el formulario se pide nuevamente
+- **Módulo Planta**: columnas **"Fecha de Salida"** y **"Numero de doc"** a la derecha de "Fecha de Ingreso" — cargan la fecha de salida y el documento de cada llanta
+- **Módulos Planta y Producción**: nueva columna **"Marca"** (del casco) entre "Dimensión" y "Diseño"
+- BD: columnas `llantas.fecha_salida` y `llantas.doc_salida` (según ESPECIFICACIONES_DELCA_v2.1.docx §5.1) — script `scripts/migrar_campos_salida.py` (backup + idempotente)
+
+### Verification
+- Fecha default = hoy ✓ · doc conservado en ⚡ Cambio Rápido ✓ · reingreso: fecha del día + doc vacío ✓ · guardado en BD (fecha + doc) ✓ · columnas Marca/Fecha Salida/Numero doc en tablas ✓ · 171 tests (1 nuevo) · EXE recompilado
+
+---
+
 ## [2.8.39] — 2026-09-21 — Inspección Inicial: corrección de estados (RECHAZADA ↔ APTA)
 
 ### Changed

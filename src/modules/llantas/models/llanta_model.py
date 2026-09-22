@@ -85,6 +85,15 @@ class Llanta(Base):
         comment="Causa de rechazo asignada en inspección (obligatoria si estado = RECHAZADA)",
     )
 
+    # ── Salida de la llanta (ESPECIFICACIONES_DELCA_v2.1.docx — sección 5.1) ──
+    fecha_salida: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, comment="Fecha de salida registrada en el cambio de ubicación"
+    )
+    doc_salida: Mapped[str | None] = mapped_column(
+        String(100), nullable=True,
+        comment="Número de documento donde se registran las salidas de llantas",
+    )
+
     cliente_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("cliente.id", ondelete="RESTRICT"), nullable=True)
 
     cliente = relationship("Cliente", back_populates="llantas", lazy="selectin")

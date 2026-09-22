@@ -1,7 +1,9 @@
 from typing import cast
 
+from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -74,6 +76,26 @@ class _UbicacionRapidaDialog(QDialog):
             "font-size: 14px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;"
         )
         form.addRow("Nueva Ubicación:", self.ubicacion_combo)
+
+        # Fecha de salida: por defecto el día actual (sistema). Con ⚡ Cambio
+        # Rápido se conserva; al salir y volver a entrar se reinicia al día.
+        self.fecha_salida_edit = QDateEdit()
+        self.fecha_salida_edit.setCalendarPopup(True)
+        self.fecha_salida_edit.setDisplayFormat("yyyy-MM-dd")
+        self.fecha_salida_edit.setDate(QDate.currentDate())
+        self.fecha_salida_edit.setStyleSheet(
+            "font-size: 14px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;"
+        )
+        form.addRow("Fecha de Salida:", self.fecha_salida_edit)
+
+        # Número de documento de salida: ingreso manual (se pide nuevamente
+        # cada vez que se abre el formulario; ⚡ Cambio Rápido lo conserva).
+        self.doc_salida_input = QLineEdit()
+        self.doc_salida_input.setPlaceholderText("Documento de salida...")
+        self.doc_salida_input.setStyleSheet(
+            "font-size: 14px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"
+        )
+        form.addRow("Número de Documento:", self.doc_salida_input)
         layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
@@ -120,7 +142,10 @@ class _UbicacionRapidaDialog(QDialog):
             QMessageBox.warning(self, "Validación", "No hay llanta seleccionada")
             return False
         ok, msg = LlantaService.mover_ubicacion(
-            self._llanta_encontrada.id, self.nueva_ubicacion
+            self._llanta_encontrada.id,
+            self.nueva_ubicacion,
+            fecha_salida=self.fecha_salida_edit.date().toPython(),
+            doc_salida=self.doc_salida_input.text(),
         )
         if ok:
             QMessageBox.information(self, "Éxito", msg)
@@ -135,7 +160,11 @@ class _UbicacionRapidaDialog(QDialog):
 
     def _cambio_rapido_aplicar(self) -> None:
         """Aplica el movimiento y limpia el formulario para la siguiente llanta
-        (el recuadro permanece abierto — cambio continuo)."""
+        (el recuadro permanece abierto — cambio continuo).
+
+        La fecha de salida y el número de documento se CONSERVAN entre
+        llantas (solo se piden nuevamente al volver a abrir el formulario).
+        """
         if self._aplicar_operacion():
             self.tiquete_input.clear()
             self.info_label.setText("")
@@ -215,10 +244,13 @@ class PlantaView(QWidget):
         "Tiquete",
         "N° Orden",
         "Dimensión",
+        "Marca",
         "Diseño",
         "Estado",
         "Ubicación Actual",
         "Fecha de Ingreso",
+        "Fecha de Salida",
+        "Numero de doc",
     ]
 
     def __init__(self) -> None:
@@ -436,13 +468,16 @@ class PlantaView(QWidget):
             # 3 - Dimensión (estandarizada)
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "—")
             self.table.setItem(row, 3, QTableWidgetItem(dim))
-            # 4 - Diseño (estandarizado)
+            # 4 - Marca (del casco)
+            marca = l.marca_obj.nombre if l.marca_obj else (l.marca or "—")
+            self.table.setItem(row, 4, QTableWidgetItem(marca))
+            # 5 - Diseño (estandarizado)
             dis = l.diseno_obj.nombre if l.diseno_obj else "—"
-            self.table.setItem(row, 4, QTableWidgetItem(dis))
-            # 5 - Estado
-            self.table.setItem(row, 5, QTableWidgetItem(l.estado or ""))
+            self.table.setItem(row, 5, QTableWidgetItem(dis))
+            # 6 - Estado
+            self.table.setItem(row, 6, QTableWidgetItem(l.estado or ""))
 
-            # 6 - Ubicación Actual (desde cache o fallback al campo del modelo)
+            # 7 - Ubicación Actual (desde cache o fallback al campo del modelo)
             ubicacion_raw = (
                 l.ubicacion_actual
                 or ultimas_ubicaciones.get(l.id)
@@ -452,11 +487,16 @@ class PlantaView(QWidget):
                 if ubicacion_raw
                 else "N/A"
             )
-            self.table.setItem(row, 6, QTableWidgetItem(ubicacion_str))
+            self.table.setItem(row, 7, QTableWidgetItem(ubicacion_str))
 
-            # 7 - Fecha de Ingreso
+            # 8 - Fecha de Ingreso
             fecha = l.fecha_ingreso.strftime("%Y-%m-%d") if l.fecha_ingreso else "—"
-            self.table.setItem(row, 7, QTableWidgetItem(fecha))
+            self.table.setItem(row, 8, QTableWidgetItem(fecha))
+            # 9 - Fecha de Salida
+            fecha_sal = l.fecha_salida.strftime("%Y-%m-%d") if l.fecha_salida else "—"
+            self.table.setItem(row, 9, QTableWidgetItem(fecha_sal))
+            # 10 - Numero de documento de salida
+            self.table.setItem(row, 10, QTableWidgetItem(l.doc_salida or "—"))
 
         self._actualizar_paginacion()
 

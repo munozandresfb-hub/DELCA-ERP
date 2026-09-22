@@ -251,6 +251,7 @@ class ProduccionView(QWidget):
         "Tiquete",
         "N° Orden",
         "Dimensión",
+        "Marca",
         "Diseño",
         "Estado",
         "Ubicación Actual",
@@ -394,11 +395,14 @@ class ProduccionView(QWidget):
             # Dimensión (estandarizada desde catálogo)
             dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "—")
             self.table.setItem(row, 3, QTableWidgetItem(dim))
+            # Marca (del casco)
+            marca = l.marca_obj.nombre if l.marca_obj else (l.marca or "—")
+            self.table.setItem(row, 4, QTableWidgetItem(marca))
             # Diseño (estandarizado desde catálogo)
             dis = l.diseno_obj.nombre if l.diseno_obj else "—"
-            self.table.setItem(row, 4, QTableWidgetItem(dis))
+            self.table.setItem(row, 5, QTableWidgetItem(dis))
             # Estado
-            self.table.setItem(row, 5, QTableWidgetItem(l.estado or ""))
+            self.table.setItem(row, 6, QTableWidgetItem(l.estado or ""))
             # Ubicación Actual
             ubic_raw = l.ubicacion_actual or "—"
             ubic_str = (
@@ -406,9 +410,9 @@ class ProduccionView(QWidget):
                 if ubic_raw != "—"
                 else "—"
             )
-            self.table.setItem(row, 6, QTableWidgetItem(ubic_str))
+            self.table.setItem(row, 7, QTableWidgetItem(ubic_str))
             # Fecha de Ingreso
             fecha = l.fecha_ingreso.strftime("%Y-%m-%d") if l.fecha_ingreso else "—"
-            self.table.setItem(row, 7, QTableWidgetItem(fecha))
+            self.table.setItem(row, 8, QTableWidgetItem(fecha))
 
         self._actualizar_paginacion()

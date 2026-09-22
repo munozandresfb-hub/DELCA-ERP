@@ -342,7 +342,10 @@ class _GestionLlantasMixin:
 
     @staticmethod
     def mover_ubicacion(
-        llanta_id: int, ubicacion: str
+        llanta_id: int,
+        ubicacion: str,
+        fecha_salida: object | None = None,
+        doc_salida: str | None = None,
     ) -> tuple[bool, str]:
         if ubicacion not in UBICACIONES_PLANTA:
             return False, f"Ubicación inválida: {ubicacion}"
@@ -366,6 +369,11 @@ class _GestionLlantasMixin:
             )
             session.add(movimiento)
             llanta.ubicacion_actual = ubicacion
+            # Fecha de salida y documento de salida (registro de salidas por fecha)
+            if fecha_salida is not None:
+                llanta.fecha_salida = fecha_salida
+            if doc_salida:
+                llanta.doc_salida = doc_salida.strip()
             return True, f"Llanta movida a '{ubicacion}'"
 
     @staticmethod

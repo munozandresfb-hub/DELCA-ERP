@@ -189,6 +189,21 @@ class TestMoverUbicacion:
         assert not ok
         assert "no encontrada" in msg
 
+    def test_mover_guarda_fecha_y_doc_salida(self):
+        from datetime import date
+
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.mover_ubicacion(
+            llanta.id,
+            "PLANTA",
+            fecha_salida=date(2026, 9, 22),
+            doc_salida="DOC-001",
+        )
+        assert ok
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.fecha_salida.date() == date(2026, 9, 22)
+        assert llanta_actual.doc_salida == "DOC-001"
+
 
 class TestAplicarVeredicto:
     """LlantaService.aplicar_veredicto — atomic estado + ubicación."""
