@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.modules.finanzas.services.factura_service import FacturaService
+from src.modules.finanzas.views.abonos_cliente_dialog import AbonosClienteDialog
 from src.modules.usuarios.services.permiso_service import tiene_permiso_por_usuario
 
 
@@ -82,7 +84,7 @@ class CarteraView(QWidget):
         info.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 4px 0;")
         layout.addWidget(info)
 
-        cols = ["Cliente", "Celular", "Ultima Factura", "Total Abonado", "Saldo Pendiente"]
+        cols = ["Cliente", "Celular", "Fecha de Generación", "Total Abonado", "Saldo Pendiente", "Fecha de Pago"]
         self.clientes_table = QTableWidget()
         self.clientes_table.setColumnCount(len(cols))
         self.clientes_table.setHorizontalHeaderLabels(cols)
@@ -97,6 +99,7 @@ class CarteraView(QWidget):
             QTableWidget.EditTrigger.NoEditTriggers
         )
         self.clientes_table.setAlternatingRowColors(True)
+        self.clientes_table.cellClicked.connect(self._on_clientes_cell_clicked)
 
         layout.addWidget(self.clientes_table)
         self.clientes_tab.setLayout(layout)
@@ -131,7 +134,8 @@ class CarteraView(QWidget):
             "Fecha",
             "Total",
             "Saldo",
-            "Días",
+            "DIAS DE MORA",
+            "D\u00edas",
             "Rango",
         ]
         self.aging_table = QTableWidget()
@@ -165,6 +169,7 @@ class CarteraView(QWidget):
 
     def _cargar_clientes(self) -> None:
         cartera = FacturaService.obtener_cartera_clientes()
+        self._cartera = cartera
         self.clientes_table.setRowCount(len(cartera))
 
         for row, c in enumerate(cartera):
@@ -177,11 +182,18 @@ class CarteraView(QWidget):
             self.clientes_table.setItem(
                 row, 2, QTableWidgetItem(c["fecha_ultima_factura"])
             )
-            self.clientes_table.setItem(
-                row, 3, QTableWidgetItem(f"${c['total_abonado']:,.2f}")
-            )
+            # Total Abonado (clickeable → ventana de abonos del cliente)
+            abono_item = QTableWidgetItem(f"${c['total_abonado']:,.2f}")
+            abono_item.setData(Qt.ItemDataRole.UserRole, c["cliente_id"])
+            if c["total_abonado"] > 0:
+                abono_item.setForeground(QColor("#2980b9"))
+                abono_item.setToolTip("Click para ver detalle de abonos")
+            self.clientes_table.setItem(row, 3, abono_item)
             self.clientes_table.setItem(
                 row, 4, QTableWidgetItem(f"${c['saldo_pendiente']:,.2f}")
+            )
+            self.clientes_table.setItem(
+                row, 5, QTableWidgetItem(c["fecha_pago"] or "—")
             )
 
             # Traffic light by days since last invoice (semáforo)
@@ -198,6 +210,17 @@ class CarteraView(QWidget):
                 item = self.clientes_table.item(row, col)
                 if item:
                     item.setForeground(QColor(color))
+
+    def _on_clientes_cell_clicked(self, row: int, col: int) -> None:
+        """Click en 'Total Abonado' → ventana emergente de abonos (como en facturación)."""
+        if col != 3:
+            return
+        cliente = self._cartera[row] if 0 <= row < len(self._cartera) else None
+        if not cliente:
+            return
+        abonos = FacturaService.obtener_abonos_cliente(cliente["cliente_id"])
+        dialog = AbonosClienteDialog(cliente["cliente_nombre"], abonos, self)
+        dialog.exec()
 
     def _cargar_aging(self) -> None:
         aging = FacturaService.obtener_antiguedad_saldos()
@@ -231,10 +254,13 @@ class CarteraView(QWidget):
                 row, 5, QTableWidgetItem(f"${a['saldo']:,.2f}")
             )
             self.aging_table.setItem(
-                row, 6, QTableWidgetItem(str(a["dias"]))
+                row, 6, QTableWidgetItem(str(a["dias_mora"]))
             )
             self.aging_table.setItem(
-                row, 7, QTableWidgetItem(a["rango"])
+                row, 7, QTableWidgetItem(str(a["dias"]))
+            )
+            self.aging_table.setItem(
+                row, 8, QTableWidgetItem(a["rango"])
             )
 
             # Color row based on age

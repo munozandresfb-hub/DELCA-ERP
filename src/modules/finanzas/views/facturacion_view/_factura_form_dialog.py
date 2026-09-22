@@ -22,6 +22,9 @@ from PySide6.QtWidgets import (
 from src.database.engine import get_session
 from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.finanzas.services.factura_service import FacturaService
+from src.modules.finanzas.views.facturacion_view._llantas_picker_dialog import (
+    LlantasPickerDialog,
+)
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.services.costo_precio import costo_precio, indice_precios
 from src.modules.llantas.services.llanta_service._core import formatear_tiquete
@@ -44,7 +47,10 @@ class FacturaFormDialog(QDialog):
         self._clientes: list[tuple[int, str]] = []
         self._items: list[dict] = []
         self._llantas_dict: dict[int, Llanta] = {}
-        self._idx_precios: dict[tuple[int, int], dict] = {}
+        # Índice de precios del catálogo (rápido) — las llantas del cliente se
+        # cargan bajo demanda en el diálogo de selección (formulario ágil).
+        with get_session() as s:
+            self._idx_precios: dict[tuple[int, int], dict] = indice_precios(s)
         self.setup_ui()
 
     def setup_ui(self) -> None:
@@ -70,20 +76,17 @@ class FacturaFormDialog(QDialog):
         form.addRow(llantas_header)
 
         picker_row = QHBoxLayout()
-        self.llanta_combo = QComboBox()
-        self.llanta_combo.setStyleSheet(input_style)
-        self.llanta_combo.setMinimumWidth(340)
-        self._cargar_llantas_disponibles()
-        picker_row.addWidget(self.llanta_combo, 1)
-
-        reencauchada_btn = QPushButton("Reencauchada")
-        reencauchada_btn.setStyleSheet(
+        # Precarga: al hacer click abre la ventana emergente con las llantas
+        # del cliente seleccionado (pendientes de facturación).
+        self.seleccionar_btn = QPushButton("➕ Seleccionar llantas del cliente")
+        self.seleccionar_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
             "padding: 6px 14px; border-radius: 4px; border: none; }"
             "QPushButton:hover { background-color: #219a52; }"
         )
-        reencauchada_btn.clicked.connect(self._agregar_llanta)
-        picker_row.addWidget(reencauchada_btn)
+        self.seleccionar_btn.clicked.connect(self._seleccionar_llantas)
+        self.seleccionar_btn.setEnabled(False)
+        picker_row.addWidget(self.seleccionar_btn)
 
         llanta_nueva_btn = QPushButton("Llanta nueva")
         llanta_nueva_btn.setStyleSheet(
@@ -171,47 +174,48 @@ class FacturaFormDialog(QDialog):
         clientes = ClienteService.listar_clientes()
         self._clientes = []
         self.cliente_combo.clear()
+        self.cliente_combo.addItem("-- Seleccionar cliente --", None)
         for c in clientes:
             if c.activo:
                 label = f"{c.nombre} ({c.nit})"
                 self.cliente_combo.addItem(label, c.id)
                 self._clientes.append((c.id, label))
+        self.cliente_combo.currentIndexChanged.connect(
+            self._actualizar_boton_llantas
+        )
 
-    def _cargar_llantas_disponibles(self) -> None:
-        """Load tires not yet billed in an active invoice."""
-        with get_session() as session:
-            self._idx_precios = indice_precios(session)
-        disponibles = FacturaService.listar_llantas_facturables()
-        self._llantas_dict = {l.id: l for l in disponibles}
-        self.llanta_combo.clear()
-        self.llanta_combo.addItem("-- Seleccionar llanta --", None)
-        for l in disponibles:
-            marca = l.marca_obj.nombre if l.marca_obj else (l.marca or "")
-            dim = l.dimension_obj.display if l.dimension_obj else (l.dimension or "")
-            label = f"{formatear_tiquete(l.tiquete)} — {marca} {dim}".strip(" —")
-            self.llanta_combo.addItem(label, l.id)
+    def _actualizar_boton_llantas(self) -> None:
+        """Habilita la precarga de llantas solo con cliente seleccionado."""
+        self.seleccionar_btn.setEnabled(
+            self.cliente_combo.currentData() is not None
+        )
 
-    def _agregar_llanta(self) -> None:
-        """Add the selected re-treaded tire as a line item, pre-filling precio_venta."""
-        llanta_id = self.llanta_combo.currentData()
-        if not llanta_id:
-            QMessageBox.warning(self, "Validación", "Seleccione una llanta")
+    def _seleccionar_llantas(self) -> None:
+        """Abre la ventana emergente con las llantas del cliente
+        (pendientes de facturación) y agrega las seleccionadas."""
+        cliente_id = self.cliente_combo.currentData()
+        if not cliente_id:
+            QMessageBox.warning(
+                self, "Validación", "Seleccione primero el cliente"
+            )
             return
-        if any(it["llanta_id"] == llanta_id for it in self._items):
-            QMessageBox.warning(self, "Validación", "Esa llanta ya está en la factura")
+        dialog = LlantasPickerDialog(cliente_id, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
+        for llanta in dialog.llantas_seleccionadas:
+            self._agregar_llanta_obj(llanta)
 
-        llanta = self._llantas_dict.get(llanta_id)
-        if not llanta:
-            QMessageBox.warning(self, "Error", "Llanta no encontrada")
-            return
+    def _agregar_llanta_obj(self, llanta: Llanta) -> None:
+        """Agrega una llanta (del picker) como línea de la factura."""
+        if any(it["llanta_id"] == llanta.id for it in self._items):
+            return  # ya está en la factura
 
         # Precio desde el catálogo (diseño+dimensión): normal → mínimo → 1 sin cobertura
         precio = costo_precio(llanta, self._idx_precios)[1]
         self._items.append(
             {
                 "tipo": "Reencauchada",
-                "llanta_id": llanta_id,
+                "llanta_id": llanta.id,
                 "descripcion": None,
                 "tiquete": formatear_tiquete(llanta.tiquete),
                 "dimension": (
@@ -224,11 +228,6 @@ class FacturaFormDialog(QDialog):
             }
         )
         self._refrescar_tabla_items()
-
-        # Remove added tire from picker
-        idx = self.llanta_combo.findData(llanta_id)
-        if idx >= 0:
-            self.llanta_combo.removeItem(idx)
 
     def _agregar_llanta_nueva(self) -> None:
         """Add a NEW tire (no re-tread record) as a free-text manual line item."""
@@ -326,20 +325,8 @@ class FacturaFormDialog(QDialog):
 
     def _quitar_llanta(self, row: int) -> None:
         if 0 <= row < len(self._items):
-            item = self._items.pop(row)
+            self._items.pop(row)
             self._refrescar_tabla_items()
-            # Re-add tire to picker (only re-treaded tires came from the picker)
-            if item.get("llanta_id"):
-                llanta = self._llantas_dict.get(item["llanta_id"])
-                if llanta:
-                    marca = llanta.marca_obj.nombre if llanta.marca_obj else (llanta.marca or "")
-                    dim = (
-                        llanta.dimension_obj.display
-                        if llanta.dimension_obj
-                        else (llanta.dimension or "")
-                    )
-                    label = f"{formatear_tiquete(llanta.tiquete)} — {marca} {dim}".strip(" —")
-                    self.llanta_combo.addItem(label, llanta.id)
 
     def _recalcular_total(self) -> None:
         total = sum(it["precio"] for it in self._items)

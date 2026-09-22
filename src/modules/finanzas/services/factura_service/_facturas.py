@@ -30,7 +30,10 @@ class _FacturasMixin:
     ) -> list[Factura]:
         with get_session() as session:
             q = session.query(Factura).options(
-                joinedload(Factura.cliente)
+                joinedload(Factura.cliente),
+                joinedload(Factura.llantas_detalle).joinedload(
+                    FacturaLlanta.llanta
+                ),
             )
             if estado:
                 q = q.filter(Factura.estado == estado)
@@ -52,7 +55,10 @@ class _FacturasMixin:
         """Search invoices by term (client name/NIT/phone), client, estado, or date range."""
         with get_session() as session:
             q = session.query(Factura).options(
-                joinedload(Factura.cliente)
+                joinedload(Factura.cliente),
+                joinedload(Factura.llantas_detalle).joinedload(
+                    FacturaLlanta.llanta
+                ),
             )
 
             if termino:
@@ -99,12 +105,15 @@ class _FacturasMixin:
             return factura
 
     @staticmethod
-    def listar_llantas_facturables() -> list[Llanta]:
-        """Tires that are not yet linked to any active (non-voided) invoice.
+    def listar_llantas_facturables(cliente_id: int | None = None) -> list[Llanta]:
+        """Tires not yet linked to any active (non-voided) invoice.
 
         Used by the invoice form to offer tires whose precio_venta pre-fills
         the line price. Tires already billed in a PENDIENTE/PARCIAL/PAGADA
         invoice are excluded so each tire is billed once.
+
+        ``cliente_id`` filtra las llantas pendientes de facturación del
+        cliente seleccionado (precarga en el formulario de factura).
         """
         with get_session() as session:
             facturadas = (
@@ -112,12 +121,10 @@ class _FacturasMixin:
                 .join(Factura, FacturaLlanta.factura_id == Factura.id)
                 .filter(Factura.estado != "ANULADA")
             )
-            llantas = (
-                session.query(Llanta)
-                .filter(Llanta.id.notin_(facturadas))
-                .order_by(Llanta.tiquete)
-                .all()
-            )
+            q = session.query(Llanta).filter(Llanta.id.notin_(facturadas))
+            if cliente_id:
+                q = q.filter(Llanta.cliente_id == cliente_id)
+            llantas = q.order_by(Llanta.tiquete).all()
             for l in llantas:
                 session.expunge(l)
             return llantas
@@ -195,6 +202,34 @@ class _FacturasMixin:
             cliente.saldo = (cliente.saldo or 0) + total
             session.expunge(factura)
             return True, factura
+
+    @staticmethod
+    def obtener_abonos_cliente(cliente_id: int) -> list[dict]:
+        """Todos los abonos (pagos) de las facturas de un cliente.
+
+        Para la ventana emergente de abonos del módulo Cartera (mismo
+        formato que el detalle de abonos de Facturación, pero por cliente).
+        """
+        from src.modules.finanzas.models.pago_model import Pago
+
+        with get_session() as session:
+            filas = (
+                session.query(Factura.numero, Pago)
+                .join(Pago, Pago.factura_id == Factura.id)
+                .filter(Factura.cliente_id == cliente_id)
+                .order_by(Pago.fecha.desc())
+                .all()
+            )
+            return [
+                {
+                    "factura_numero": num,
+                    "fecha": p.fecha,
+                    "metodo_pago": p.metodo_pago,
+                    "referencia": p.referencia,
+                    "valor": float(p.valor),
+                }
+                for num, p in filas
+            ]
 
     @staticmethod
     def anular(factura_id: int) -> tuple[bool, str]:

@@ -1,7 +1,7 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import func
+from sqlalchemy import String, func, literal
 from sqlalchemy.orm import joinedload
 
 from src.database.engine import get_session
@@ -42,6 +42,24 @@ class _CarteraMixin:
                 .group_by(Factura.cliente_id)
                 .subquery()
             )
+            # Fecha de pago esperada por cliente = MIN(fecha_emision + plazo_dias)
+            # de sus facturas PENDIENTE (el vencimiento más próximo por cobrar).
+            vencimiento_sub = (
+                session.query(
+                    Factura.cliente_id,
+                    func.min(
+                        func.date(
+                            Factura.fecha_emision,
+                            literal("+")
+                            + func.cast(Factura.plazo_dias, String)
+                            + " days",
+                        )
+                    ).label("fecha_pago"),
+                )
+                .filter(Factura.estado == "PENDIENTE")
+                .group_by(Factura.cliente_id)
+                .subquery()
+            )
             # Total abonado por cliente (suma de pagos en sus facturas)
             pagos_sub = (
                 session.query(
@@ -62,10 +80,12 @@ class _CarteraMixin:
                     saldo_sub.c.total_pendiente,
                     fecha_sub.c.ultima_factura,
                     pagos_sub.c.total_abonado,
+                    vencimiento_sub.c.fecha_pago,
                 )
                 .outerjoin(saldo_sub, Cliente.id == saldo_sub.c.cliente_id)
                 .outerjoin(fecha_sub, Cliente.id == fecha_sub.c.cliente_id)
                 .outerjoin(pagos_sub, Cliente.id == pagos_sub.c.cliente_id)
+                .outerjoin(vencimiento_sub, Cliente.id == vencimiento_sub.c.cliente_id)
                 .filter(
                     # Nota: sin filtro por Cliente.activo (campo legacy marcaba 1
                     # para todos) — la cartera muestra clientes con saldo pendiente.
@@ -80,6 +100,7 @@ class _CarteraMixin:
                 total_pendiente = float(r[4] or 0)
                 ultima_factura = r[5]
                 total_abonado = float(r[6] or 0)
+                fecha_pago = r[7]
                 dias_ultima = (hoy - ultima_factura).days if ultima_factura else 999
                 cartera.append(
                     {
@@ -91,6 +112,7 @@ class _CarteraMixin:
                         "fecha_ultima_factura": (
                             ultima_factura.strftime("%Y-%m-%d") if ultima_factura else ""
                         ),
+                        "fecha_pago": fecha_pago or "",
                         "total_abonado": total_abonado,
                         "dias_ultima_factura": dias_ultima,
                     }
@@ -115,6 +137,12 @@ class _CarteraMixin:
             result = []
             for f in facturas:
                 dias = (hoy - f.fecha_emision).days
+                # Fecha de pago esperada = emisión + plazo; días de mora = días
+                # transcurridos DESPUÉS del plazo de pago (0 si aún no vence).
+                vencimiento = f.fecha_emision + timedelta(
+                    days=(f.plazo_dias or 30)
+                )
+                dias_mora = max(0, (hoy - vencimiento).days)
                 cliente = f.cliente
                 result.append(
                     {
@@ -123,9 +151,11 @@ class _CarteraMixin:
                         "cliente_nombre": cliente.nombre if cliente else "?",
                         "cliente_celular": cliente.celular if cliente else "",
                         "fecha": f.fecha_emision.strftime("%Y-%m-%d"),
+                        "fecha_pago": vencimiento.strftime("%Y-%m-%d"),
                         "total": float(f.total),
                         "saldo": float(f.saldo),
                         "dias": dias,
+                        "dias_mora": dias_mora,
                         "rango": (
                             "0-30"
                             if dias <= 30
@@ -167,7 +197,7 @@ class _CarteraMixin:
             ws1 = wb.active
             ws1.title = "Resumen Cartera"
 
-            headers1 = ["Cliente", "Celular", "Ultima Factura", "Total Abonado", "Saldo Pendiente"]
+            headers1 = ["Cliente", "Celular", "Fecha de Generación", "Total Abonado", "Saldo Pendiente", "Fecha de Pago"]
             header_font = Font(bold=True, size=11)
             header_fill = PatternFill(start_color="2c3e50", end_color="2c3e50", fill_type="solid")
             header_font_white = Font(bold=True, size=11, color="FFFFFF")
@@ -186,6 +216,7 @@ class _CarteraMixin:
                     c["fecha_ultima_factura"],
                     c["total_abonado"],
                     c["saldo_pendiente"],
+                    c["fecha_pago"],
                 ])
 
             # Column widths
@@ -194,6 +225,7 @@ class _CarteraMixin:
             ws1.column_dimensions["C"].width = 16
             ws1.column_dimensions["D"].width = 16
             ws1.column_dimensions["E"].width = 18
+            ws1.column_dimensions["F"].width = 14
 
             # Currency format for columns D and E
             for row_idx in range(2, len(cartera) + 2):
@@ -237,7 +269,7 @@ class _CarteraMixin:
                     a["fecha"],
                     a["total"],
                     a["saldo"],
-                    a["dias"],
+                    a["dias_mora"],
                     a["rango"],
                 ]
                 ws2.append(row_data)

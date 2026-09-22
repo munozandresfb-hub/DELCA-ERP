@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -24,6 +26,10 @@ from src.modules.finanzas.views.facturacion_view._factura_form_dialog import (
 )
 from src.modules.finanzas.views.facturacion_view._pago_dialog import PagoDialog
 from src.modules.inventario.views.precios_view import PreciosDisenoDialog
+from src.modules.llantas.services.llanta_service._core import (
+    formatear_orden,
+    formatear_tiquete,
+)
 
 
 class FacturacionView(QWidget):
@@ -33,11 +39,14 @@ class FacturacionView(QWidget):
         "ID",
         "N\u00famero",
         "Cliente",
+        "Tiquete",
+        "Orden",
         "Fecha",
         "Total",
         "Abonos",
         "Saldo",
         "Estado",
+        "Fecha de Pago",
         "Observaciones",
     ]
 
@@ -230,42 +239,64 @@ class FacturacionView(QWidget):
             # 2 - Cliente
             nombre_cliente = f.cliente.nombre if f.cliente else "?"
             self.table.setItem(row, 2, QTableWidgetItem(nombre_cliente))
-            # 3 - Fecha
+            # 3 - Tiquete(s) y 4 - Orden(es) de las llantas de la factura
+            tiquetes, ordenes = [], []
+            for d in f.llantas_detalle or []:
+                ll = d.llanta
+                if ll:
+                    tiquetes.append(formatear_tiquete(ll.tiquete))
+                    orden = formatear_orden(ll.numero_orden, ll.consecutivo)
+                    if orden:
+                        ordenes.append(orden)
+                elif d.descripcion:
+                    tiquetes.append(d.descripcion)
             self.table.setItem(
-                row, 3, QTableWidgetItem(f.fecha_emision.strftime("%Y-%m-%d"))
+                row, 3, QTableWidgetItem(", ".join(tiquetes) or "—")
             )
-            # 4 - Total
-            self.table.setItem(row, 4, QTableWidgetItem(f"${f.total:,.2f}"))
-            # 5 - Abonos (clickeable)
+            self.table.setItem(
+                row, 4, QTableWidgetItem(", ".join(ordenes) or "—")
+            )
+            # 5 - Fecha
+            self.table.setItem(
+                row, 5, QTableWidgetItem(f.fecha_emision.strftime("%Y-%m-%d"))
+            )
+            # 6 - Total
+            self.table.setItem(row, 6, QTableWidgetItem(f"${f.total:,.2f}"))
+            # 7 - Abonos (clickeable)
             total_abonos = f.total - f.saldo
             abono_item = QTableWidgetItem(f"${total_abonos:,.2f}")
             abono_item.setData(Qt.ItemDataRole.UserRole, f.id)
             if total_abonos > 0:
                 abono_item.setForeground(QColor("#2980b9"))
                 abono_item.setToolTip("Click para ver detalle de abonos")
-            self.table.setItem(row, 5, abono_item)
-            # 6 - Saldo
+            self.table.setItem(row, 7, abono_item)
+            # 8 - Saldo
             saldo_item = QTableWidgetItem(f"${f.saldo:,.2f}")
             if f.saldo > 0:
                 saldo_item.setForeground(QColor("#e74c3c"))
             else:
                 saldo_item.setForeground(QColor("#27ae60"))
-            self.table.setItem(row, 6, saldo_item)
-            # 7 - Estado
-            self.table.setItem(row, 7, QTableWidgetItem(f.estado))
-            # 8 - Observaciones
+            self.table.setItem(row, 8, saldo_item)
+            # 9 - Estado
+            self.table.setItem(row, 9, QTableWidgetItem(f.estado))
+            # 10 - Fecha de Pago (emisión + plazo)
+            fecha_pago = f.fecha_emision + timedelta(days=(f.plazo_dias or 30))
+            self.table.setItem(
+                row, 10, QTableWidgetItem(fecha_pago.strftime("%Y-%m-%d"))
+            )
+            # 11 - Observaciones
             obs_text = f.observaciones or ""
             obs_item = QTableWidgetItem(obs_text[:60] + "..." if len(obs_text) > 60 else obs_text)
             if obs_text:
                 obs_item.setToolTip(obs_text)
-            self.table.setItem(row, 8, obs_item)
+            self.table.setItem(row, 11, obs_item)
 
         # Hide ID column
         self.table.setColumnHidden(0, True)
 
     def _on_cell_clicked(self, row: int, col: int) -> None:
         """Handle cell clicks - open AbonosDialog on Abonos column."""
-        if col == 5:  # Abonos column
+        if col == 7:  # Abonos column
             factura_id = int(self.table.item(row, 0).text())
             factura = FacturaService.obtener_por_id(factura_id)
             if factura:

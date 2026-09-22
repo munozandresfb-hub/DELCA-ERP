@@ -7,6 +7,24 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.43] — 2026-09-22 — Facturación ágil + precarga por cliente + cartera (fecha de pago, días de mora, abonos)
+
+### Changed / Added — Facturación
+- **Botón "Nueva Factura" rápido**: el formulario ya NO carga todas las llantas facturables al abrir (causa de la lentitud — 24,449 llantas). Ahora carga 0.4s y las llantas se cargan bajo demanda
+- **Precarga por cliente**: tras seleccionar cliente, el botón **"➕ Seleccionar llantas del cliente"** abre una ventana emergente con las **llantas del cliente pendientes de facturación**, mostrando: **N° Orden (con consecutivo), Diseño, Cliente y Dimensión** (+ Tiquete y Precio del catálogo). Selección múltiple
+- Vista Facturación: columnas **"Tiquete"** y **"Orden"** entre Cliente y Fecha; **"Fecha de Pago"** (emisión + plazo) entre Estado y Observaciones. La columna **Abonos** se actualiza automáticamente al registrar un pago
+
+### Changed / Added — Cartera
+- Click en **"Total Abonado"** → ventana emergente **"Abonos"** con los pagos del cliente (Factura | Fecha | Método | Referencia | Valor), igual que en Facturación
+- Columna **"Fecha de Pago"** a la derecha de "Saldo Pendiente" (fecha en que se debe recibir el pago = vencimiento más próximo)
+- Columna **"Ultima Factura"** renombrada a **"Fecha de Generación"**
+- **Antigüedad de Saldos**: columna **"DIAS DE MORA"** a la derecha de "Saldo" — días que el cliente no ha pagado **después del plazo de pago** (0 si aún no vence). Exportar a Excel actualizado
+
+### Verification
+- Formulario Nueva Factura 0.38s (antes cargaba 24,449 llantas) ✓ · filtro por cliente (7 llantas del cliente) ✓ · fecha_pago = emisión + plazo ✓ · dias_mora calculado ✓ · abonos del cliente con número de factura ✓ · columnas en ambas vistas ✓ · 171 tests · EXE recompilado
+
+---
+
 ## [2.8.42] — 2026-09-22 — Logo DELCA en la barra de tareas (acceso directo → EXE compilado)
 
 ### Fixed
