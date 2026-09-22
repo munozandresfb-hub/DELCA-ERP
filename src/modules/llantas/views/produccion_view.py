@@ -157,10 +157,19 @@ class _InspeccionFinalDialog(QDialog):
         )
 
     def _resolver_causa_id(self) -> int | None:
-        """Resuelve la causa de rechazo escrita (por número o texto)."""
-        causa = LlantaService.buscar_causa_rechazo(
-            self.causa_combo.currentText()
-        )
+        """Resuelve la causa de rechazo escrita (por número o texto).
+
+        Primero busca coincidencia exacta con un item del catálogo (cubre el
+        autocompletado del completer, p.ej. "23 — MISCELANEOS") y luego por
+        código o descripción (texto libre, p.ej. "23" o "MISCELANEOS").
+        """
+        texto = self.causa_combo.currentText().strip()
+        if not texto:
+            return None
+        for i in range(self.causa_combo.count()):
+            if self.causa_combo.itemText(i).strip().lower() == texto.lower():
+                return self.causa_combo.itemData(i)
+        causa = LlantaService.buscar_causa_rechazo(texto)
         return causa.id if causa else None
 
     def _aplicar_operacion(self) -> bool:

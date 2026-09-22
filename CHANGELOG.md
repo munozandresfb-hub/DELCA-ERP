@@ -7,6 +7,16 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.35] — 2026-09-21 — Fix: selección de causa de rechazo con autocompletado
+
+### Fixed
+- **Inspección Inicial** y **Inspección Final**: al escribir la causa de rechazo en el campo editable, el autocompletado dejaba el texto completo del item (ej. `23 — MISCELANEOS`) y la validación fallaba con *"Para rechazar la llanta debe seleccionar una causa de rechazo válida"*. Ahora `_resolver_causa_id` primero coincide con el item del catálogo (cubre el texto autocompletado) y luego por código o descripción (texto libre)
+
+### Verification
+- Resolución verificada: `23` / `23 — MISCELANEOS` / `MISCELANEOS` / ` miscelaneos ` → misma causa ✓ · inválido → None · rechazo con causa guardada en BD ✓ · 169 tests · EXE recompilado
+
+---
+
 ## [2.8.34] — 2026-09-21 — Causa de rechazo (RECHAZADA) + columna "Causa" + Inspección Final solo diseño REP
 
 ### Added
