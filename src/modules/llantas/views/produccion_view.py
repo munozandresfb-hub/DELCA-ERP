@@ -265,21 +265,8 @@ class _InspeccionFinalDialog(QDialog):
         self.info_label.setStyleSheet("color: #2e7d32; font-size: 13px;")
         self.nota_rep.setText("")
 
-        # Admisión: la inspección final solo admite llantas con diseño de
-        # banda REP (reparables) y en estado APTA/REENCAUCHADA/REPROCESO.
-        if diseno_text != DISENO_REPARADA:
-            self.info_label.setText(
-                f"  ✗ Inspección final solo admite llantas con diseño "
-                f"'{DISENO_REPARADA}' (diseño actual: {diseno_text})"
-            )
-            self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
-            self.veredicto_combo.clear()
-            self.veredicto_combo.setEnabled(False)
-            self.aplicar_btn.setEnabled(False)
-            self.rapido_btn.setEnabled(False)
-            self.causa_combo.setCurrentText("")
-            self.causa_combo.setEnabled(False)
-            return
+        # Admisión: la inspección final aplica a llantas en estado
+        # APTA/REENCAUCHADA/REPROCESO — CUALQUIER diseño de banda.
         if estado not in ESTADOS_INSPECCION_FINAL:
             self.info_label.setText(
                 f"  ✗ Inspección final aplica a llantas en estado "
@@ -293,6 +280,17 @@ class _InspeccionFinalDialog(QDialog):
             self.causa_combo.setCurrentText("")
             self.causa_combo.setEnabled(False)
             return
+
+        # Regla R5 (validada por el servicio): REPARADA solo con diseño REP.
+        # El formulario admite cualquier diseño; se avisa por si el usuario
+        # elige REPARADA en una llanta sin diseño REP (el servicio la rechaza).
+        if diseno_text != DISENO_REPARADA:
+            self.nota_rep.setText(
+                f"  Reparada requiere diseño '{DISENO_REPARADA}' "
+                f"(diseño actual: {diseno_text})"
+            )
+        else:
+            self.nota_rep.setText("")
 
         # Veredictos alcanzables desde el estado actual (fix: se recargan en
         # cada búsqueda — antes quedaba vacío tras una búsqueda fallida).

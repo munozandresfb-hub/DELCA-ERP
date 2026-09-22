@@ -7,6 +7,17 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.37] — 2026-09-21 — Inspección Final acepta cualquier diseño de banda
+
+### Changed
+- **Producción → Inspección Final**: ahora admite llantas de **cualquier diseño** (antes solo diseño REP). Se mantiene la validación de estado (APTA/REENCAUCHADA/REPROCESO)
+- Nota informativa (no bloquea): REPARADA requiere diseño REP (regla R5 del servicio) — se avisa cuando la llanta no lo tiene para que el usuario sepa que ese veredicto será rechazado por el servicio
+
+### Verification
+- Llanta diseño VZY9 en APTA → admitida con los 4 veredictos ✓ · nota R5 mostrada ✓ · 169 tests · EXE recompilado
+
+---
+
 ## [2.8.36] — 2026-09-21 — Fix: módulo Llantas no reflejaba la inspección inicial (estado/causa)
 
 ### Fixed
