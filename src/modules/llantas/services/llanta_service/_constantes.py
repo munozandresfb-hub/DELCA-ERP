@@ -42,14 +42,15 @@ UBICACIONES_DISPLAY: dict[str, str] = {
 #                                              (inspección final: 4 veredictos)
 #   REPROCESO → REENCAUCHADA | REPARADA | RECHAZADA (inspección final repetida)
 #   REENCAUCHADA → REPROCESO | RECHAZADA       (re-inspección final de terminada)
-#   REPARADA/RECHAZADA → terminales (solo cambian de ubicación)
+#   RECHAZADA → APTA                          (corrección de inspección inicial)
+#   REPARADA → terminal (solo cambia de ubicación)
 TRANSICIONES_VALIDAS: dict[str, set[str]] = {
     "PENDIENTE": {"APTA", "RECHAZADA"},
     "APTA": {"REENCAUCHADA", "REPARADA", "RECHAZADA", "REPROCESO"},
     "REPROCESO": {"REENCAUCHADA", "REPARADA", "RECHAZADA"},
     "REENCAUCHADA": {"REPROCESO", "RECHAZADA"},
+    "RECHAZADA": {"APTA"},
     "REPARADA": set(),
-    "RECHAZADA": set(),
 }
 
 # ── Veredictos de inspección final (opciones fijas en la UI) ──────

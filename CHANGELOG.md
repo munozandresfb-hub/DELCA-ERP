@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.39] — 2026-09-21 — Inspección Inicial: corrección de estados (RECHAZADA ↔ APTA)
+
+### Changed
+- **Inspección Inicial**: una llanta en estado **RECHAZADA** ahora puede cambiar a **APTA** (corrección de la inspección inicial). Al pasar a APTA la **causa de rechazo se limpia** automáticamente
+- **APTA → RECHAZADA** confirmado: ya permitido (matriz de transiciones); con causa de rechazo obligatoria
+
+### Verification
+- RECHAZADA (con causa) → APTA aplica y deja `causa_rechazo_id = NULL` ✓
+- APTA → RECHAZADA (con causa) aplica y guarda la causa ✓
+- 170 tests (1 nuevo) · EXE recompilado
+
+---
+
 ## [2.8.38] — 2026-09-21 — Inspección Final sin "Causa de Rechazo"
 
 ### Changed

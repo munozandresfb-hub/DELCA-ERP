@@ -139,6 +139,24 @@ class TestCambiarEstado:
         llanta_actual = LlantaService.obtener_por_id(llanta.id)
         assert llanta_actual.causa_rechazo_id is None
 
+    def test_rechazada_a_apta(self):
+        # Corrección de inspección inicial: RECHAZADA → APTA (limpia la causa)
+        llanta = _crear_llanta()
+        ok, msg = LlantaService.crear_causa_rechazo("91", "CAUSA RECHAZADA")
+        assert ok, msg
+        causa = LlantaService.buscar_causa_rechazo("91")
+        ok, msg = LlantaService.cambiar_estado(llanta.id, "RECHAZADA", causa.id)
+        assert ok
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.estado == "RECHAZADA"
+        assert llanta_actual.causa_rechazo_id == causa.id
+
+        ok, msg = LlantaService.cambiar_estado(llanta.id, "APTA")
+        assert ok
+        llanta_actual = LlantaService.obtener_por_id(llanta.id)
+        assert llanta_actual.estado == "APTA"
+        assert llanta_actual.causa_rechazo_id is None  # la causa se limpia
+
 
 class TestMoverUbicacion:
     """LlantaService.mover_ubicacion — location tracking."""
@@ -484,7 +502,8 @@ class TestMatriz:
         # Re-inspección final de llantas reencauchadas → REPROCESO | RECHAZADA
         assert TRANSICIONES_VALIDAS["REENCAUCHADA"] == {"REPROCESO", "RECHAZADA"}
         assert TRANSICIONES_VALIDAS["REPARADA"] == set()
-        assert TRANSICIONES_VALIDAS["RECHAZADA"] == set()
+        # Corrección de inspección inicial: RECHAZADA puede pasar a APTA
+        assert TRANSICIONES_VALIDAS["RECHAZADA"] == {"APTA"}
 
     def test_ubicaciones_validas(self):
         assert set(UBICACIONES_PLANTA) == {"PRODUCCION", "PLANTA", "CLIENTE"}
