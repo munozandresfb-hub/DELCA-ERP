@@ -7,6 +7,16 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.41] — 2026-09-22 — Logo DELCA en la aplicación y en el ejecutable
+
+### Changed
+- **Logo de la aplicación**: se usa el logo oficial **"Logo DELCA Acceso directo.ico"** (barra de tareas, barra de título y alt-tab). El ícono en runtime ya se aplicaba vía `app.setWindowIcon`; ahora el **ejecutable compilado** (`DELCA ERP.exe`) también lleva el logo DELCA embebido (`build_exe.spec` → `icon=assets/delca.ico`), reemplazando el ícono por defecto de Python/PyInstaller (cuaderno)
+
+### Verification
+- `assets/delca.ico` idéntico al logo oficial (SHA256 verificado) · EXE recompilado con ícono DELCA 32×32 embebido (extraído y verificado)
+
+---
+
 ## [2.8.40] — 2026-09-22 — Cambio de Ubicación con Fecha de Salida y Número de Documento + columna Marca
 
 ### Added
