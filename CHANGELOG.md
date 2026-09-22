@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.36] — 2026-09-21 — Fix: módulo Llantas no reflejaba la inspección inicial (estado/causa)
+
+### Fixed
+- **Módulo Llantas**: tras cerrar el formulario **INSPECCION INICIAL** la columna "Estado" (y "Causa") seguía mostrando los datos viejos. El diálogo aplica los cambios con `LlantaService` directamente (el viewmodel no se entera) y la vista solo re-renderizaba la lista en memoria. Ahora `_cambio_rapido` **recarga desde la BD** (`_cargar_datos()`) al cerrar
+- Verificado con la orden **10619 (Miguel Angel Oliva)**: los 8 tiquetes SÍ quedaron en la BD (7 APTA + 1 RECHAZADA); el problema era solo de visualización
+
+### Verification (refresco automático en todo el sistema)
+- Inspección Inicial → módulo Llantas recarga ✓ (PENDIENTE → APTA verificado en BD + tabla)
+- Inspección Final (Producción) y Cambio de Ubicación (Planta): ya recargan ✓
+- Al navegar entre módulos, `MainWindow` recarga la vista entrante (`_recargar_vista`) ✓
+- 169 tests · EXE recompilado
+
+---
+
 ## [2.8.35] — 2026-09-21 — Fix: selección de causa de rechazo con autocompletado
 
 ### Fixed

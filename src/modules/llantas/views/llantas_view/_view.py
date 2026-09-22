@@ -279,10 +279,12 @@ class LlantasView(QWidget):
 
     def _cambio_rapido(self) -> None:
         # El diálogo aplica el cambio de estado (y permite inspección continua
-        # con el botón "⚡ Cambio Rápido"). Al cerrar se refresca la tabla.
+        # con el botón "⚡ Cambio Rápido"). Al cerrar se RECARGA desde la BD
+        # (el viewmodel cachea la lista; _poblar_tabla() sola mostraría los
+        # estados viejos).
         dialog = CambioRapidoDialog(self)
         dialog.exec()
-        self._poblar_tabla()
+        self._cargar_datos()
 
     def _ver_historial(self) -> None:
         row = self.table.currentRow()
