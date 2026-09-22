@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.42] — 2026-09-22 — Logo DELCA en la barra de tareas (acceso directo → EXE compilado)
+
+### Fixed
+- **Causa raíz**: el acceso directo del escritorio ejecutaba `pythonw.exe main.py` (modo desarrollo), por lo que la barra de tareas mostraba el ícono del proceso pythonw (cuaderno de Python) y el logo embebido en el EXE no se veía
+- **Solución**: el acceso directo **"DELCA Iniciar 2.lnk"** ahora ejecuta **`dist\DELCA ERP.exe`** (con el logo DELCA embebido) con el directorio de trabajo en el proyecto — `config.py` detecta la BD del repo (exe en `dist/` → BD en el padre), por lo que usa **la misma base de datos**
+- Caché de íconos de Windows refrescado (`ie4uinit -show`)
+
+### Verification
+- `.lnk` → `dist\DELCA ERP.exe` ✓ · WorkDir = proyecto ✓ · BD del repo detectada por el EXE ✓ · ícono DELCA embebido en el EXE (extraído 32×32) ✓
+
+---
+
 ## [2.8.41] — 2026-09-22 — Logo DELCA en la aplicación y en el ejecutable
 
 ### Changed
