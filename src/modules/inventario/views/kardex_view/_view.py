@@ -40,7 +40,7 @@ class KardexView(QWidget):
     COLUMNAS = [
         # Columnas del inventario (estado del producto)
         "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
-        "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
+        "Q minima en planta", "Cantidad KG", "Costo/KG", "Valor Total",
         # Columnas del movimiento
         "Fecha", "Documento de:", "Cant. Und", "Cant. KG",
         "Saldo Und", "Saldo KG", "Referencia", "Observaciones",

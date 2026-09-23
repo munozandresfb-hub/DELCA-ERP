@@ -21,6 +21,26 @@ class ProductoService:
         "OTROS",
     ]
 
+    # Unidades que se valoran por KG (bandas de rodadura, etc.)
+    UNIDADES_POR_KG = {"ROLLO", "ROLLOS"}
+
+    @staticmethod
+    def valor_inventario_producto(producto: Producto) -> float:
+        """Valor monetario de un producto en inventario.
+
+        Para unidades por KG (ROLLO/ROLLOS, ej. bandas de rodadura) el costo
+        unitario está expresado en COP/KG, por lo que el valor es
+        ``stock_kg × costo_unitario``. Para el resto de unidades
+        (UNIDAD, CAJA, PAQ...) el costo es por unidad y el valor es
+        ``stock × costo_unitario``.
+        """
+        unidad = str(getattr(producto, "unidad_medida", "") or "").upper()
+        if unidad in ProductoService.UNIDADES_POR_KG:
+            return float(producto.stock_kg or 0) * float(
+                producto.costo_unitario or 0
+            )
+        return float(producto.stock or 0) * float(producto.costo_unitario or 0)
+
     @staticmethod
     def listar_productos(
         categoria: str | None = None, solo_activos: bool = False

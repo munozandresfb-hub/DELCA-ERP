@@ -58,7 +58,7 @@ class ProductoFormDialog(QDialog):
 
         self.costo_input = QLineEdit()
         self.costo_input.setPlaceholderText("0.00")
-        form.addRow("Costo Unitario:", self.costo_input)
+        form.addRow("Costo/KG:", self.costo_input)
 
         self.precio_input = QLineEdit()
         self.precio_input.setPlaceholderText("0.00")
@@ -178,11 +178,16 @@ class MovimientoDialog(QDialog):
         self.cantidad_input.setPlaceholderText("0")
         form.addRow("Cantidad *:", self.cantidad_input)
 
+        # Cantidad en KG — necesaria para bandas (costo por KG)
+        self.kg_input = QLineEdit()
+        self.kg_input.setPlaceholderText("0")
+        form.addRow("Cantidad KG:", self.kg_input)
+
         self.costo_input = QLineEdit()
         self.costo_input.setPlaceholderText(
             f"{self.producto.costo_unitario}"
         )
-        form.addRow("Costo Unit.:", self.costo_input)
+        form.addRow("Costo/KG:", self.costo_input)
 
         self.referencia_input = QLineEdit()
         self.referencia_input.setPlaceholderText(
@@ -229,6 +234,7 @@ class MovimientoDialog(QDialog):
         return (
             self.tipo_combo.currentText(),
             self._parse_decimal(self.cantidad_input.text()),
+            self._parse_decimal(self.kg_input.text()),
             self._parse_decimal(self.costo_input.text()),
             self.referencia_input.text().strip() or None,
             self.obs_input.text().strip() or None,
@@ -439,11 +445,12 @@ class ProductosView(QWidget):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        tipo, cantidad, costo, ref, obs = dialog.get_data()
+        tipo, cantidad, cantidad_kg, costo, ref, obs = dialog.get_data()
         ok, msg = ProductoService.registrar_movimiento(
             producto_id=producto_id,
             tipo=tipo,
             cantidad=cantidad,
+            cantidad_kg=cantidad_kg,
             costo_unitario=costo if costo else None,
             referencia=ref,
             observaciones=obs,

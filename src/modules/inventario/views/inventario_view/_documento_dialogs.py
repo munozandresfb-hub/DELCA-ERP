@@ -142,7 +142,7 @@ class _DocumentoSearchDialog(QDialog):
 class _DocumentoDetalleDialog(QDialog):
     """Shows the line items of a single document."""
 
-    COLUMNAS = ["Producto", "SKU", "Tipo", "Cantidad", "Costo Unit.", "Total", "Fecha"]
+    COLUMNAS = ["Producto", "SKU", "Tipo", "Cantidad", "Costo/KG", "Total", "Fecha"]
 
     def __init__(self, documento_id: int, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -178,7 +178,13 @@ class _DocumentoDetalleDialog(QDialog):
         self.tabla.setRowCount(len(movs))
         for row, m in enumerate(movs):
             producto = m.producto
-            total = float(m.cantidad) * float(m.costo_unitario)
+            # Para bandas (ROLLO) el costo es por KG → usar cantidad_kg
+            unidad = str(getattr(producto, "unidad_medida", "") or "").upper()
+            if unidad in ("ROLLO", "ROLLOS"):
+                base_cantidad = float(m.cantidad_kg or 0)
+            else:
+                base_cantidad = float(m.cantidad or 0)
+            total = base_cantidad * float(m.costo_unitario or 0)
             self.tabla.setItem(row, 0, QTableWidgetItem(producto.nombre if producto else f"#{m.producto_id}"))
             self.tabla.setItem(row, 1, QTableWidgetItem(producto.sku if producto else ""))
             self.tabla.setItem(row, 2, QTableWidgetItem(m.tipo))

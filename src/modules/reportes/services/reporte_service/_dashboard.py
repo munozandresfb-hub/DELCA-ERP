@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
@@ -64,7 +64,16 @@ class _DashboardReports:
                 session.query(
                     func.coalesce(
                         func.sum(
-                            Producto.stock * Producto.costo_unitario
+                            case(
+                                (
+                                    func.upper(Producto.unidad_medida).in_(
+                                        ["ROLLO", "ROLLOS"]
+                                    ),
+                                    Producto.stock_kg,
+                                ),
+                                else_=Producto.stock,
+                            )
+                            * Producto.costo_unitario
                         ),
                         0,
                     )

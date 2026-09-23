@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload
 
 from src.database.engine import get_session
@@ -19,18 +19,44 @@ class InventarioKpiService:
     def resumen_kpis() -> dict:
         """Calculate all KPIs for the inventory dashboard."""
         with get_session() as session:
-            # Raw material stock & value
+            # Rollos de banda en planta (MP disponible) — solo unidad ROLLO
             mp_query = (
                 session.query(
                     func.sum(Producto.stock),
-                    func.sum(Producto.stock * Producto.costo_unitario),
+                    func.sum(Producto.stock_kg * Producto.costo_unitario),
                 )
-                .filter(Producto.categoria == "MATERIA_PRIMA")
+                .filter(
+                    Producto.categoria == "MATERIA_PRIMA",
+                    func.upper(Producto.unidad_medida) == "ROLLO",
+                )
                 .first()
                 or (0, 0)
             )
             mp_disponible = float(mp_query[0] or 0)
-            valor_inventario = float(mp_query[1] or 0)
+
+            # Valor total del inventario de materia prima (todo el stock).
+            # Para unidades ROLLO el costo es por KG → stock_kg × costo;
+            # para el resto de unidades el costo es por unidad → stock × costo.
+            valor_query = (
+                session.query(
+                    func.sum(
+                        case(
+                            (
+                                func.upper(Producto.unidad_medida).in_(
+                                    ["ROLLO", "ROLLOS"]
+                                ),
+                                Producto.stock_kg,
+                            ),
+                            else_=Producto.stock,
+                        )
+                        * Producto.costo_unitario
+                    )
+                )
+                .filter(Producto.categoria == "MATERIA_PRIMA")
+                .first()
+                or (0,)
+            )
+            valor_inventario = float(valor_query[0] or 0)
 
             # Finished tires in plant (no entregadas al cliente) — costo/precio del catálogo
             from src.modules.llantas.services.costo_precio import (
@@ -85,10 +111,17 @@ class InventarioKpiService:
         capacidades: dict[tuple, list[float]] = defaultdict(list)
         for receta in recetas:
             producto = receta.producto
-            if not producto or producto.stock is None or producto.stock <= 0:
+            unidad = str(receta.unidad or "UNIDAD").upper()
+            if unidad in ProductoService.UNIDADES_POR_KG:
+                # Receta en KG → la disponibilidad se mide contra stock_kg
+                stock_disponible = producto.stock_kg if producto else None
+            else:
+                # Receta en unidades/rollos → disponibilidad en stock
+                stock_disponible = producto.stock if producto else None
+            if stock_disponible is None or stock_disponible <= 0:
                 continue
             if receta.cantidad and receta.cantidad > 0:
-                posibles = float(producto.stock) / float(receta.cantidad)
+                posibles = float(stock_disponible) / float(receta.cantidad)
                 capacidades[(receta.diseno_id, receta.dimension_id)].append(posibles)
 
         if not capacidades:

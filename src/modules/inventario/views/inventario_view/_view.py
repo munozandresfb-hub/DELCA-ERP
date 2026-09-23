@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.inventario.services.inventario_kpi_service import InventarioKpiService
+from src.modules.inventario.services.producto_service import ProductoService
 from src.modules.inventario.views.inventario_view._config_dialog import (
     ConfiguracionInventarioDialog,
 )
@@ -45,11 +46,11 @@ class InventarioView(QWidget):
 
     COLUMNAS_MP = [
         "ID", "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
-        "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
+        "Q minima en planta", "Cantidad KG", "Costo/KG", "Valor Total",
     ]
     COLUMNAS_CONSUMIBLES = [
         "ID", "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
-        "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
+        "Q minima en planta", "Cantidad KG", "Costo/KG", "Valor Total",
     ]
     COLUMNAS_TERMINADAS = [
         "ID", "Tiquete", "Diseño", "Dimensión", "Costo Fabr.",
@@ -71,7 +72,7 @@ class InventarioView(QWidget):
         kpi_row = QHBoxLayout()
         self._kpi_widgets: dict[str, _KpiCard] = {}
         kpi_defs = [
-            ("mp", "MP Disponible", "0", C_AZUL, "Cantidad total de materia prima en stock"),
+            ("mp", "MP Disponible", "0", C_AZUL, "Rollos de banda en planta (materia prima)"),
             ("valor", "Valor Inventario", "$0", C_AZUL, "Valor total del inventario de MP"),
             ("capacidad", "Capacidad Prod.", "0 und", C_VERDE,
              "Llantas estimadas producibles con MP actual"),
@@ -260,7 +261,7 @@ class InventarioView(QWidget):
 
     def _cargar_kpis(self) -> None:
         kpis = InventarioKpiService.resumen_kpis()
-        self._kpi_widgets["mp"].actualizar(str(kpis["mp_disponible"]))
+        self._kpi_widgets["mp"].actualizar(f"{kpis['mp_disponible']} rollos")
         self._kpi_widgets["valor"].actualizar(f"${kpis['valor_inventario']:,.0f}")
         self._kpi_widgets["capacidad"].actualizar(f"{kpis['capacidad_prod']} und")
         self._kpi_widgets["planta"].actualizar(f"{kpis['llantas_en_planta']} und")
@@ -279,7 +280,7 @@ class InventarioView(QWidget):
             stock_kg = float(p.stock_kg or 0)
             minimo = float(p.stock_minimo or 0)
             costo = float(p.costo_unitario or 0)
-            valor = stock * costo
+            valor = ProductoService.valor_inventario_producto(p)
             self.tabla_mp.setItem(row, 0, QTableWidgetItem(str(p.id)))            # ID (hidden)
             self.tabla_mp.setItem(row, 1, QTableWidgetItem(p.sku or ""))           # SKU
             self.tabla_mp.setItem(row, 2, QTableWidgetItem(p.nombre or ""))        # Nombre
@@ -320,7 +321,7 @@ class InventarioView(QWidget):
             stock_kg = float(p.stock_kg or 0)
             minimo = float(p.stock_minimo or 0)
             costo = float(p.costo_unitario or 0)
-            valor = stock * costo
+            valor = ProductoService.valor_inventario_producto(p)
             self.tabla_cons.setItem(row, 0, QTableWidgetItem(str(p.id)))            # ID (hidden)
             self.tabla_cons.setItem(row, 1, QTableWidgetItem(p.sku or ""))           # SKU
             self.tabla_cons.setItem(row, 2, QTableWidgetItem(p.nombre or ""))        # Nombre
@@ -379,13 +380,15 @@ class InventarioView(QWidget):
                 row, 8, QTableWidgetItem(str(ll["dias_en_planta"]))
             )
 
-            # Color row by aging
+            # Color differential SOLO en la celda "Días en Planta" (la fila
+            # mantiene los colores estándar del resto de módulos). El texto
+            # queda en color oscuro para que el número siga siendo legible.
             color = _color_antiguedad(ll["dias_en_planta"])
             if color:
-                for col in range(self.tabla_term.columnCount()):
-                    item = self.tabla_term.item(row, col)
-                    if item:
-                        item.setBackground(color)
+                item_dias = self.tabla_term.item(row, 8)
+                if item_dias is not None:
+                    item_dias.setBackground(color)
+                    item_dias.setForeground(QColor("#2c2c2c"))
 
     def _filtrar_terminadas(self) -> None:
         term = self.term_busqueda.text().strip().lower()

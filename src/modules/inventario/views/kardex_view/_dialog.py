@@ -67,7 +67,7 @@ class _MovimientoFormDialog(QDialog):
         if not self._es_salida_ajuste:
             self.costo_input = QLineEdit()
             self.costo_input.setPlaceholderText("Usar costo actual del producto")
-            layout.addRow("Costo Unit. $:", self.costo_input)
+            layout.addRow("Costo por KG $:", self.costo_input)
 
         # Unidad de medida (SALIDA/AJUSTE) / Referencia (ENTRADA)
         self.referencia_input = QLineEdit()

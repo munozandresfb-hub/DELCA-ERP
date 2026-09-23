@@ -100,7 +100,7 @@ class _CrearProductoDialog(QDialog):
 
         self.precio_input = QLineEdit()
         self.precio_input.setPlaceholderText("0.00")
-        layout.addRow("Costo Unitario $:", self.precio_input)
+        layout.addRow("Costo por KG $:", self.precio_input)
 
         self.cantidad_input = QLineEdit()
         self.cantidad_input.setPlaceholderText("0")
