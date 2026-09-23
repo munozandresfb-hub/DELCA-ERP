@@ -141,6 +141,11 @@ class _MovimientoFormDialog(QDialog):
             self.producto_combo.addItem(
                 label, (p.id, p.costo_unitario, p.unidad_medida, p.stock_kg, p.stock)
             )
+        for p in ProductoService.listar_productos(categoria="CONSUMIBLE", solo_activos=True):
+            label = f"{p.nombre} ({p.sku}) — Und: {p.stock} | KG: {p.stock_kg}"
+            self.producto_combo.addItem(
+                label, (p.id, p.costo_unitario, p.unidad_medida, p.stock_kg, p.stock)
+            )
         self._on_producto_cambiado()
 
     def _on_producto_cambiado(self) -> None:

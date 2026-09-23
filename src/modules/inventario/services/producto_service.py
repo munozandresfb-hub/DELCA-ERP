@@ -13,6 +13,7 @@ class ProductoService:
 
     CATEGORIAS = [
         "MATERIA_PRIMA",
+        "CONSUMIBLE",
         "INSUMOS",
         "HERRAMIENTAS",
         "REPUESTOS",

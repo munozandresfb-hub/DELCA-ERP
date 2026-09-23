@@ -107,6 +107,11 @@ class InventarioKpiService:
         return ProductoService.listar_productos(categoria="MATERIA_PRIMA")
 
     @staticmethod
+    def consumibles() -> list[Producto]:
+        """List all consumible products."""
+        return ProductoService.listar_productos(categoria="CONSUMIBLE")
+
+    @staticmethod
     def terminadas_en_planta() -> list[dict]:
         """List finished tires in plant with computed fields."""
         hoy = datetime.now()

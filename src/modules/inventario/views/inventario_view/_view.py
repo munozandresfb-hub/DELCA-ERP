@@ -28,7 +28,7 @@ from src.modules.inventario.views.inventario_view._documento_dialogs import (
     _DocumentoSearchDialog,
 )
 from src.modules.inventario.views.inventario_view._producto_mp_dialog import (
-    _CrearProductoMPDialog,
+    _CrearProductoDialog,
 )
 from src.modules.inventario.views.inventario_view._widgets import (
     C_AMBAR,
@@ -44,6 +44,10 @@ class InventarioView(QWidget):
     """Inventory dashboard with KPIs, raw materials, and finished tires."""
 
     COLUMNAS_MP = [
+        "ID", "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
+        "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
+    ]
+    COLUMNAS_CONSUMIBLES = [
         "ID", "SKU", "Nombre", "Categoría", "Cantidad UND", "Unidad",
         "Q minima en planta", "Cantidad KG", "Costo Unit.", "Valor Total",
     ]
@@ -121,6 +125,9 @@ class InventarioView(QWidget):
         self._menu_reportes.addAction("📄 MP — Stock general", self._reporte_mp_stock)
         self._menu_reportes.addAction("📄 MP — Punto de reorden (bajo mínimo)", self._reporte_mp_reorden)
         self._menu_reportes.addSeparator()
+        self._menu_reportes.addAction("📄 Consumibles — Stock general", self._reporte_cons_stock)
+        self._menu_reportes.addAction("📄 Consumibles — Punto de reorden", self._reporte_cons_reorden)
+        self._menu_reportes.addSeparator()
         self._menu_reportes.addAction("Exportar tabla a Excel (simulado)", self._exportar_excel)
         self.btn_reportes.setMenu(self._menu_reportes)
 
@@ -196,12 +203,37 @@ class InventarioView(QWidget):
         self.tab_term.setLayout(term_layout)
         self.tabs.addTab(self.tab_term, "Llantas Terminadas")
 
+        # Tab 3: Consumibles
+        self.tab_cons = QWidget()
+        cons_layout = QVBoxLayout()
+        cons_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.cons_busqueda = QLineEdit()
+        self.cons_busqueda.setPlaceholderText("Buscar por nombre, SKU...")
+        self.cons_busqueda.setStyleSheet("font-size: 13px; padding: 5px; max-width: 300px;")
+        self.cons_busqueda.textChanged.connect(self._filtrar_consumibles)
+        cons_layout.addWidget(self.cons_busqueda)
+
+        self.tabla_cons = QTableWidget()
+        self.tabla_cons.setColumnCount(len(self.COLUMNAS_CONSUMIBLES))
+        self.tabla_cons.setHorizontalHeaderLabels(self.COLUMNAS_CONSUMIBLES)
+        self.tabla_cons.horizontalHeader().setStretchLastSection(True)
+        self.tabla_cons.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.tabla_cons.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.tabla_cons.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.tabla_cons.setAlternatingRowColors(True)
+        self.tabla_cons.setColumnHidden(0, True)
+        cons_layout.addWidget(self.tabla_cons)
+        self.tab_cons.setLayout(cons_layout)
+        self.tabs.addTab(self.tab_cons, "Consumibles")
+
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
         # Data cache
         self._mp_cache: list[Producto] = []
         self._term_cache: list[dict] = []
+        self._cons_cache: list[Producto] = []
 
         # Initial load
         QTimer.singleShot(0, self._refresh_all)
@@ -221,6 +253,10 @@ class InventarioView(QWidget):
             self._cargar_terminadas()
         except Exception as e:
             print(f"[InventarioView] Error cargando terminadas: {e}")
+        try:
+            self._cargar_consumibles()
+        except Exception as e:
+            print(f"[InventarioView] Error cargando consumibles: {e}")
 
     def _cargar_kpis(self) -> None:
         kpis = InventarioKpiService.resumen_kpis()
@@ -270,6 +306,47 @@ class InventarioView(QWidget):
             or term in (p.sku or "").lower()
         ]
         self._poblar_tabla_mp(filtrados)
+
+    # ── Consumibles ────────────────────────────────────────────────
+
+    def _cargar_consumibles(self) -> None:
+        self._cons_cache = InventarioKpiService.consumibles()
+        self._poblar_tabla_consumibles(self._cons_cache)
+
+    def _poblar_tabla_consumibles(self, productos: list[Producto]) -> None:
+        self.tabla_cons.setRowCount(len(productos))
+        for row, p in enumerate(productos):
+            stock = float(p.stock or 0)
+            stock_kg = float(p.stock_kg or 0)
+            minimo = float(p.stock_minimo or 0)
+            costo = float(p.costo_unitario or 0)
+            valor = stock * costo
+            self.tabla_cons.setItem(row, 0, QTableWidgetItem(str(p.id)))            # ID (hidden)
+            self.tabla_cons.setItem(row, 1, QTableWidgetItem(p.sku or ""))           # SKU
+            self.tabla_cons.setItem(row, 2, QTableWidgetItem(p.nombre or ""))        # Nombre
+            self.tabla_cons.setItem(row, 3, QTableWidgetItem(p.categoria or ""))     # Categoría
+            self.tabla_cons.setItem(row, 4, QTableWidgetItem(f"{stock:,.2f}"))       # Cantidad UND
+            self.tabla_cons.setItem(row, 5, QTableWidgetItem(p.unidad_medida or "")) # Unidad
+            self.tabla_cons.setItem(row, 6, QTableWidgetItem(f"{minimo:,.2f}"))      # Q minima en planta
+            self.tabla_cons.setItem(row, 7, QTableWidgetItem(f"{stock_kg:,.2f}"))    # Cantidad KG
+            self.tabla_cons.setItem(
+                row, 8, QTableWidgetItem(f"${costo:,.2f}")                           # Costo Unit.
+            )
+            self.tabla_cons.setItem(
+                row, 9, QTableWidgetItem(f"${valor:,.2f}")                           # Valor Total
+            )
+
+    def _filtrar_consumibles(self) -> None:
+        term = self.cons_busqueda.text().strip().lower()
+        if not term:
+            self._poblar_tabla_consumibles(self._cons_cache)
+            return
+        filtrados = [
+            p for p in self._cons_cache
+            if term in (p.nombre or "").lower()
+            or term in (p.sku or "").lower()
+        ]
+        self._poblar_tabla_consumibles(filtrados)
 
     # ── Llantas Terminadas ──────────────────────────────────────────
 
@@ -325,8 +402,8 @@ class InventarioView(QWidget):
     # ── Actions ─────────────────────────────────────────────────────
 
     def _nuevo_producto_mp(self) -> None:
-        """Quick-create a raw material product."""
-        dlg = _CrearProductoMPDialog(self)
+        """Quick-create a raw material or consumible product."""
+        dlg = _CrearProductoDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._refresh_all()
 
@@ -410,6 +487,30 @@ class InventarioView(QWidget):
         QMessageBox.information(
             self, "Punto de Reorden",
             f"{len(bajos)} productos de MP están por debajo del mínimo en planta."
+        )
+
+    # ── Consumible Reports ─────────────────────────────────────────
+
+    def _reporte_cons_stock(self) -> None:
+        """Show consumibles stock report in the consumibles table."""
+        self._cargar_consumibles()
+        self.tabs.setCurrentIndex(2)
+        QMessageBox.information(
+            self, "Stock Consumibles",
+            f"Reporte de stock general de consumibles ({len(self._cons_cache)} productos)."
+        )
+
+    def _reporte_cons_reorden(self) -> None:
+        """Filter consumibles table to show only products below minimum stock."""
+        bajos = [
+            p for p in self._cons_cache
+            if (p.stock or 0) < (p.stock_minimo or 0)
+        ]
+        self._poblar_tabla_consumibles(bajos)
+        self.tabs.setCurrentIndex(2)
+        QMessageBox.information(
+            self, "Punto de Reorden Consumibles",
+            f"{len(bajos)} consumibles están por debajo del mínimo en planta."
         )
 
     def _exportar_excel(self) -> None:
