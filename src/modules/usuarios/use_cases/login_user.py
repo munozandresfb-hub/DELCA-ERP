@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import joinedload
@@ -6,11 +7,16 @@ from src.database.session import SessionLocal
 from src.modules.usuarios.models.usuario_model import Usuario
 from src.modules.usuarios.repositories.usuario_repository import UsuarioRepository
 from src.modules.usuarios.services.auth_service import AuthService
-from src.core.services.audit_service import registrar_login
+from src.core.services.audit_service import registrar_auditoria, registrar_login
+
+logger = logging.getLogger("delca.auth")
 
 # Hash dummy (bcrypt) para igualar el tiempo de respuesta cuando el usuario
 # NO existe — evita que un atacante distinga usuarios válidos por el tiempo
 # de respuesta (mitigación de enumeración de usuarios).
+# NOTA: es un hash bcrypt DEFENSIVO, NO una credencial. Es unidireccional
+# (no se puede derivar la contraseña) y se usa solo para gastar el mismo
+# tiempo de cómputo que una verificación real. Rotación manual permitida.
 DUMMY_BCRYPT_HASH = (
     "$2b$12$2HBCUCt9/JmaJ14W21XEiOOFRxoVyJR02Ik8HcrdK0B4932L0oS3y"
 )
@@ -43,6 +49,15 @@ def login_user(username: str, password: str) -> dict:
             # Igualar el tiempo de respuesta (bcrypt dummy) para no revelar
             # si el usuario existe.
             AuthService.verify_password(password, DUMMY_BCRYPT_HASH)
+            # Auditar el intento contra un usuario inexistente: no se puede
+            # atribuir a un usuario_id (no existe), pero queda registrado el
+            # username intentado (fuerza bruta de usernames deja rastro).
+            registrar_auditoria(
+                usuario_id=None,
+                entidad="usuarios",
+                accion="FALLO_LOGIN",
+                detalle=f"Intento de login con usuario inexistente: {username}",
+            )
             return {
                 "success": False,
                 "user": None,
@@ -125,10 +140,11 @@ def login_user(username: str, password: str) -> dict:
 
     except Exception as e:
         session.rollback()
+        logger.error("Error de autenticación: %s", e, exc_info=True)
         return {
             "success": False,
             "user": None,
-            "error": f"Error de autenticación: {e}",
+            "error": "Error de autenticación. Intente nuevamente.",
             "needs_password_change": False,
             "is_expired": False,
             "locked_until": None,

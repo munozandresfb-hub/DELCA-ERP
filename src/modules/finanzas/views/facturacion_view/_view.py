@@ -29,6 +29,9 @@ from src.modules.inventario.views.precios_view import PreciosDisenoDialog
 from src.modules.llantas.services.llanta_service._core import (
     formatear_orden,
     formatear_tiquete,
+import logging
+
+logger = logging.getLogger("delca.views")
 )
 
 
@@ -57,7 +60,7 @@ class FacturacionView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[FacturacionView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[FacturacionView] Error al cargar datos iniciales", exc_info=True)
             # Show placeholder in table area so UI stays visible
             self.tabla.setRowCount(1)
             self.tabla.setColumnCount(1)
@@ -72,7 +75,7 @@ class FacturacionView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[FacturacionView] Error al recargar datos: {e}")
+            logger.error(f"[FacturacionView] Error al recargar datos", exc_info=True)
             # don't replace table content at all if reload fails
 
     def setup_ui(self) -> None:

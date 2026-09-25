@@ -5,7 +5,7 @@ import bcrypt
 
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 64  # bcrypt solo usa los primeros 72 bytes
-PASSWORD_EXPIRY_DAYS = 90
+PASSWORD_EXPIRY_DAYS = 365  # decisión de negocio: cambio obligatorio 1 vez al año
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
@@ -132,3 +132,49 @@ class AuthService:
         if session:
             session.flush()
         return False  # not locked yet
+
+    # ── Clave compartida por rol (decisión de negocio) ─────────────
+
+    @staticmethod
+    def sync_role_password(
+        rol_nombre: str, nueva_clave: str, session,
+    ) -> tuple[bool, str]:
+        """Actualiza la contraseña de TODOS los usuarios de un rol (1 clave por rol).
+
+        Decisión de negocio A3: los usuarios del mismo rol comparten el mismo
+        password_hash. Esta función es transaccional: valida la clave, hashea
+        UNA vez y la aplica a todos los usuarios del rol, actualizando
+        password_changed_at (controla la expiración anual).
+
+        Args:
+            rol_nombre: Nombre del rol (usar RolNombre, ej. RolNombre.GERENCIA).
+            nueva_clave: Nueva contraseña compartida del rol.
+            session: Sesión SQLAlchemy activa.
+
+        Returns:
+            (True, mensaje) si se actualizó; (False, error) si no.
+        """
+        valid, msg = AuthService.validate_password_strength(nueva_clave)
+        if not valid:
+            return False, msg
+
+        from src.modules.usuarios.models.rol_model import Rol
+        from src.modules.usuarios.models.usuario_model import Usuario
+
+        rol = session.query(Rol).filter(Rol.nombre == rol_nombre).first()
+        if not rol:
+            return False, f"Rol no encontrado: {rol_nombre}"
+
+        usuarios = session.query(Usuario).filter(Usuario.rol_id == rol.id).all()
+        if not usuarios:
+            return False, f"No hay usuarios con el rol {rol_nombre}"
+
+        hashed = AuthService.hash_password(nueva_clave)
+        now = datetime.now()
+        for u in usuarios:
+            u.password_hash = hashed
+            u.password_changed_at = now
+        session.commit()
+        return True, (
+            f"Clave actualizada para {len(usuarios)} usuarios del rol {rol_nombre}"
+        )

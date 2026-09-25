@@ -9,16 +9,16 @@ Uso: python scripts/migrar_marcas_dbf.py [--dry-run]
 from __future__ import annotations
 
 import argparse
-import os
 import sqlite3
 
 import dbfread
+import os
 
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "delca.db"
 )
-DBF_PATH = r"C:\Users\andre\OneDrive\Escritorio\DELCA\MAE_MARCA.DBF"
+DBF_PATH = os.environ.get("DELCA_ARCHIVO_MARCAS_DBF", r"C:\Users\andre\OneDrive\Escritorio\DELCA\MAE_MARCA.DBF")
 
 
 def main() -> None:

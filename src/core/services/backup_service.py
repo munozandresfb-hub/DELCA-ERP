@@ -7,8 +7,12 @@ integrity verification, and recovery management.
 
 import csv
 import json
+import msvcrt
+import os
 import shutil
 import sqlite3
+import time
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -43,20 +47,90 @@ def _wal_checkpoint() -> None:
         conn.close()
 
 
+def _acquire_backup_lock(timeout: float = 5.0) -> int | None:
+    """Adquiere un lock exclusivo sobre backups/.backup.lock (Windows, msvcrt).
+
+    Previene la race condition multi-instancia: 2-3 usuarios en red local
+    disparan create_backup() al mismo tiempo (arranque +3s, timer 6h, vista
+    Backup +5s) y generaban backups duplicados en el mismo segundo.
+
+    Retorna el fd del lock si se obtuvo; None si otro proceso ya está
+    haciendo backup (timeout agotado).
+    """
+    lock_path = BACKUP_DIR / ".backup.lock"
+    try:
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)
+        try:
+            # msvcrt.locking requiere al menos 1 byte en el archivo
+            if os.fstat(fd).st_size == 0:
+                os.write(fd, b"\0")
+                os.fsync(fd)
+            deadline = time.monotonic() + timeout
+            while True:
+                try:
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                    return fd
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        os.close(fd)
+                        return None
+                    time.sleep(0.2)
+        except Exception:
+            os.close(fd)
+            return None
+    except Exception:
+        return None
+
+
+def _release_backup_lock(fd: int) -> None:
+    """Libera el lock de backup (LK_UNLCK + cierre del fd)."""
+    try:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    except Exception:
+        pass
+    finally:
+        try:
+            os.close(fd)
+        except Exception:
+            pass
+
+
+def _get_today_backup() -> Path | None:
+    """Devuelve el backup automático de hoy si ya existe (dedupe por día)."""
+    today = _today_key()
+    for f in sorted(BACKUP_DIR.glob(f"{BACKUP_PREFIX}*.db"), reverse=True):
+        if today in f.stem and not f.stem.startswith(f"{BACKUP_PREFIX}pre_"):
+            return f
+    return None
+
+
 def create_backup() -> tuple[bool, str]:
     """
     Create a timestamped backup of delca.db.
 
     Steps:
-        1. WAL checkpoint (TRUNCATE) to flush WAL into main DB.
-        2. Copy delca.db → backups/delca_YYYYMMDD_HHMMSS.db.
-        3. Prune backups older than MAX_BACKUPS.
-        4. Record last backup timestamp.
+        1. Acquire exclusive lock (prevents multi-instance duplicates).
+        2. Double-check: if today's backup already exists, skip.
+        3. WAL checkpoint (TRUNCATE) to flush WAL into main DB.
+        4. Copy delca.db → backups/delca_YYYYMMDD_HHMMSS.db.
+        5. Prune backups older than MAX_BACKUPS days (1 per day).
+        6. Record last backup timestamp.
 
     Returns:
         (True, backup_path) on success, (False, error_msg) on failure.
     """
+    fd = _acquire_backup_lock()
+    if fd is None:
+        return False, "Backup en curso por otra instancia. Omitido."
     try:
+        # Double-checked locking: otro proceso pudo crear el backup de hoy
+        # mientras esperábamos el lock.
+        existing = _get_today_backup()
+        if existing:
+            return True, f"Ya existe backup de hoy: {existing.name}"
+
         _wal_checkpoint()
 
         if not DB_PATH.exists():
@@ -73,6 +147,8 @@ def create_backup() -> tuple[bool, str]:
         return True, str(backup_path)
     except Exception as e:
         return False, f"Backup failed: {e}"
+    finally:
+        _release_backup_lock(fd)
 
 
 def _record_last_backup(timestamp: str) -> None:
@@ -86,11 +162,33 @@ def _record_last_backup(timestamp: str) -> None:
 
 
 def _prune_old_backups() -> None:
-    """Delete oldest backups beyond MAX_BACKUPS retention count."""
-    backups = sorted(BACKUP_DIR.glob(f"{BACKUP_PREFIX}*.db"))
-    while len(backups) > MAX_BACKUPS:
-        backups[0].unlink(missing_ok=True)
-        backups.pop(0)
+    """Mantener 30 DÍAS de cobertura: 1 backup (el más reciente) por día.
+
+    Antes se retenían MAX_BACKUPS=30 ARCHIVOS, pero con múltiples backups por
+    día (race condition) la cobertura se reducía a ~5 días. Ahora se conserva
+    el backup más reciente de cada día y se borran los días más antiguos.
+    """
+    by_day: dict[str, list[Path]] = defaultdict(list)
+    for f in BACKUP_DIR.glob(f"{BACKUP_PREFIX}*.db"):
+        if f.stem.startswith(f"{BACKUP_PREFIX}pre_"):
+            continue  # backups pre-migración se conservan aparte
+        parts = f.stem.split("_")
+        if len(parts) >= 2:
+            by_day[parts[1]].append(f)
+
+    # Conservar el más reciente de cada día
+    keep: list[Path] = []
+    for day, files in by_day.items():
+        latest = max(files, key=lambda p: p.stat().st_mtime)
+        keep.append(latest)
+        for f in files:
+            if f != latest:
+                f.unlink(missing_ok=True)
+
+    # Borrar los días más antiguos hasta dejar ≤ 30
+    keep.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for old in keep[MAX_BACKUPS:]:
+        old.unlink(missing_ok=True)
 
 
 def get_last_backup_time() -> str | None:
@@ -225,18 +323,20 @@ def export_to_csv(table: str, output_path: str) -> tuple[bool, str]:
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(f"SELECT * FROM [{table}]").fetchall()
+            # Headers vía PRAGMA MIENTRAS la conexión está viva (la tabla
+            # puede estar vacía; antes se consultaba con la conexión cerrada
+            # y lanzaba sqlite3.ProgrammingError). d[1] es el NOMBRE de la
+            # columna (d[0] es el cid).
+            headers = [d[1] for d in conn.execute(
+                f"PRAGMA table_info([{table}])"
+            ).fetchall()]
         finally:
             conn.close()
 
         if not rows:
             # Write headers-only CSV
             Path(output_path).write_text(
-                ",".join(
-                    f'"{col}"' for col in [d[0] for d in conn.execute(
-                        f"PRAGMA table_info([{table}])"
-                    ).fetchall()]
-                )
-                + "\n",
+                ",".join(f'"{col}"' for col in headers) + "\n",
                 encoding="utf-8-sig",
             )
             return True, f"Exported {table} (0 rows)"

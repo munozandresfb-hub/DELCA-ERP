@@ -47,10 +47,28 @@ def _ensure_admin_user(session, admin_role: Rol):
         )
         session.add(admin_user)
         session.flush()
-        logging.getLogger("delca.startup").warning(
-            "Admin creado con contraseña temporal: %s (cámbiela en el primer ingreso)",
-            temp_password,
+        logging.getLogger("delca.startup").info(
+            "Admin creado. Credencial inicial entregada por canal seguro."
         )
+        # Mostrar la contraseña temporal SOLO en la primera ejecución, en la UI.
+        # NUNCA escribirla en el log.
+        try:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.information(
+                None,
+                "Credencial inicial del administrador",
+                "Se creó el usuario 'admin' con una contraseña temporal.\n\n"
+                f"Contraseña temporal: {temp_password}\n\n"
+                "Debe cambiarla en el primer ingreso.",
+            )
+        except Exception:
+            # Sin GUI disponible (tests/headless): la contraseña solo queda
+            # en memoria; el operador la regenera eliminando la fila admin.
+            logging.getLogger("delca.startup").warning(
+                "Admin creado sin GUI para entregar la credencial. "
+                "Elimine la fila 'admin' y reinicie para regenerarla."
+            )
 
 
 def bootstrap_admin():

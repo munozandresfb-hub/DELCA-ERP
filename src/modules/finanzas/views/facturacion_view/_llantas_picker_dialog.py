@@ -21,6 +21,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import logging
+
+logger = logging.getLogger("delca.views")
+
 from src.database.engine import get_session
 from src.modules.finanzas.services.factura_service import FacturaService
 from src.modules.llantas.models.llanta_model import Llanta
@@ -62,8 +66,12 @@ class LlantasPickerDialog(QDialog):
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
 
-        with get_session() as s:
-            self._idx_precios = indice_precios(s)
+        try:
+            with get_session() as s:
+                self._idx_precios = indice_precios(s)
+        except Exception as e:
+            logger.error("Error cargando índice de precios: %s", e, exc_info=True)
+            self._idx_precios = {}
 
         info = QLabel(
             "Seleccione las llantas del cliente pendientes de facturación:"

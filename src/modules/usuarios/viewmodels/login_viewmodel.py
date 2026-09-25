@@ -1,4 +1,8 @@
+import logging
+
 from src.modules.usuarios.use_cases.login_user import login_user
+
+logger = logging.getLogger("delca.auth")
 
 
 class LoginViewModel:
@@ -35,5 +39,9 @@ class LoginViewModel:
                 session.commit()
                 registrar_cambio_password(user_id)
             return success, msg
+        except Exception as e:
+            session.rollback()
+            logger.error("Error cambiando contraseña: %s", e, exc_info=True)
+            return False, "No se pudo cambiar la contraseña. Consulte el log."
         finally:
             session.close()

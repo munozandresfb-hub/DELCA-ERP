@@ -1,0 +1,63 @@
+==========================================================
+ DELCA ERP - GUIA DE MIGRACION A OTRO COMPUTADOR
+==========================================================
+
+Esta carpeta (Programacion DELCA v2) esta lista para copiarse a otro
+computador. Al copiarla completa, TODO funciona en el nuevo PC.
+
+----------------------------------------------------------
+ PASOS EN EL NUEVO COMPUTADOR
+----------------------------------------------------------
+1. Copiar la carpeta COMPLETA "Programacion DELCA v2"
+   (USB, disco, OneDrive, o git clone + delca.db) a cualquier
+   ubicacion del nuevo PC. No importa la ruta: el sistema es
+   PORTABLE (no usa rutas fijas).
+
+2. Ejecutar (doble clic) el archivo:
+       instalar_en_este_pc.bat
+   Esto crea en el ESCRITORIO del nuevo PC el acceso directo
+   "DELCA Iniciar 2" con el LOGO OFICIAL de DELCA, apuntando
+   al ejecutable compilado:  dist\DELCA ERP.exe
+
+3. Usar el acceso directo del escritorio para abrir DELCA ERP.
+   (Tambien se puede abrir directamente: dist\DELCA ERP.exe)
+
+----------------------------------------------------------
+ COMO FUNCIONA
+----------------------------------------------------------
+- La base de datos (delca.db) viaja en la raiz de la carpeta.
+  El ejecutable la detecta automaticamente (si el exe esta en
+  dist\, busca la BD en la carpeta padre).
+- Los archivos .bat (iniciar.bat, DELCA Iniciar 2.bat, agente
+  WhatsApp) usan rutas RELATIVAS: funcionan desde cualquier ruta.
+- El logo del acceso directo esta en assets\delca.ico.
+- La impresion de tiquetes usa data\impresion_config.json
+  (calibracion) y data\datos_maestros.xlsx (instalacion limpia).
+
+----------------------------------------------------------
+ NOTAS IMPORTANTES
+----------------------------------------------------------
+- .venv: NO es necesario en el nuevo PC si se usa el ejecutable
+  (dist\DELCA ERP.exe). Si se quiere ejecutar desde el codigo
+  fuente, crear el entorno:  python -m venv .venv  y luego
+  .venv\Scripts\pip install -r requirements.txt
+
+- Scripts de migracion (scripts\*.py): las rutas de archivos
+  legacy (DBF/CSV) estan en variables de entorno DELCA_ARCHIVO_*;
+  si se necesitan en el nuevo PC, ajustar la ruta o usar las
+  variables.
+
+- El agente de WhatsApp requiere configurar .env (WHATSAPP_* y
+  OPENAI_API_KEY) y un tunel publico, si se desea usar.
+
+- Backups: la carpeta backups\ se crea al hacer respaldos;
+  puede copiarse si se desea conservar los anteriores.
+
+----------------------------------------------------------
+ VERIFICACION RAPIDA (opcional) despues de copiar:
+   1. dist\DELCA ERP.exe existe?        -> si
+   2. delca.db existe (raiz)?           -> si
+   3. assets\delca.ico existe?          -> si
+   4. data\impresion_config.json?       -> si
+   Si todo es "si", la migracion esta lista.
+==========================================================

@@ -11,14 +11,14 @@ from __future__ import annotations
 import argparse
 import csv
 import io
-import os
 import sqlite3
+import os
 
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "delca.db"
 )
-CSV_PATH = r"C:\Users\andre\OneDrive\Escritorio\DELCA\Clientes 1 18-08.csv"
+CSV_PATH = os.environ.get("DELCA_ARCHIVO_CLIENTES_MIGRAR", r"C:\Users\andre\OneDrive\Escritorio\DELCA\Clientes 1 18-08.csv")
 
 
 def leer_csv() -> list[dict]:

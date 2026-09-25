@@ -18,6 +18,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
@@ -30,7 +31,7 @@ from src.modules.llantas.models.llanta_model import Llanta  # noqa: E402
 from src.modules.inventario.models.precio_producto_model import PrecioProducto  # noqa: E402
 
 REPORTE_FALTANTES = Path(
-    r"C:\Users\andre\OneDrive\Escritorio\DELCA\precios faltantes.csv"
+    os.environ.get("DELCA_ARCHIVO_PRECIOS", r"C:\Users\andre\OneDrive\Escritorio\DELCA\precios faltantes.csv")
 )
 
 

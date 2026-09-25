@@ -1,6 +1,7 @@
 """Audit trail service — records all sensitive actions to the auditoria table."""
 
 import json
+import socket
 from datetime import datetime
 from typing import Any
 
@@ -8,6 +9,14 @@ from sqlalchemy.orm import Session
 
 from src.database.engine import SessionLocal
 from src.modules.auditoria.models.auditoria_model import Auditoria
+
+
+def _hostname_or_ip() -> str | None:
+    """Nombre del equipo o IP LAN del origen de la operación (forense)."""
+    try:
+        return socket.gethostname()
+    except Exception:
+        return None
 
 
 def registrar_auditoria(
@@ -27,6 +36,8 @@ def registrar_auditoria(
         accion: Action type — CREATE, UPDATE, DELETE, LOGIN, LOGOUT, FALLO_LOGIN.
         detalle: Human-readable description.
         payload: Optional JSON-serializable dict with change details.
+        ip_origen: Optional origin (hostname/IP). If None, captures the local
+            hostname automatically para trazabilidad forense multi-equipo.
         session: Optional DB session. If None, creates and commits a new one.
 
     Returns:
@@ -40,7 +51,7 @@ def registrar_auditoria(
         payload_json=json.dumps(payload, default=str, ensure_ascii=False)
         if payload
         else None,
-        ip_origen=ip_origen,
+        ip_origen=ip_origen if ip_origen is not None else _hostname_or_ip(),
         fecha=datetime.now(),
     )
 

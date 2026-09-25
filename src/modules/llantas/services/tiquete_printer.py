@@ -47,6 +47,8 @@ from src.config import settings
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.services.llanta_service._core import formatear_orden
 
+_logger = __import__("logging").getLogger("delca.impresion")
+
 # ── Hoja física (mm) — vertical, medida por el usuario ─────────────────
 PAGINA_MM = (103.0, 279.0)
 
@@ -68,13 +70,24 @@ def _cargar_config() -> tuple[float, float, dict[str, dict[str, float]]]:
     Lee con utf-8-sig para tolerar BOM (evita caer a valores por defecto
     si el archivo fue editado por herramientas que añaden BOM).
     """
+    if not CONFIG_PATH.exists():
+        # Primera ejecución: no hay calibración aún, defaults es correcto.
+        return 0.0, 0.0, {}
     try:
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
         zona_x = float(data.get("zona_x_mm", 0.0))
         zona_y = float(data.get("zona_y_mm", 0.0))
         offsets = data.get("campos", {}) or {}
         return zona_x, zona_y, offsets
-    except Exception:
+    except Exception as e:
+        # Config corrupta: NO fallar en silencio — la impresión quedaría
+        # descalibrada sin diagnóstico.
+        _logger.error(
+            "Config de impresión corrupta en %s: %s. Usando defaults.",
+            CONFIG_PATH,
+            e,
+            exc_info=True,
+        )
         return 0.0, 0.0, {}
 
 
@@ -82,15 +95,22 @@ def _guardar_config(
     zona_x: float, zona_y: float, offsets: dict[str, dict[str, float]]
 ) -> None:
     """Guarda la calibración actual en el JSON."""
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(
-        json.dumps(
-            {"zona_x_mm": zona_x, "zona_y_mm": zona_y, "campos": offsets},
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
+    try:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CONFIG_PATH.write_text(
+            json.dumps(
+                {"zona_x_mm": zona_x, "zona_y_mm": zona_y, "campos": offsets},
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        _logger.error("No se pudo guardar la configuración de impresión: %s", e, exc_info=True)
+        raise RuntimeError(
+            "No se pudo guardar la configuración de impresión. "
+            "Verifique permisos de escritura en la carpeta de configuración."
+        ) from e
 
 
 def _mm(x_pct: float, y_pct: float, w_pct: float, h_pct: float) -> QRectF:

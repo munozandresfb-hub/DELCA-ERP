@@ -9,7 +9,10 @@
 #define MyAppName "DELCA ERP"
 #define MyAppVersion "2.5.0"
 #define MyAppPublisher "DELCA"
-#define MyAppURL "https://delca.com"
+; URL oficial: Reencauchadora DELCA S.A.S no tiene dominio web propio (verificado
+; 23/09/2026). Se usa el perfil público oficial de LinkedIn en lugar de un dominio
+; falso (hallazgo S-11). Si la empresa registra dominio propio, actualizar aquí.
+#define MyAppURL "https://www.linkedin.com/company/reencauchadora-delca-sas"
 #define MyAppExeName "DELCA ERP.exe"
 
 [Setup]

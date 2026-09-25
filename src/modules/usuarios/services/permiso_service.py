@@ -1,12 +1,16 @@
 """Role-based permission checking service."""
 
+import logging
 from functools import lru_cache
 
 from sqlalchemy.orm import Session
 
+from src.config import settings
 from src.database.engine import SessionLocal
 from src.modules.usuarios.models.permiso_model import Permiso, rol_permiso
-from src.modules.usuarios.models.rol_model import Rol
+from src.modules.usuarios.models.rol_model import Rol, RolNombre
+
+logger = logging.getLogger("delca.rbac")
 
 
 # ── Permission codigos ─────────────────────────────────────────────────
@@ -132,3 +136,44 @@ def permisos_de_rol(rol_id: int, session: Session | None = None) -> list[str]:
     finally:
         if close_session:
             session.close()
+
+
+def require_permission(
+    user, permiso_codigo: str, session: Session | None = None
+) -> bool:
+    """Middleware RBAC con soporte de shadow mode (expand-contract).
+
+    - ADMIN (break-glass) siempre pasa.
+    - Si settings.RBAC_ENFORCE=False (default, shadow mode): los denials se
+      registran en el log con nivel INFO pero NO bloquean la acción — permite
+      validar la matriz de permisos en producción sin interrumpir operación.
+    - Si settings.RBAC_ENFORCE=True: los denials se registran con WARNING y
+      bloquean la acción (retorna False).
+
+    Uso en servicios/handlers sensibles:
+        if not require_permission(usuario_actual, Perms.BACKUP_GESTIONAR):
+            # denegado: mostrar mensaje o abortar
+    """
+    if user is None:
+        return False
+
+    # Break-glass: ADMIN pasa siempre (decisión de negocio D2).
+    rol = getattr(user, "rol", None)
+    rol_nombre = getattr(rol, "nombre", None)
+    if rol_nombre == RolNombre.ADMIN.value:
+        return True
+
+    ok = tiene_permiso_por_usuario(user, permiso_codigo, session)
+    if ok:
+        return True
+
+    username = getattr(user, "username", "?")
+    if settings.RBAC_ENFORCE:
+        logger.warning(
+            "RBAC DENY: %s sin permiso %s (bloqueado)", username, permiso_codigo
+        )
+        return False
+    logger.info(
+        "RBAC SHADOW: %s sin permiso %s (no bloqueado)", username, permiso_codigo
+    )
+    return True

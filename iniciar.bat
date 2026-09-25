@@ -1,4 +1,4 @@
 @echo off
-cd /d "C:\Users\andre\OneDrive\Escritorio\DELCA\Programacion DELCA v2"
+cd /d "%~dp0"
 .venv\Scripts\python main.py
 pause

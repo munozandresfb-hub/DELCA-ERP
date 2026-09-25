@@ -18,6 +18,9 @@ from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.clientes.viewmodels.cliente_viewmodel import ClienteViewModel
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class ClienteFormDialog(QDialog):
     """Dialog for creating or editing a client."""
 
@@ -148,7 +151,7 @@ class ClientesView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[ClientesView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[ClientesView] Error al cargar datos iniciales", exc_info=True)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

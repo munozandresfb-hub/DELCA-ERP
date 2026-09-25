@@ -1,4 +1,5 @@
 from decimal import Decimal
+import logging
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -29,6 +30,8 @@ from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.services.costo_precio import costo_precio, indice_precios
 from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 
+logger = logging.getLogger("delca.views")
+
 
 class FacturaFormDialog(QDialog):
     """Dialog for creating a new invoice from billed tires.
@@ -49,8 +52,12 @@ class FacturaFormDialog(QDialog):
         self._llantas_dict: dict[int, Llanta] = {}
         # Índice de precios del catálogo (rápido) — las llantas del cliente se
         # cargan bajo demanda en el diálogo de selección (formulario ágil).
-        with get_session() as s:
-            self._idx_precios: dict[tuple[int, int], dict] = indice_precios(s)
+        try:
+            with get_session() as s:
+                self._idx_precios: dict[tuple[int, int], dict] = indice_precios(s)
+        except Exception as e:
+            logger.error("Error cargando índice de precios: %s", e, exc_info=True)
+            self._idx_precios = {}
         self.setup_ui()
 
     def setup_ui(self) -> None:

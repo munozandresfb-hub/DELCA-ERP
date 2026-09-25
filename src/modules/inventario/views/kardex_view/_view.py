@@ -34,6 +34,9 @@ from src.modules.inventario.services.producto_service import ProductoService
 from src.modules.inventario.views.kardex_view._dialog import _MovimientoFormDialog
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class KardexView(QWidget):
     """Kardex — movement ledger with registration and consultation."""
 
@@ -63,11 +66,11 @@ class KardexView(QWidget):
         try:
             self._cargar_productos()
         except Exception as e:
-            print(f"[KardexView] Error cargando productos: {e}")
+            logger.error(f"[KardexView] Error cargando productos", exc_info=True)
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[KardexView] Error cargando datos: {e}")
+            logger.error(f"[KardexView] Error cargando datos", exc_info=True)
 
     # ── UI Setup ────────────────────────────────────────────────────
 

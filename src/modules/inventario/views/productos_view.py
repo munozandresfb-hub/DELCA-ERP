@@ -21,6 +21,9 @@ from src.modules.inventario.models.producto_model import Producto
 from src.modules.inventario.services.producto_service import ProductoService
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class ProductoFormDialog(QDialog):
     """Dialog for creating or editing a product."""
 
@@ -272,7 +275,7 @@ class ProductosView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[ProductosView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[ProductosView] Error al cargar datos iniciales", exc_info=True)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

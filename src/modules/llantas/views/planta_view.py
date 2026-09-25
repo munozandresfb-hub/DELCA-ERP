@@ -36,6 +36,9 @@ from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 from sqlalchemy import func as sa_func
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class _UbicacionRapidaDialog(QDialog):
     """Dialog to quickly change tire location by entering code.
 
@@ -186,16 +189,28 @@ class _UbicacionRapidaDialog(QDialog):
 
         # La BD guarda el tiquete SIN el prefijo "J" (tiquete físico real, desde v2.8.14).
         # Se acepta también con "J" por compatibilidad con datos antiguos.
-        with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
-            if not llanta and not tiquete.startswith("J"):
-                llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
-            ultima_ubicacion = (
-                s.query(UbicacionLlanta)
-                .filter(UbicacionLlanta.llanta_id == llanta.id)
-                .order_by(UbicacionLlanta.fecha.desc())
-                .first()
-            ) if llanta else None
+        try:
+            with get_session() as s:
+                llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+                if not llanta and not tiquete.startswith("J"):
+                    llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
+                ultima_ubicacion = (
+                    s.query(UbicacionLlanta)
+                    .filter(UbicacionLlanta.llanta_id == llanta.id)
+                    .order_by(UbicacionLlanta.fecha.desc())
+                    .first()
+                ) if llanta else None
+        except Exception as e:
+            logger.error(
+                "Error buscando llanta por tiquete %s: %s", tiquete, e, exc_info=True
+            )
+            self._llanta_encontrada = None
+            self.info_label.setText("Error al buscar la llanta. Consulte el log.")
+            self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
+            self.ubicacion_combo.setEnabled(False)
+            self.mover_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            return
         self._llanta_encontrada = llanta
         if llanta:
             marca_text = llanta.marca_obj.nombre if llanta.marca_obj else (llanta.marca or "?")
@@ -260,7 +275,7 @@ class PlantaView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[PlantaView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[PlantaView] Error al cargar datos iniciales", exc_info=True)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

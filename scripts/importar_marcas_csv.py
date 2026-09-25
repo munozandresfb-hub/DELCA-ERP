@@ -20,6 +20,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+import os
 
 # ── Asegurar que el proyecto esta en el path ────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +33,7 @@ from src.database.base import Base  # noqa: E402
 from src.database.engine import DB_PATH, engine, get_session  # noqa: E402
 from src.modules.llantas.models.marca_llanta_model import MarcaLlanta  # noqa: E402
 
-CSV_DEFAULT = Path(r"C:\Users\andre\OneDrive\Escritorio\DELCA\Marcas 18-08.csv")
+CSV_DEFAULT = Path(os.environ.get("DELCA_ARCHIVO_MARCAS", r"C:\Users\andre\OneDrive\Escritorio\DELCA\Marcas 18-08.csv"))
 
 
 # ======================================================================

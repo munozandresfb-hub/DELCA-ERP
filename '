@@ -1,0 +1,1 @@
+Write-Host ('Acceso directo creado: ' + $lnkPath + '  - + $target)

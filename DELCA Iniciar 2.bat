@@ -1,3 +1,3 @@
 @echo off
-cd /d "C:\Users\andre\OneDrive\Escritorio\DELCA\Programacion DELCA v2"
+cd /d "%~dp0"
 start "" ".venv\Scripts\pythonw.exe" "main.py"

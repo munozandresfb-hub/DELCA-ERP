@@ -26,7 +26,6 @@ Uso: python scripts/migrar_materia_prima.py [--dry-run | --ejecutar]
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import shutil
 import sqlite3
@@ -34,11 +33,12 @@ import unicodedata
 from datetime import datetime
 
 import openpyxl
+import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "delca.db")
 BACKUP_DIR = os.path.join(BASE_DIR, "backups")
-EXCEL_PATH = r"C:\Users\andre\OneDrive\Escritorio\DELCA INVENTARIO. MIGRAR.xlsx"
+EXCEL_PATH = os.environ.get("DELCA_ARCHIVO_MATERIA_PRIMA", r"C:\Users\andre\OneDrive\Escritorio\DELCA INVENTARIO. MIGRAR.xlsx")
 HOJA = "Materia prima "
 
 

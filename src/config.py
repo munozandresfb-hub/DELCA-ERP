@@ -46,6 +46,13 @@ class Settings:
 
     DB_ECHO: bool = os.getenv("DB_ECHO", "false").lower() == "true"
 
+    # Control de acceso basado en roles (RBAC):
+    # - false (default): modo SHADOW — los denials se registran en el log
+    #   pero NO se bloquean. Permite validar la matriz de permisos sin
+    #   interrumpir la operación (estrategia expand-contract).
+    # - true: enforcement activo — los denials bloquean la acción.
+    RBAC_ENFORCE: bool = os.getenv("RBAC_ENFORCE", "false").lower() == "true"
+
     @property
     def db_path(self) -> Path:
         """Returns the DB file path (only meaningful for SQLite)."""
@@ -68,6 +75,28 @@ class Settings:
     DATA_DIR: Path = Path(
         os.getenv("DATA_DIR", str(PROJECT_ROOT / "data"))
     )
+
+    # ── WhatsApp Cloud API + Agente IA (módulo whatsapp) ──────────
+    # Token de acceso permanente de la app Meta (system user token).
+    WHATSAPP_TOKEN: str = os.getenv("WHATSAPP_TOKEN", "")
+    # ID del número de teléfono (phone_number_id) en Meta Business.
+    WHATSAPP_PHONE_ID: str = os.getenv("WHATSAPP_PHONE_ID", "")
+    # Token de verificación del webhook (lo defines tú, se repite en Meta).
+    WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+    # App secret de la app Meta — verifica la firma X-Hub-Signature-256.
+    WHATSAPP_APP_SECRET: str = os.getenv("WHATSAPP_APP_SECRET", "")
+    # Versión de la Graph API de Meta (ajustar a la vigente).
+    WHATSAPP_GRAPH_VERSION: str = os.getenv("WHATSAPP_GRAPH_VERSION", "v21.0")
+
+    # Agente IA (OpenAI)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # Respuesta máxima del agente (charla corta por WhatsApp).
+    OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "300"))
+    # Habilita el procesamiento automático de mensajes entrantes (false = solo envío).
+    WHATSAPP_AGENT_ENABLED: bool = os.getenv("WHATSAPP_AGENT_ENABLED", "false").lower() == "true"
+    # Puerto local del servidor webhook (el túnel público apunta aquí).
+    WHATSAPP_WEBHOOK_PORT: int = int(os.getenv("WHATSAPP_WEBHOOK_PORT", "9090"))
 
 
 settings = Settings()

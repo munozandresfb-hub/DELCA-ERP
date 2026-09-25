@@ -21,6 +21,9 @@ from PySide6.QtWidgets import (
 from src.modules.usuarios.services.usuario_service import UsuarioService
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class PasswordResetDialog(QDialog):
     """Dialog to reset a user's password."""
 
@@ -216,7 +219,7 @@ class UsuariosView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[UsuariosView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[UsuariosView] Error al cargar datos iniciales", exc_info=True)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -518,22 +521,42 @@ class UsuariosView(QWidget):
         )
 
         if ok:
-            # Also reactivate the account (set activo=True)
+            # Also reactivate the account (set activo=True). Solo se informa
+            # éxito si el commit de reactivación realmente se completó.
+            import logging
+
             from src.database.engine import SessionLocal
             from src.modules.usuarios.models.usuario_model import Usuario
 
+            logger = logging.getLogger("delca.usuarios")
             session = SessionLocal()
+            reactivado = False
             try:
                 usuario = session.query(Usuario).filter(Usuario.id == usuario_id).first()
                 if usuario:
                     usuario.activo = True
                     session.commit()
-            except Exception:
+                    reactivado = True
+                else:
+                    logger.warning(
+                        "Reactivación: usuario %s no encontrado en BD", usuario_id
+                    )
+            except Exception as e:
                 session.rollback()
+                logger.error("Error reactivando usuario %s: %s", usuario_id, e, exc_info=True)
             finally:
                 session.close()
 
-            self._cargar_datos()
-            QMessageBox.information(self, "Éxito", "Usuario reactivado")
+            if reactivado:
+                self._cargar_datos()
+                QMessageBox.information(self, "Éxito", "Usuario reactivado")
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "No se pudo reactivar el usuario. "
+                    "La actualización se guardó pero la reactivación falló. "
+                    "Consulte el log para más detalles.",
+                )
         else:
             QMessageBox.warning(self, "Error", msg)

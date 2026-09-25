@@ -18,6 +18,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+import os
 
 # ── Asegurar que el proyecto esta en el path ────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +33,7 @@ from src.modules.clientes.models.cliente_model import Cliente  # noqa: E402
 
 # Ruta del CSV generado por el ETL (carpeta DELCA del Escritorio)
 CSV_DEFAULT = Path(
-    r"C:\Users\andre\OneDrive\Escritorio\DELCA\Clientes 1 18-08.csv"
+    os.environ.get("DELCA_ARCHIVO_CLIENTES", r"C:\Users\andre\OneDrive\Escritorio\DELCA\Clientes 1 18-08.csv")
 )
 
 

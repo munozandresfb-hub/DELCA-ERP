@@ -60,3 +60,6 @@ from src.modules.automatizacion.models.regla_model import (  # noqa: F401
 
 # ─── KPI ─────────────────────────────────────────────────────
 from src.core.models.kpi_model import KpiConfig, KpiHistorico  # noqa: F401
+
+# ─── WhatsApp (agente) — dentro del módulo automatizacion ──────────
+from src.modules.automatizacion.whatsapp.modelos import WhatsappConversacion  # noqa: F401

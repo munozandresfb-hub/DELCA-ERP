@@ -20,6 +20,9 @@ from src.core.services.kpi_service import KpiService
 from src.core.views.dashboard_view._cards import _MetricCard, _EstadoCard
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class DashboardView(QWidget):
     """Main dashboard with KPI cards, activity feed, and state breakdown."""
 
@@ -438,7 +441,7 @@ class DashboardView(QWidget):
         try:
             self._render_bar_chart()
         except Exception as e:
-            print(f"[Dashboard] Error en gráficos: {e}")
+            logger.error(f"[Dashboard] Error en gráficos", exc_info=True)
 
     def _delete_old_chart(self) -> None:
         """Elimina SOLO el chart creado por este dashboard.

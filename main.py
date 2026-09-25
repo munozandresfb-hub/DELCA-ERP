@@ -77,6 +77,11 @@ def _crear_splash() -> QSplashScreen:
 
 
 def main() -> int:
+    # Logging ANTES de cualquier otra cosa (restaura observabilidad en pythonw)
+    from src.core.logging_setup import setup_logging
+
+    setup_logging()
+
     app = QApplication(sys.argv)
 
     # Icono de la app (taskbar, barra de título, alt-tab)
@@ -122,7 +127,12 @@ def main() -> int:
             try:
                 run_migration_once(version, path)
             except Exception as e:
-                print(f"[main] Error en migración {version}: {e}")
+                # Una migración fallida NO puede continuar en silencio: abortar
+                # el arranque para no operar con esquema inconsistente.
+                raise RuntimeError(
+                    f"Migración {version} falló. La aplicación NO puede continuar "
+                    "con un esquema inconsistente. Restaure el backup más reciente."
+                ) from e
 
         # ─── Bootstrap admin (después de migraciones) ────────────────
         from src.modules.usuarios.use_cases.bootstrap_admin import bootstrap_admin
@@ -137,7 +147,7 @@ def main() -> int:
 
             inicializar_datos_maestros(only_if_empty=True)
         except Exception as e:
-            print(f"[main] Error cargando datos maestros: {e}")
+            logger.error("Error cargando datos maestros: %s", e, exc_info=True)
 
         # ─── Inicializar reglas de automatización ────────────────────
         from src.modules.automatizacion.services.automatizacion_service import (
@@ -153,14 +163,19 @@ def main() -> int:
         splash.finish(window)
         window.show()
 
+        logger.warning("DELCA boot OK")
+
     except Exception:
         logger.error("Error de arranque:\n%s", traceback.format_exc())
         splash.close()
+        from src.core.logging_setup import get_log_path
+
         QMessageBox.critical(
             None,
             "Error de arranque",
             "DELCA ERP no pudo iniciarse correctamente.\n\n"
-            "Detalles:\n" + traceback.format_exc(limit=3),
+            "Consulte el log para más detalles:\n"
+            f"{get_log_path()}",
         )
         return 1
 

@@ -33,6 +33,9 @@ from src.modules.llantas.services.llanta_service._core import (
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class _InspeccionFinalDialog(QDialog):
     """Dialog to apply final inspection quickly by entering the ticket number.
 
@@ -163,10 +166,23 @@ class _InspeccionFinalDialog(QDialog):
 
         # La BD guarda el tiquete SIN el prefijo "J" (tiquete físico real, desde v2.8.14).
         # Se acepta también con "J" por compatibilidad con datos antiguos.
-        with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
-            if not llanta and not tiquete.startswith("J"):
-                llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
+        try:
+            with get_session() as s:
+                llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+                if not llanta and not tiquete.startswith("J"):
+                    llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
+        except Exception as e:
+            logger.error(
+                "Error buscando llanta en producción por tiquete %s: %s",
+                tiquete, e, exc_info=True,
+            )
+            self._llanta_encontrada = None
+            self.info_label.setText("Error al buscar la llanta. Consulte el log.")
+            self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
+            self.veredicto_combo.clear()
+            self.veredicto_combo.setEnabled(False)
+            self.aplicar_btn.setEnabled(False)
+            return
         self._llanta_encontrada = llanta
         if not llanta:
             self.info_label.setText("  Llanta no encontrada")
@@ -265,7 +281,7 @@ class ProduccionView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[ProduccionView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[ProduccionView] Error al cargar datos iniciales", exc_info=True)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

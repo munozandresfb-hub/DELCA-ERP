@@ -38,6 +38,9 @@ from src.modules.inventario.views.inventario_view._widgets import (
     C_VERDE,
     _KpiCard,
     _color_antiguedad,
+import logging
+
+logger = logging.getLogger("delca.views")
 )
 
 
@@ -245,19 +248,19 @@ class InventarioView(QWidget):
         try:
             self._cargar_kpis()
         except Exception as e:
-            print(f"[InventarioView] Error cargando KPIs: {e}")
+            logger.error(f"[InventarioView] Error cargando KPIs", exc_info=True)
         try:
             self._cargar_mp()
         except Exception as e:
-            print(f"[InventarioView] Error cargando MP: {e}")
+            logger.error(f"[InventarioView] Error cargando MP", exc_info=True)
         try:
             self._cargar_terminadas()
         except Exception as e:
-            print(f"[InventarioView] Error cargando terminadas: {e}")
+            logger.error(f"[InventarioView] Error cargando terminadas", exc_info=True)
         try:
             self._cargar_consumibles()
         except Exception as e:
-            print(f"[InventarioView] Error cargando consumibles: {e}")
+            logger.error(f"[InventarioView] Error cargando consumibles", exc_info=True)
 
     def _cargar_kpis(self) -> None:
         kpis = InventarioKpiService.resumen_kpis()

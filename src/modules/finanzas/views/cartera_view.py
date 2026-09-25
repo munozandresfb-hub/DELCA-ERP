@@ -19,6 +19,9 @@ from src.modules.finanzas.views.abonos_cliente_dialog import AbonosClienteDialog
 from src.modules.usuarios.services.permiso_service import tiene_permiso_por_usuario
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class CarteraView(QWidget):
     """Accounts receivable view with client balances and aging report."""
 
@@ -29,7 +32,7 @@ class CarteraView(QWidget):
         try:
             self._cargar_datos()
         except Exception as e:
-            print(f"[CarteraView] Error al cargar datos iniciales: {e}")
+            logger.error(f"[CarteraView] Error al cargar datos iniciales", exc_info=True)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

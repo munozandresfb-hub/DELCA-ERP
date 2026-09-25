@@ -133,16 +133,20 @@ class BackupView(QWidget):
 
     def _on_create_backup(self) -> None:
         self.status_label.setText("Creando backup...")
-        ok, result = create_backup()
-        if ok:
-            self.status_label.setText(f"✅ Backup creado: {Path(result).name}")
-            self._refresh_backup_list()
-            self.last_backup_label.setText(
-                f"Último backup: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            )
-        else:
-            QMessageBox.critical(self, "Error", f"Backup falló: {result}")
-            self.status_label.setText(f"❌ {result}")
+        self.btn_backup.setEnabled(False)
+        try:
+            ok, result = create_backup()
+            if ok:
+                self.status_label.setText(f"✅ Backup creado: {Path(result).name}")
+                self._refresh_backup_list()
+                self.last_backup_label.setText(
+                    f"Último backup: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+            else:
+                QMessageBox.critical(self, "Error", f"Backup falló: {result}")
+                self.status_label.setText(f"❌ {result}")
+        finally:
+            self.btn_backup.setEnabled(True)
 
     def _on_restore(self, backup_path: str) -> None:
         reply = QMessageBox.warning(
@@ -155,6 +159,23 @@ class BackupView(QWidget):
             QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
+            return
+
+        # RBAC: la restauración es destructiva — solo con permiso backup.gestionar.
+        from src.core.services.session_service import get_session_manager
+        from src.modules.usuarios.services.permiso_service import (
+            Perms,
+            require_permission,
+        )
+
+        user = get_session_manager().get_user()
+        if not require_permission(user, Perms.BACKUP_GESTIONAR):
+            QMessageBox.warning(
+                self,
+                "Permiso denegado",
+                "No tiene permiso para restaurar la base de datos. "
+                "Contacte al administrador.",
+            )
             return
 
         self.status_label.setText("Restaurando...")

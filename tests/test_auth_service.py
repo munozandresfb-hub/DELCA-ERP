@@ -82,8 +82,14 @@ class TestPasswordExpiry:
         user = Usuario(password_changed_at=datetime.now())
         assert not AuthService.is_password_expired(user)
 
-    def test_expired_after_91_days(self):
-        past = datetime.now() - timedelta(days=91)
+    def test_not_expired_at_364_days(self):
+        """Decisión de negocio: expiración anual (365 días)."""
+        past = datetime.now() - timedelta(days=364)
+        user = Usuario(password_changed_at=past)
+        assert not AuthService.is_password_expired(user)
+
+    def test_expired_after_366_days(self):
+        past = datetime.now() - timedelta(days=366)
         user = Usuario(password_changed_at=past)
         assert AuthService.is_password_expired(user)
 

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from src.core.services.audit_service import registrar_logout
+from src.modules.usuarios.models.rol_model import RolNombre
 
 
 class SessionManager:
@@ -24,10 +25,11 @@ class SessionManager:
     INACTIVITY_TIMEOUT_SECONDS = 1800  # 30 minutes (fallback)
 
     # Timeout por rol (segundos). None = nunca expira.
+    # Claves = RolNombre (str Enum): compatibles con strings en .get().
     ROLE_TIMEOUTS = {
-        "ADMIN": 1800,           # 30 min
-        "Gerencia": 10800,       # 3 horas
-        "Operador": None,        # sin cierre
+        RolNombre.ADMIN: 1800,           # 30 min
+        RolNombre.GERENCIA: 10800,       # 3 horas
+        RolNombre.OPERADOR: None,        # sin cierre
     }
 
     def __new__(cls) -> "SessionManager":

@@ -45,6 +45,9 @@ from src.core.services.backup_service import (
 from src.modules.usuarios.services.permiso_service import tiene_permiso_por_usuario
 
 
+import logging
+
+logger = logging.getLogger("delca.views")
 class PlaceholderPage(QWidget):
     """Placeholder for unimplemented or errored pages."""
 
@@ -187,7 +190,7 @@ class MainWindow(QMainWindow):
             try:
                 widget = factory()
             except Exception as e:
-                print(f"[MainWindow] Error cargando '{label}': {e}")
+                logger.error(f"[MainWindow] Error cargando '{label}'", exc_info=True)
                 widget = PlaceholderPage(label, str(e))
             self._idx_to_widget[real_idx] = widget
             self.stack.addWidget(widget)
@@ -279,14 +282,17 @@ class MainWindow(QMainWindow):
 
     def _check_auto_backup(self) -> None:
         """Crea el backup del día si aún no existe. Informa solo si falla."""
+        import logging
+
+        logger = logging.getLogger("delca.backup")
         if was_backup_done_today():
             return
         ok, msg = create_backup()
         if ok:
-            print(f"[Backup] Automático diario OK: {msg}")
+            logger.info("Backup automático diario OK: %s", msg)
             self._refresh_status_bar()
         else:
-            print(f"[Backup] Automático falló: {msg}")
+            logger.error("Backup automático falló: %s", msg)
             self._notify_backup_failed(msg)
 
     def _notify_backup_failed(self, msg: str) -> None:

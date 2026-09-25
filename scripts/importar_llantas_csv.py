@@ -21,6 +21,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+import os
 
 # ── Asegurar que el proyecto esta en el path ────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,10 +44,10 @@ from src.modules.llantas.services.llanta_service._constantes import (  # noqa: E
 )
 
 # Ruta del CSV generado por el ETL (carpeta DELCA del Escritorio)
-CSV_DEFAULT = Path(r"C:\Users\andre\OneDrive\Escritorio\DELCA\Llantas 18-08.csv")
+CSV_DEFAULT = Path(os.environ.get("DELCA_ARCHIVO_LLANTAS", r"C:\Users\andre\OneDrive\Escritorio\DELCA\Llantas 18-08.csv"))
 
 # Archivo de salida con las llantas rechazadas por combinación inválida
-RECHAZADAS_DEFAULT = Path(r"C:\Users\andre\OneDrive\Escritorio\DELCA\llantas no migradas.csv")
+RECHAZADAS_DEFAULT = Path(os.environ.get("DELCA_ARCHIVO_RECHAZADAS", r"C:\Users\andre\OneDrive\Escritorio\DELCA\llantas no migradas.csv"))
 
 # Tipo de diseno por convencion: REPARADA usa diseno "REP"
 DISENO_REPARADA = "REP"

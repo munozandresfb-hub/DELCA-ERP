@@ -17,12 +17,15 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import logging
 
 from src.database.engine import get_session
 from src.modules.clientes.repositories.cliente_repository import ClienteRepository
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
 from src.modules.llantas.services.llanta_service import ESTADOS_PROCESO, LlantaService
+
+logger = logging.getLogger("delca.views")
 
 
 class LlantaFormDialog(QDialog):
@@ -340,8 +343,15 @@ class LlantaFormDialog(QDialog):
             costo_precio,
             indice_precios,
         )
-        with get_session() as session:
-            idx = indice_precios(session)
+        try:
+            with get_session() as session:
+                idx = indice_precios(session)
+        except Exception as e:
+            logger.error("Error cargando índice de precios: %s", e, exc_info=True)
+            QMessageBox.warning(
+                self, "Error", "No se pudo calcular el precio. Consulte el log."
+            )
+            return
         llanta_proxy = SimpleNamespace(
             dimension_id=dimension_id, diseno_id=diseno_id,
             costo_produccion=0, precio_venta=0,
@@ -652,10 +662,23 @@ class CambioRapidoDialog(QDialog):
 
         # La BD guarda el tiquete SIN el prefijo "J" (tiquete físico real, desde v2.8.14).
         # Se acepta también con "J" por compatibilidad con datos antiguos.
-        with get_session() as s:
-            llanta = LlantaRepository.get_by_tiquete(s, tiquete)
-            if not llanta and not tiquete.startswith("J"):
-                llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
+        try:
+            with get_session() as s:
+                llanta = LlantaRepository.get_by_tiquete(s, tiquete)
+                if not llanta and not tiquete.startswith("J"):
+                    llanta = LlantaRepository.get_by_tiquete(s, "J" + tiquete)
+        except Exception as e:
+            logger.error(
+                "Error buscando llanta por tiquete %s: %s", tiquete, e, exc_info=True
+            )
+            self._llanta_encontrada = None
+            self.info_label.setText("Error al buscar la llanta. Consulte el log.")
+            self.info_label.setStyleSheet("color: #c62828;")
+            self.estado_combo.setEnabled(False)
+            self.guardar_btn.setEnabled(False)
+            self.rapido_btn.setEnabled(False)
+            self.causa_combo.setEnabled(False)
+            return
         self._llanta_encontrada = llanta
         if llanta:
             self.info_label.setText(
