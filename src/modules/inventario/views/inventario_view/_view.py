@@ -38,10 +38,11 @@ from src.modules.inventario.views.inventario_view._widgets import (
     C_VERDE,
     _KpiCard,
     _color_antiguedad,
+)
+
 import logging
 
 logger = logging.getLogger("delca.views")
-)
 
 
 class InventarioView(QWidget):

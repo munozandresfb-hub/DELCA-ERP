@@ -29,10 +29,11 @@ from src.modules.inventario.views.precios_view import PreciosDisenoDialog
 from src.modules.llantas.services.llanta_service._core import (
     formatear_orden,
     formatear_tiquete,
+)
+
 import logging
 
 logger = logging.getLogger("delca.views")
-)
 
 
 class FacturacionView(QWidget):

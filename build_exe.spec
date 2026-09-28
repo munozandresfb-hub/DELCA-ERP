@@ -8,6 +8,24 @@ sys.setrecursionlimit(5000)
 
 PROJECT_DIR = os.getcwd()
 
+# ── Todos los módulos del proyecto (evita módulos perdidos por imports lazy) ──
+# Las vistas/diálogos se importan bajo demanda (carga lazy de MainWindow) y
+# PyInstaller no siempre los detecta por análisis estático. Se incluyen TODOS
+# los módulos de src/ explícitamente para que el EXE tenga el código completo.
+def _modulos_proyecto() -> list[str]:
+    modulos = []
+    base = os.path.join(PROJECT_DIR, "src")
+    for raiz, dirs, archivos in os.walk(base):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for archivo in archivos:
+            if archivo.endswith(".py") and archivo != "__init__.py":
+                ruta = os.path.join(raiz, archivo)
+                rel = os.path.relpath(ruta, PROJECT_DIR)
+                modulos.append(rel[:-3].replace(os.sep, "."))
+    return modulos
+
+hiddenimports_proyecto = _modulos_proyecto()
+
 a = Analysis(
     ["main.py"],
     pathex=[PROJECT_DIR],
@@ -76,7 +94,8 @@ a = Analysis(
         "scripts.migrate_v1_8_0_asesor",
         "scripts.migrate_v2_5_0_reproceso",
         "scripts.migrate_v2_6_0_dimension_ancho_float",
-    ],
+    ]
+    + hiddenimports_proyecto,
     hookspath=[],
     hooksconfig={},
     excludes=[
