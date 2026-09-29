@@ -11,6 +11,10 @@ class LlantaViewModel:
         self._llantas: list[Llanta] = []
         self._filtro: str = ""
         self._filtro_estado: str | None = None
+        self._filtro_cliente: int | None = None
+        self._filtro_dimension: int | None = None
+        self._filtro_diseno: int | None = None
+        self._filtro_ubicacion: str | None = None
         self._pagina: int = 0
         self._total: int = 0
 
@@ -51,10 +55,21 @@ class LlantaViewModel:
         if pagina is not None:
             self._pagina = pagina
         offset = self._pagina * self.PAGE_SIZE
-        if self._filtro or self._filtro_estado:
+        if (
+            self._filtro
+            or self._filtro_estado
+            or self._filtro_cliente is not None
+            or self._filtro_dimension is not None
+            or self._filtro_diseno is not None
+            or self._filtro_ubicacion
+        ):
             self._llantas, self._total = LlantaService.buscar(
                 term=self._filtro,
                 estado=self._filtro_estado,
+                cliente_id=self._filtro_cliente,
+                dimension_id=self._filtro_dimension,
+                diseno_id=self._filtro_diseno,
+                ubicacion=self._filtro_ubicacion,
                 limite=self.PAGE_SIZE,
                 offset=offset,
             )
@@ -71,6 +86,35 @@ class LlantaViewModel:
 
     def filtrar_por_estado(self, estado: str | None) -> list[Llanta]:
         self._filtro_estado = estado
+        self._pagina = 0
+        self.cargar_llantas()
+        return self._llantas
+
+    def buscar_avanzada(
+        self,
+        cliente_id: int | None = None,
+        dimension_id: int | None = None,
+        diseno_id: int | None = None,
+        estado: str | None = None,
+        ubicacion: str | None = None,
+    ) -> list[Llanta]:
+        """Búsqueda con varios criterios combinados (todos AND)."""
+        self._filtro_cliente = cliente_id
+        self._filtro_dimension = dimension_id
+        self._filtro_diseno = diseno_id
+        self._filtro_estado = estado
+        self._filtro_ubicacion = ubicacion
+        self._pagina = 0
+        self.cargar_llantas()
+        return self._llantas
+
+    def limpiar_filtros_avanzados(self) -> list[Llanta]:
+        """Limpia los filtros de búsqueda avanzada (todos los criterios)."""
+        self._filtro_cliente = None
+        self._filtro_dimension = None
+        self._filtro_diseno = None
+        self._filtro_estado = None
+        self._filtro_ubicacion = None
         self._pagina = 0
         self.cargar_llantas()
         return self._llantas

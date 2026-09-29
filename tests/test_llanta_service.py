@@ -496,6 +496,47 @@ class TestConsultas:
         assert conteo.get("PENDIENTE") == 2
 
 
+class TestBuscarAvanzada:
+    """LlantaService.buscar — filtros combinables (cliente, dimensión, diseño, ubicación)."""
+
+    def test_buscar_por_filtros_combinados(self):
+        ok, _ = LlantaService.crear_dimension(9.5, None, 17.5, "")
+        assert ok
+        dim = LlantaService.listar_dimensiones()[0]
+        ok, _ = LlantaService.crear_diseno("VZY2", "MIXTO")
+        assert ok
+        dis = LlantaService.listar_disenos()[0]
+
+        from src.modules.clientes.services.cliente_service import ClienteService
+
+        ok, _ = ClienteService.crear(nombre="CLIENTE TEST", nit="1234")
+        assert ok
+        cli = ClienteService.listar_clientes()[0]
+
+        _crear_llanta(tiquete="TQ-B1", dimension_id=dim.id, diseno_id=dis.id, cliente_id=cli.id)
+        _crear_llanta(tiquete="TQ-B2", dimension_id=dim.id, diseno_id=dis.id)
+        _crear_llanta(tiquete="TQ-B3")
+
+        # Cliente + dimensión + diseño combinados
+        res, total = LlantaService.buscar(
+            dimension_id=dim.id, diseno_id=dis.id, cliente_id=cli.id
+        )
+        assert total == 1
+        assert res[0].tiquete == "TQ-B1"
+
+        # Solo dimensión
+        res, total = LlantaService.buscar(dimension_id=dim.id)
+        assert total == 2
+
+        # Solo ubicación (todas creadas en PLANTA)
+        res, total = LlantaService.buscar(ubicacion="PLANTA")
+        assert total == 3
+
+        # Filtro sin coincidencias
+        res, total = LlantaService.buscar(ubicacion="CLIENTE")
+        assert total == 0
+
+
 class TestMatriz:
     """Static state-machine contract (flujo correcto 2)."""
 

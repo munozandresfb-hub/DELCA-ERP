@@ -156,18 +156,23 @@ class LlantaFormDialog(QDialog):
         self.asesor_input = QLineEdit()
         self.asesor_input.setPlaceholderText("Nombre del asesor comercial")
 
-        self.precio_venta_spin = QDoubleSpinBox()
-        self.precio_venta_spin.setRange(0, 9999999)
-        self.precio_venta_spin.setPrefix("$ ")
-        self.precio_venta_spin.setSpecialValueText("—")
-        self.precio_venta_spin.setDecimals(2)
+        # Precio de venta: las flechas solo se mueven entre los precios establecidos
+        # del catálogo (mínimo / medio / normal) para la dimensión+diseño elegidos.
+        # Se mantiene editable por si se necesita otro valor manual.
+        self.precio_venta_combo = QComboBox()
+        self.precio_venta_combo.setEditable(True)
+        self.precio_venta_combo.setStyleSheet(
+            "QComboBox { font-size: 14px; padding: 4px; border: 1px solid #ccc; "
+            "border-radius: 4px; }"
+        )
+        self.precio_venta_combo.lineEdit().setPlaceholderText("Precio de venta...")
 
         llanta_group.addRow("Marca:", self.marca_combo)
         llanta_group.addRow("Dimensión:", self.dimension_combo)
         llanta_group.addRow("Diseño:", self.diseno_combo)
         llanta_group.addRow("DOT:", self.dot_input)
         llanta_group.addRow("Asesor:", self.asesor_input)
-        llanta_group.addRow("Precio Venta:", self.precio_venta_spin)
+        llanta_group.addRow("Precio Venta:", self.precio_venta_combo)
 
         # ═══════════════ Observaciones ═══════════════
         self.observaciones_input = QTextEdit()
@@ -219,16 +224,14 @@ class LlantaFormDialog(QDialog):
         )
         self.guardar_btn.clicked.connect(self._guardar)
 
-        # Imprimir (solo al registrar): guarda la llanta y envía la hoja de
-        # proceso a la impresora inmediatamente (criterios de impresión intactos).
+        # Imprimir: disponible al registrar y al editar — guarda la llanta y envía
+        # la hoja de proceso a la impresora (criterios de impresión intactos).
         self.imprimir_btn = QPushButton("🖨 Imprimir")
         self.imprimir_btn.setStyleSheet(
             "QPushButton { background: #2c3e50; color: white; font-weight: bold; "
             "padding: 8px 24px; border-radius: 4px; border: none; }"
         )
         self.imprimir_btn.clicked.connect(self._guardar_y_imprimir)
-        if self._llanta:
-            self.imprimir_btn.setVisible(False)  # solo al registrar llantas nuevas
 
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.setStyleSheet(
@@ -295,8 +298,10 @@ class LlantaFormDialog(QDialog):
         self.observaciones_input.setPlainText(llanta.observaciones or "")
 
         # Precio: bloqueado (muestra el valor actual, no editable)
-        self.precio_venta_spin.setEnabled(False)
-        self.precio_venta_spin.setValue(float(llanta.precio_venta or 0))
+        self.precio_venta_combo.setEnabled(False)
+        self.precio_venta_combo.setCurrentText(
+            f"${float(llanta.precio_venta or 0):,.2f}"
+        )
 
     # ── Client events ──────────────────────────────────────────────
 
@@ -328,21 +333,25 @@ class LlantaFormDialog(QDialog):
     # ── Diseños: independientes de la marca (combo cargado al inicio) ──
 
     def _auto_cargar_precio(self) -> None:
-        """Auto-fill precio_venta from the price catalog (diseño+dimensión).
+        """Auto-fill precio_venta desde el catálogo (diseño+dimensión).
 
-        Regla consistente con el resto de la herramienta: precio_normal →
-        precio_minimo → 1 peso si la referencia no tiene cobertura.
+        Puebla el combo con los precios establecidos (mínimo / medio / normal)
+        del catálogo; las flechas solo se mueven entre esas opciones.
         """
         diseno_id = self.diseno_combo.currentData()
         dimension_id = self.dimension_combo.currentData()
-        if not diseno_id or not dimension_id:
-            return
-        from types import SimpleNamespace
+        self._poblar_precios_catalogo(dimension_id, diseno_id)
 
-        from src.modules.llantas.services.costo_precio import (
-            costo_precio,
-            indice_precios,
-        )
+    def _poblar_precios_catalogo(
+        self, dimension_id, diseno_id
+    ) -> None:
+        """Carga las opciones de precio del catálogo para dimensión+diseño."""
+        self.precio_venta_combo.clear()
+        if not diseno_id or not dimension_id:
+            self.precio_venta_combo.addItem("— Seleccionar dimensión y diseño —", None)
+            return
+        from src.modules.llantas.services.costo_precio import indice_precios
+
         try:
             with get_session() as session:
                 idx = indice_precios(session)
@@ -352,12 +361,48 @@ class LlantaFormDialog(QDialog):
                 self, "Error", "No se pudo calcular el precio. Consulte el log."
             )
             return
-        llanta_proxy = SimpleNamespace(
-            dimension_id=dimension_id, diseno_id=diseno_id,
-            costo_produccion=0, precio_venta=0,
+        reg = idx.get((dimension_id, diseno_id))
+        if not reg:
+            self.precio_venta_combo.addItem("Sin cobertura en catálogo: $1", 1.0)
+            self.precio_venta_combo.setCurrentIndex(0)
+            return
+        if reg["precio_minimo"] > 0:
+            self.precio_venta_combo.addItem(
+                f"Precio mínimo: ${reg['precio_minimo']:,.2f}", reg["precio_minimo"]
+            )
+        if reg["precio_medio"] > 0:
+            self.precio_venta_combo.addItem(
+                f"Precio medio: ${reg['precio_medio']:,.2f}", reg["precio_medio"]
+            )
+        if reg["precio_venta"] > 0:
+            self.precio_venta_combo.addItem(
+                f"Precio normal: ${reg['precio_venta']:,.2f}", reg["precio_venta"]
+            )
+        # Preseleccionar: normal → medio → mínimo (regla de la herramienta)
+        preferido = (
+            reg["precio_venta"] or reg["precio_medio"] or reg["precio_minimo"] or 1.0
         )
-        _, precio = costo_precio(llanta_proxy, idx)
-        self.precio_venta_spin.setValue(precio)
+        idx_pref = self.precio_venta_combo.findData(preferido)
+        if idx_pref >= 0:
+            self.precio_venta_combo.setCurrentIndex(idx_pref)
+        else:
+            self.precio_venta_combo.setCurrentText(f"${preferido:,.2f}")
+
+    def _precio_seleccionado(self):
+        """Resuelve el precio del combo (opción del catálogo o valor manual)."""
+        data = self.precio_venta_combo.currentData()
+        if data is not None:
+            return float(data)
+        texto = (
+            self.precio_venta_combo.currentText()
+            .strip()
+            .replace("$", "")
+            .replace(",", "")
+        )
+        try:
+            return float(texto) if texto else None
+        except ValueError:
+            return None
 
     # ── Validación en vivo del tiquete ──────────────────────────────
 
@@ -441,7 +486,7 @@ class LlantaFormDialog(QDialog):
         if not self._llanta:
             # Solo al registrar: tiquete y precio
             data["tiquete"] = self.tiquete_input.text().strip()
-            data["precio_venta"] = self.precio_venta_spin.value() or None
+            data["precio_venta"] = self._precio_seleccionado()
         return data
 
 

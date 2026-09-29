@@ -65,12 +65,16 @@ class _GestionLlantasMixin:
         term: str = "",
         estado: str | None = None,
         cliente_id: int | None = None,
+        dimension_id: int | None = None,
+        diseno_id: int | None = None,
+        ubicacion: str | None = None,
         limite: int | None = None,
         offset: int = 0,
     ) -> tuple[list[Llanta], int]:
-        """Búsqueda con paginación opcional.
+        """Búsqueda con filtros combinables y paginación opcional.
 
-        Devuelve (llantas, total_registros). Con limite=None devuelve todas.
+        Acepta múltiples criterios a la vez (AND): término, estado, cliente,
+        dimensión, diseño y ubicación. Devuelve (llantas, total_registros).
         """
         with get_session() as session:
             query = session.query(Llanta)
@@ -92,6 +96,15 @@ class _GestionLlantasMixin:
 
             if cliente_id is not None:
                 query = query.filter(Llanta.cliente_id == cliente_id)
+
+            if dimension_id is not None:
+                query = query.filter(Llanta.dimension_id == dimension_id)
+
+            if diseno_id is not None:
+                query = query.filter(Llanta.diseno_id == diseno_id)
+
+            if ubicacion:
+                query = query.filter(Llanta.ubicacion_actual == ubicacion)
 
             total = query.count()
             query = query.order_by(Llanta.id.desc())

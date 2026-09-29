@@ -24,7 +24,9 @@ from src.modules.llantas.services.llanta_service._core import (
 )
 from src.modules.llantas.services.tiquete_printer import TiquetePrinter
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
-from src.modules.llantas.views.catalogos_view import CatalogoMaestroDialog
+from src.modules.llantas.views.llantas_view._busqueda_avanzada_dialog import (
+    BusquedaAvanzadaDialog,
+)
 from src.modules.llantas.views.llantas_view._dialogs import (
     CambioRapidoDialog,
     HistorialDialog,
@@ -111,12 +113,12 @@ class LlantasView(QWidget):
         editar_btn.clicked.connect(self._editar_llanta)
         row2.addWidget(editar_btn)
 
-        catalogos_btn = QPushButton("📋 Catálogos")
+        catalogos_btn = QPushButton("🔍 Búsqueda Avanzada")
         catalogos_btn.setStyleSheet(
             "QPushButton { background: #6c757d; color: white; font-weight: bold; "
             "padding: 6px 14px; border-radius: 4px; border: none; }"
         )
-        catalogos_btn.clicked.connect(self._abrir_catalogos)
+        catalogos_btn.clicked.connect(self._busqueda_avanzada)
         row2.addWidget(catalogos_btn)
 
         layout.addLayout(row2)
@@ -274,6 +276,16 @@ class LlantasView(QWidget):
         if ok:
             self._poblar_tabla()
             QMessageBox.information(self, "Éxito", msg)
+            # Si el usuario pidió imprimir (disponible también al editar),
+            # imprime el tiquete de la llanta editada.
+            if getattr(dialog, "imprimir", False):
+                llanta_editada = self.viewmodel.obtener_por_id(llanta.id)
+                if llanta_editada:
+                    ok_imp, msg_imp = TiquetePrinter.print_tiquete(llanta_editada, self)
+                    if ok_imp:
+                        QMessageBox.information(self, "Impresión", msg_imp)
+                    else:
+                        QMessageBox.warning(self, "Impresión", msg_imp)
         else:
             QMessageBox.warning(self, "Error", msg)
 
@@ -310,10 +322,15 @@ class LlantasView(QWidget):
         dialog = HistorialDialog(llanta, estados, ubicaciones, self)
         dialog.exec()
 
-    def _abrir_catalogos(self) -> None:
-        """Open the master catalogs dialog. Combos refresh on next LlantaFormDialog open."""
-        dialog = CatalogoMaestroDialog(self)
-        dialog.exec()
+    def _busqueda_avanzada(self) -> None:
+        """Abre el diálogo de búsqueda avanzada y aplica los criterios elegidos
+        (cliente, dimensión, diseño, estado y ubicación — combinados)."""
+        dialog = BusquedaAvanzadaDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        criterios = dialog.get_criterios()
+        self.viewmodel.buscar_avanzada(**criterios)
+        self._poblar_tabla()
 
     def _imprimir_tiquete(self) -> None:
         row = self.table.currentRow()

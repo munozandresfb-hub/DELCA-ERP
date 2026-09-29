@@ -19,7 +19,7 @@ def indice_precios(session) -> dict[tuple[int, int], dict]:
     """Construye el índice del catálogo: (dimension_id, diseno_id) → precios.
 
     Cada entrada: {"costo": costo_fabricacion, "precio_venta": precio_normal,
-                   "precio_minimo": precio_minimo}
+                   "precio_minimo": precio_minimo, "precio_medio": precio_medio}
     """
     idx: dict[tuple[int, int], dict] = {}
     for p in session.query(PrecioProducto).all():
@@ -28,6 +28,7 @@ def indice_precios(session) -> dict[tuple[int, int], dict]:
                 "costo": float(p.costo_fabricacion or 0),
                 "precio_venta": float(p.precio_normal or 0),
                 "precio_minimo": float(p.precio_minimo or 0),
+                "precio_medio": float(p.precio_medio or 0),
             }
     return idx
 

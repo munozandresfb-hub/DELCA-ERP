@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.46] — 2026-09-29 — Módulo Llantas: imprimir en edición + precio con 3 opciones del catálogo + búsqueda avanzada
+
+### Changed
+- **Formulario "Registrar Llanta"**: el botón **"🖨 Imprimir"** ahora está disponible **siempre** (al registrar y al **editar** — tras guardar, imprime el tiquete de la llanta editada)
+- **Precio Venta**: ahora es un selector cuyas **flechas solo se mueven entre los precios establecidos del catálogo** para la dimensión+diseño elegidos: **Precio mínimo / Precio medio / Precio normal** (preselecciona el normal → medio → mínimo; sin cobertura → $1). En edición el precio sigue bloqueado
+- **Búsqueda Avanzada**: nuevo botón **"🔍 Búsqueda Avanzada"** (reemplaza al botón "Catálogos") que filtra las llantas combinando **cliente, dimensión, diseño, estado y ubicación** (todos los criterios a la vez) — `LlantaService.buscar` ampliado con los nuevos filtros + `viewmodel.buscar_avanzada`
+
+### Verification
+- Formulario: combo con las 3 opciones (Mínimo $830K / Medio $840K / Normal $850K, preselecciona Normal) ✓ · Imprimir visible en nuevo y edición ✓ · precio bloqueado en edición ✓ · búsqueda avanzada en la vista ✓ · 195 tests (1 nuevo) · EXE recompilado
+
+---
+
 ## [2.8.45] — 2026-09-29 — Migración de las 79 llantas rechazadas (RECHAZADA / CLIENTE)
 
 ### Changed
