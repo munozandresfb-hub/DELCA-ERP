@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.45] — 2026-09-29 — Migración de las 79 llantas rechazadas (RECHAZADA / CLIENTE)
+
+### Changed
+- Las **79 llantas** que habían quedado fuera (combinaciones inválidas R1-R6) se **migraron** con tratamiento especial, todas terminando en **estado RECHAZADA / ubicación CLIENTE** (combinación válida):
+  - **67** (ubic legacy E/PRODUCCION): historial del flujo **PLANTA → RECHAZADA → CLIENTE**
+  - **12** (ubic legacy C/CLIENTE): estado **RECHAZADA** conservando **CLIENTE** (las 10 APTA + 2 PENDIENTE)
+- Clientes/marcas/dimensiones/diseños resueltos contra catálogos · costo/precio desde `precios_producto` (sin cobertura → precio 1)
+- `causa_rechazo_id` queda NULL (mismo criterio de las RECHAZADAS legacy)
+- Script: `scripts/migrar_rechazadas.py` · Backup: `backups/migracion/delca_pre_rechazadas_*.db`
+
+### Verification
+- BD: **24,876 llantas** (24,797 + 79) · 5,255 clientes · integridad `ok` · 79/79 en RECHAZADA/CLIENTE · historiales completos · 194 tests
+
+---
+
 ## [2.8.44] — 2026-09-29 — Re-migración de datos nuevos (MAE_PROD / MAE_CLIENTE / MAE_MARCA)
 
 ### Changed
