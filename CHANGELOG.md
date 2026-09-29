@@ -7,6 +7,24 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.44] — 2026-09-29 — Re-migración de datos nuevos (MAE_PROD / MAE_CLIENTE / MAE_MARCA)
+
+### Changed
+- **Re-migración**: se incorporaron a DELCA los registros NUEVOS de los DBF actualizados (universo completo — los ya migrados se saltan por TIQUETE2/NIT)
+- **347 llantas nuevas** importadas (mapeo exacto validado: ESTADO `1→REENCAUCHADA`, `2→APTA`, `4→REPARADA`, `6/vacío→PENDIENTE`; UBICACION `C/B/D→CLIENTE`, `E→PRODUCCION`, `P→PLANTA`; combinaciones inválidas R1-R6 → CSV)
+- **14 clientes nuevos** creados por NIT (incluidos los del legacy tal como vienen)
+- Catálogos: 3 dimensiones y 1 diseño creados (solo faltantes parseables); marcas 0 nuevas
+- Costo/precio desde `precios_producto` (245 sin cobertura → precio 1; 107 con costo del catálogo)
+- Historiales iniciales (estado + ubicación) creados con la fecha de ingreso real
+- 79 llantas rechazadas (R1-R6) → `llantas no migradas.csv` · 1 sin TIQUETE2 omitida
+- Script reproducible: `scripts/migrar_remigracion_dbf.py` (backup + aplica)
+- Backups: `backups/migracion/delca_pre_remigracion_*.db` · DBF anteriores respaldados en `backup_dbf_antes/`
+
+### Verification
+- BD: 24,797 llantas · 5,255 clientes · integridad `ok` · 194 tests · EXE recompilado
+
+---
+
 ## [2.8.43] — 2026-09-22 — Facturación ágil + precarga por cliente + cartera (fecha de pago, días de mora, abonos)
 
 ### Changed / Added — Facturación
