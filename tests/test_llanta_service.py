@@ -536,6 +536,21 @@ class TestBuscarAvanzada:
         res, total = LlantaService.buscar(ubicacion="CLIENTE")
         assert total == 0
 
+    def test_buscar_por_numero_orden(self):
+        llanta = _crear_llanta(tiquete="TQ-ORD-1", numero_orden="7777", consecutivo="3")
+        _crear_llanta(tiquete="TQ-ORD-2", numero_orden="8888", consecutivo="1")
+        # Por número de orden
+        res, total = LlantaService.buscar(term="7777")
+        assert total == 1
+        assert res[0].tiquete == "TQ-ORD-1"
+        # Por consecutivo
+        res, total = LlantaService.buscar(term="3")
+        assert total >= 1
+        # Por tiquete (sigue funcionando)
+        res, total = LlantaService.buscar(term="TQ-ORD-2")
+        assert total == 1
+        assert res[0].tiquete == "TQ-ORD-2"
+
 
 class TestMatriz:
     """Static state-machine contract (flujo correcto 2)."""

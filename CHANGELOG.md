@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.47] — 2026-09-29 — Módulo Llantas: búsqueda por número de orden + Limpiar regenera + columna Marca
+
+### Changed
+- **Búsqueda rápida**: ahora también busca por **número de orden** y **consecutivo** (además de tiquete, marca, dimensión y cliente) — escribir el número de orden encuentra la llanta
+- **Búsqueda Avanzada → "Limpiar"**: ahora **olvida la búsqueda y regenera toda la lista** de llantas (quita filtros avanzados y el término de la barra rápida; señal `limpiar_solicitado` conectada a la vista)
+- **Columna "Marca"** agregada entre "Diseño" y "Estado" (nombre de la marca del casco en cada fila)
+
+### Verification
+- Marca en posición 6 (ej. DIAMONDBACK) ✓ · búsqueda por orden ✓ · tiquete sigue funcionando ✓ · Limpiar regenera (24,897) ✓ · 196 tests (1 nuevo) · EXE recompilado
+
+---
+
 ## [2.8.46] — 2026-09-29 — Módulo Llantas: imprimir en edición + precio con 3 opciones del catálogo + búsqueda avanzada
 
 ### Changed

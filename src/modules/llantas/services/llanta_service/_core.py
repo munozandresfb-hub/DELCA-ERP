@@ -85,6 +85,8 @@ class _GestionLlantasMixin:
                     Cliente, Llanta.cliente_id == Cliente.id
                 ).filter(
                     Llanta.tiquete.ilike(pattern)
+                    | Llanta.numero_orden.ilike(pattern)
+                    | Llanta.consecutivo.ilike(pattern)
                     | Llanta.marca.ilike(pattern)
                     | Llanta.dimension.ilike(pattern)
                     | Cliente.nombre.ilike(pattern)

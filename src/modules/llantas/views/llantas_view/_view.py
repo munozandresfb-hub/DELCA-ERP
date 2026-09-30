@@ -44,6 +44,7 @@ class LlantasView(QWidget):
         "N° Orden",
         "Dimensión",
         "Diseño",
+        "Marca",
         "Estado",
         "Causa",
         "Ubicación Actual",
@@ -200,22 +201,25 @@ class LlantasView(QWidget):
             self.table.setItem(row, 4, QTableWidgetItem(dim))
             dis = l.diseno_obj.nombre if l.diseno_obj else "—"
             self.table.setItem(row, 5, QTableWidgetItem(dis))
-            self.table.setItem(row, 6, QTableWidgetItem(l.estado or ""))
+            # Marca (del casco)
+            marca = l.marca_obj.nombre if l.marca_obj else (l.marca or "—")
+            self.table.setItem(row, 6, QTableWidgetItem(marca))
+            self.table.setItem(row, 7, QTableWidgetItem(l.estado or ""))
             # Causa de rechazo (asignada en Inspección Inicial cuando RECHAZADA)
             causa = l.causa_rechazo
             causa_str = (
                 f"{causa.codigo} — {causa.descripcion}" if causa else "—"
             )
-            self.table.setItem(row, 7, QTableWidgetItem(causa_str))
+            self.table.setItem(row, 8, QTableWidgetItem(causa_str))
             ubic_raw = l.ubicacion_actual or "—"
             ubic_str = (
                 UBICACIONES_DISPLAY.get(ubic_raw, ubic_raw)
                 if ubic_raw != "—"
                 else "—"
             )
-            self.table.setItem(row, 8, QTableWidgetItem(ubic_str))
+            self.table.setItem(row, 9, QTableWidgetItem(ubic_str))
             fecha = l.fecha_ingreso.strftime("%Y-%m-%d") if l.fecha_ingreso else "—"
-            self.table.setItem(row, 9, QTableWidgetItem(fecha))
+            self.table.setItem(row, 10, QTableWidgetItem(fecha))
 
         self.table.setColumnHidden(0, True)
         self._actualizar_paginacion()
@@ -326,10 +330,19 @@ class LlantasView(QWidget):
         """Abre el diálogo de búsqueda avanzada y aplica los criterios elegidos
         (cliente, dimensión, diseño, estado y ubicación — combinados)."""
         dialog = BusquedaAvanzadaDialog(self)
+        # "Limpiar": olvida la búsqueda y regenera toda la lista de llantas
+        # (quita filtros avanzados y el término de la barra rápida).
+        dialog.limpiar_solicitado.connect(self._limpiar_busqueda_avanzada)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         criterios = dialog.get_criterios()
         self.viewmodel.buscar_avanzada(**criterios)
+        self._poblar_tabla()
+
+    def _limpiar_busqueda_avanzada(self) -> None:
+        """Olvida la búsqueda y regenera la lista completa de llantas."""
+        self.viewmodel.limpiar_filtros_avanzados()
+        self.search_input.clear()  # dispara _buscar con término vacío
         self._poblar_tabla()
 
     def _imprimir_tiquete(self) -> None:

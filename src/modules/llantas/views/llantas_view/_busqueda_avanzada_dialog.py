@@ -6,6 +6,7 @@ cliente, dimensión, diseño, estado y ubicación.
 
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -28,6 +29,10 @@ from src.modules.llantas.services.llanta_service import (
 
 class BusquedaAvanzadaDialog(QDialog):
     """Filtros combinables de llantas (cliente, dimensión, diseño, estado, ubicación)."""
+
+    # Se emite cuando el usuario pide "Limpiar": la vista debe olvidar la
+    # búsqueda y regenerar la lista completa de llantas.
+    limpiar_solicitado = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -106,7 +111,8 @@ class BusquedaAvanzadaDialog(QDialog):
         self.setLayout(layout)
 
     def _limpiar(self) -> None:
-        """Restablece todos los criterios a 'Todos'."""
+        """Restablece todos los criterios a 'Todos' y avisa a la vista para
+        que OLVIDE la búsqueda y regenere toda la lista de llantas."""
         for combo in (
             self.cliente_combo,
             self.dimension_combo,
@@ -115,6 +121,7 @@ class BusquedaAvanzadaDialog(QDialog):
             self.ubicacion_combo,
         ):
             combo.setCurrentIndex(0)
+        self.limpiar_solicitado.emit()
 
     def get_criterios(self) -> dict:
         """Devuelve los criterios seleccionados (None = sin filtro)."""
