@@ -9,7 +9,10 @@ from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.models.factura_llanta_model import FacturaLlanta
 from src.modules.finanzas.models.factura_model import Factura
 from src.modules.llantas.models.llanta_model import Llanta
-from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service._core import (
+    formatear_orden,
+    formatear_tiquete,
+)
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.services.llanta_service import (
     ESTADOS_EN_PLANTA,
@@ -158,10 +161,12 @@ class _LlantasReports:
                 rows.append({
                     "id": l.id,
                     "tiquete": formatear_tiquete(l.tiquete),
+                    "numero_orden": formatear_orden(l.numero_orden, l.consecutivo) or "—",
                     "cliente": cnombre or "—",
                     "cliente_id": l.cliente_id or 0,
                     "nit": cnit or "—",
                     "marca": l.marca or "",
+                    "diseno": l.diseno_obj.nombre if l.diseno_obj else "—",
                     "dimension": (
                         l.dimension_obj.display
                         if l.dimension_obj else (l.dimension or "")

@@ -138,9 +138,9 @@ class _LlantasReportView:
         # ── Results table ────────────────────────────────────────
         self._tab_reporte_llantas = _ReportTab("Reporte Llantas")
         self._tab_reporte_llantas.set_columns([
-            "Tiquete", "Cliente", "NIT", "Marca", "Dimensión", "Estado",
-            "Ubicación", "Ingreso", "Días", "Costo", "Precio",
-            "Utilidad", "Margen",
+            "Tiquete", "Numero de orden", "Cliente", "NIT", "Marca", "Diseño",
+            "Dimensión", "Estado", "Ubicación", "Ingreso", "Días", "Costo",
+            "Precio", "Utilidad", "Margen",
         ])
         layout.addWidget(self._tab_reporte_llantas)
 
@@ -190,9 +190,11 @@ class _LlantasReportView:
             margen_str = f"{r['margen_pct']:.1f}%" if r['margen_pct'] is not None else "—"
             self._tab_reporte_llantas.add_row([
                 r["tiquete"],
+                r["numero_orden"],
                 r["cliente"],
                 r["nit"],
                 r["marca"],
+                r["diseno"],
                 r["dimension"],
                 r["estado"],
                 r["ubicacion"],
@@ -226,7 +228,7 @@ class _LlantasReportView:
                 color="#2c3e50",
             )
         else:
-            self._tab_reporte_llantas.add_row(["(sin resultados)"] * 13)
+            self._tab_reporte_llantas.add_row(["(sin resultados)"] * 15)
 
         # Update KPI bar
         self._rep_kpis.setText(

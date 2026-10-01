@@ -13,12 +13,14 @@ Regression targets:
 from decimal import Decimal
 
 from datetime import datetime, timedelta
+from typing import cast
 
 import pytest
 
 from src.database.engine import get_session
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.finanzas.services.factura_service import FacturaService
+from src.modules.llantas.models.diseno_llanta_model import DisenoLlanta
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
 from src.modules.llantas.services.llanta_service import LlantaService
@@ -201,6 +203,28 @@ class TestReportesLlantas:
         _crear_llanta(tiquete="RPT-BUSQ-888")
         por_busqueda = ReporteService.reporte_llantas(busqueda="777")
         assert por_busqueda["kpis"]["total"] == 1
+
+    def test_numero_orden_y_diseno_en_filas(self):
+        """Cada fila incluye 'numero_orden' (orden+consecutivo) y 'diseno'."""
+        with get_session() as session:
+            diseno = DisenoLlanta(nombre="DV-RT4", tipo="MIXTO")
+            session.add(diseno)
+            session.flush()
+            diseno_id = cast(int, cast(object, diseno.id))
+        _crear_llanta(tiquete="RPT-ORD-1")  # sin orden ni diseño → "—"
+        ok, llanta = LlantaService.crear(
+            tiquete="RPT-ORD-2",
+            numero_orden="64230C",
+            consecutivo="1",
+            diseno_id=diseno_id,
+        )
+        assert ok, f"crear llanta con orden falló: {llanta}"
+        rows = ReporteService.reporte_llantas()["rows"]
+        por_tiquete = {r["tiquete"]: r for r in rows}
+        assert por_tiquete["RPT-ORD-1"]["numero_orden"] == "—"
+        assert por_tiquete["RPT-ORD-1"]["diseno"] == "—"
+        assert por_tiquete["RPT-ORD-2"]["numero_orden"] == "64230C-1"
+        assert por_tiquete["RPT-ORD-2"]["diseno"] == "DV-RT4"
 
 
 class TestResumenCompleto:
