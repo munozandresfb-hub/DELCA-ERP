@@ -1,23 +1,23 @@
-# -*- coding: utf-8 -*-
-"""Corrección post-migración DELCA (v2.8.44/45) — alinear BD con el DBF fuente.
+﻿# -*- coding: utf-8 -*-
+"""CorrecciÃ³n post-migraciÃ³n DELCA (v2.8.44/45) â€” alinear BD con el DBF fuente.
 
 Orden del usuario:
   - NO tocar las 106 discrepancias "otras" (RECHAZADA forzadas + BD adelante).
   - NO tocar las ~21 llantas que solo existen en la BD.
-  - Las demás deben quedar iguales al DBF en: estado, ubicación y diseño.
+  - Las demÃ¡s deben quedar iguales al DBF en: estado, ubicaciÃ³n y diseÃ±o.
 
-Alcance (medido): 114 estado + 152 ubicación + 1,632 diseño = 1,898 llantas.
+Alcance (medido): 114 estado + 152 ubicaciÃ³n + 1,632 diseÃ±o = 1,898 llantas.
 
 Proceso:
   1. Backup de delca.db (backups/migracion/delca_pre_correccion_*.db).
-  2. Recalcula la clasificación (misma lógica de analisis_correccion.py).
-  3. Crea el diseño faltante 'PBT14-W' (tipo MIXTO, convención de migración).
+  2. Recalcula la clasificaciÃ³n (misma lÃ³gica de analisis_correccion.py).
+  3. Crea el diseÃ±o faltante 'PBT14-W' (tipo MIXTO, convenciÃ³n de migraciÃ³n).
   4. UPDATE estado / ubicacion_actual / diseno_id donde difieran (solo FIX_*).
-  5. Inserta auditoría en estados_llanta / ubicaciones_llanta (fecha = FECHA_SALI
+  5. Inserta auditorÃ­a en estados_llanta / ubicaciones_llanta (fecha = FECHA_SALI
      si >= fecha_ingreso, si no fecha_ingreso).
   6. Sincroniza fecha_salida/doc_salida cuando la llanta pasa a CLIENTE y el DBF
-     trae FECHA_SALI (coherencia de la ubicación).
-  7. Reporte + verificación.
+     trae FECHA_SALI (coherencia de la ubicaciÃ³n).
+  7. Reporte + verificaciÃ³n.
 """
 from __future__ import annotations
 
@@ -33,6 +33,10 @@ from dbfread import DBF
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIGEN = os.path.dirname(PROJECT_ROOT)
 DB = os.path.join(PROJECT_ROOT, "delca.db")
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+from scripts.migration_utils import backup_seguro
 DBF_NUEVO = os.path.join(ORIGEN, "MAE_PROD.DBF")
 BACKUP_DIR = os.path.join(PROJECT_ROOT, "backups", "migracion")
 TIPO_DISENO_DEFECTO = "MIXTO"
@@ -55,7 +59,7 @@ def main() -> None:
     os.makedirs(BACKUP_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup = os.path.join(BACKUP_DIR, f"delca_pre_correccion_{ts}.db")
-    shutil.copy2(DB, backup)
+    backup_seguro(DB, backup)
     print(f"[BACKUP] {backup}")
 
     # ---- 2. Fuentes ----
@@ -82,7 +86,7 @@ def main() -> None:
         disenos[(r["nombre"] or "").strip().upper()] = r["id"]
     print(f"[CATALOGO] {len(disenos)} disenos")
 
-    # ---- 3. Crear diseño faltante 'PBT14-W' ----
+    # ---- 3. Crear diseÃ±o faltante 'PBT14-W' ----
     pendientes_crear = {r["banda"] for r in dbf.values() if r["banda"]}
     for banda in sorted(pendientes_crear):
         clave = banda.upper()
@@ -92,7 +96,7 @@ def main() -> None:
             print(f"[DISENO] creado: {banda} (id={cur.lastrowid}, tipo={TIPO_DISENO_DEFECTO})")
     con.commit()
 
-    # ---- 4. Clasificación y aplicación ----
+    # ---- 4. ClasificaciÃ³n y aplicaciÃ³n ----
     stats = Counter()
     upd_estado = 0
     upd_ubicacion = 0
@@ -140,8 +144,8 @@ def main() -> None:
         nueva_ubi = ubi_esp if not ubi_ok else None
         nuevo_diseno = diseno_esp if (not diseno_ok and diseno_esp is not None) else None
 
-        # fecha para auditoría: FECHA_SALI si existe y es >= ingreso (cuando salió
-        # a CLIENTE), si no la fecha de la corrección (cuando DELCA conoce el estado).
+        # fecha para auditorÃ­a: FECHA_SALI si existe y es >= ingreso (cuando saliÃ³
+        # a CLIENTE), si no la fecha de la correcciÃ³n (cuando DELCA conoce el estado).
         fecha_aud = datetime.now()
         if rec["fecha_sal"] and (not rec["fecha_ent"] or rec["fecha_sal"] >= rec["fecha_ent"]):
             fecha_aud = rec["fecha_sal"]
@@ -188,7 +192,7 @@ def main() -> None:
     print(f"  Auditoria estados_llanta insertados:  {aud_estados}")
     print(f"  Auditoria ubicaciones_llanta insertados: {aud_ubicaciones}")
 
-    # ---- 6. Verificación inmediata ----
+    # ---- 6. VerificaciÃ³n inmediata ----
     print()
     print("=" * 70)
     print("VERIFICACION POST-CORRECCION")

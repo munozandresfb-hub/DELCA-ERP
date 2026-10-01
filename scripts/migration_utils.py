@@ -3,7 +3,35 @@ Migration utility — ensures each migration runs exactly once.
 Uses a _migrations table in SQLite for idempotency tracking.
 """
 
+import shutil
+import sqlite3
+
 from sqlalchemy import text
+
+
+def backup_seguro(origen: str, destino: str) -> str:
+    """Copia de respaldo WAL-safe de una BD SQLite.
+
+    Con ``journal_mode=WAL`` el archivo principal puede no contener los
+    últimos cambios (viven en el ``-wal``). Ejecuta un checkpoint con
+    truncado antes de copiar para que el respaldo sea consistente aunque
+    la aplicación esté corriendo. Mismo patrón que
+    ``src/core/services/backup_service.py``.
+
+    Args:
+        origen:  Ruta de la BD (ej. ``delca.db``).
+        destino: Ruta del archivo de respaldo.
+
+    Returns:
+        La ruta del respaldo creado.
+    """
+    conn = sqlite3.connect(origen, timeout=10)
+    try:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+    shutil.copy2(origen, destino)
+    return destino
 
 
 def run_migration_once(version: str, import_path: str, func_name: str = "run_migration") -> None:

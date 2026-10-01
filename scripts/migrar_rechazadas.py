@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
-"""Migra las llantas RECHAZADAS de la re-migración (v2.8.45) con tratamiento especial.
+﻿# -*- coding: utf-8 -*-
+"""Migra las llantas RECHAZADAS de la re-migraciÃ³n (v2.8.45) con tratamiento especial.
 
 Lee 'llantas no migradas.csv' (generado por migrar_remigracion_dbf.py) e inserta
-cada llanta terminando en estado RECHAZADA / ubicación CLIENTE (válido):
-  - Las 67 con ubicación legacy E (PRODUCCION): historial PLANTA -> RECHAZADA -> CLIENTE
-  - Las 12 con ubicación legacy C (CLIENTE): estado RECHAZADA conservando CLIENTE
+cada llanta terminando en estado RECHAZADA / ubicaciÃ³n CLIENTE (vÃ¡lido):
+  - Las 67 con ubicaciÃ³n legacy E (PRODUCCION): historial PLANTA -> RECHAZADA -> CLIENTE
+  - Las 12 con ubicaciÃ³n legacy C (CLIENTE): estado RECHAZADA conservando CLIENTE
 
 Requiere los DBF en C:\\Users\\andre\\OneDrive\\Escritorio\\DELCA\\
 Uso: python scripts/migrar_rechazadas.py
@@ -25,6 +25,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIGEN = os.path.dirname(PROJECT_ROOT)
 DB = os.path.join(PROJECT_ROOT, "delca.db")
 BACKUP_DIR = os.path.join(PROJECT_ROOT, "backups", "migracion")
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+from scripts.migration_utils import backup_seguro
 CSV_PATH = os.path.join(ORIGEN, "llantas no migradas.csv")
 TIPO_DISENO_DEFECTO = "MIXTO"
 
@@ -68,7 +72,7 @@ def main() -> None:
     os.makedirs(BACKUP_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup = os.path.join(BACKUP_DIR, f"delca_pre_rechazadas_{ts}.db")
-    shutil.copy2(DB, backup)
+    backup_seguro(DB, backup)
     print(f"[BACKUP] {backup}")
 
     rechazadas = []

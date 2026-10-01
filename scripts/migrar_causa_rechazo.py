@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
-"""Migración: agrega la columna causa_rechazo_id a la tabla llantas.
+﻿# -*- coding: utf-8 -*-
+"""MigraciÃ³n: agrega la columna causa_rechazo_id a la tabla llantas.
 
-Especificación: ESPECIFICACIONES_DELCA_v2.1.docx (sección 5.1) — la llanta
-guarda la causa de rechazo de inspección (obligatoria cuando estado = RECHAZADA).
+EspecificaciÃ³n: ESPECIFICACIONES_DELCA_v2.1.docx (secciÃ³n 5.1) â€” la llanta
+guarda la causa de rechazo de inspecciÃ³n (obligatoria cuando estado = RECHAZADA).
 
 - Crea un backup de la BD antes de modificar.
 - Agrega la columna solo si no existe (idempotente).
-- Verifica que la tabla causas_rechazo esté poblada.
+- Verifica que la tabla causas_rechazo estÃ© poblada.
 """
 import os
 import shutil
@@ -20,6 +20,10 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(BASE, "delca.db")
 BACKUP_DIR = os.path.join(BASE, "backups", "migracion")
 
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
+from scripts.migration_utils import backup_seguro
+
 COLUMNA = "causa_rechazo_id"
 
 
@@ -32,7 +36,7 @@ def main() -> None:
     os.makedirs(BACKUP_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup = os.path.join(BACKUP_DIR, f"delca_backup_{ts}.db")
-    shutil.copy2(DB, backup)
+    backup_seguro(DB, backup)
     print(f"Backup creado: {backup}")
 
     con = sqlite3.connect(DB)
@@ -43,12 +47,12 @@ def main() -> None:
         ).fetchone()[0]
         print(f"causas_rechazo: {n_causas} registros")
         if n_causas == 0:
-            print("ADVERTENCIA: la tabla causas_rechazo está vacía.")
+            print("ADVERTENCIA: la tabla causas_rechazo estÃ¡ vacÃ­a.")
 
         # 3) Agregar columna si no existe
         cols = [r[1] for r in con.execute("PRAGMA table_info(llantas)").fetchall()]
         if COLUMNA in cols:
-            print(f"La columna '{COLUMNA}' ya existe — no se modifica nada.")
+            print(f"La columna '{COLUMNA}' ya existe â€” no se modifica nada.")
         else:
             con.execute(
                 f"ALTER TABLE llantas ADD COLUMN {COLUMNA} INTEGER "
@@ -60,7 +64,7 @@ def main() -> None:
         # 4) Verificar estado final
         cols = [r[1] for r in con.execute("PRAGMA table_info(llantas)").fetchall()]
         print("Columnas llantas:", cols)
-        print("MIGRACIÓN OK")
+        print("MIGRACIÃ“N OK")
     finally:
         con.close()
 

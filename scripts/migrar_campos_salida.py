@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
-"""Migración: agrega fecha_salida y doc_salida a la tabla llantas.
+﻿# -*- coding: utf-8 -*-
+"""MigraciÃ³n: agrega fecha_salida y doc_salida a la tabla llantas.
 
-Especificación: ESPECIFICACIONES_DELCA_v2.1.docx (sección 5.1) — la llanta
+EspecificaciÃ³n: ESPECIFICACIONES_DELCA_v2.1.docx (secciÃ³n 5.1) â€” la llanta
 registra la fecha de salida y el documento de salida (salidas por fecha).
 
 - Crea un backup de la BD antes de modificar.
@@ -19,6 +19,10 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(BASE, "delca.db")
 BACKUP_DIR = os.path.join(BASE, "backups", "migracion")
 
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
+from scripts.migration_utils import backup_seguro
+
 COLUMNAS = [
     ("fecha_salida", "DATETIME"),
     ("doc_salida", "VARCHAR(100)"),
@@ -33,7 +37,7 @@ def main() -> None:
     os.makedirs(BACKUP_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup = os.path.join(BACKUP_DIR, f"delca_backup_{ts}.db")
-    shutil.copy2(DB, backup)
+    backup_seguro(DB, backup)
     print(f"Backup creado: {backup}")
 
     con = sqlite3.connect(DB)
@@ -41,7 +45,7 @@ def main() -> None:
         cols = [r[1] for r in con.execute("PRAGMA table_info(llantas)").fetchall()]
         for nombre, tipo in COLUMNAS:
             if nombre in cols:
-                print(f"La columna '{nombre}' ya existe — sin cambios.")
+                print(f"La columna '{nombre}' ya existe â€” sin cambios.")
             else:
                 con.execute(f"ALTER TABLE llantas ADD COLUMN {nombre} {tipo}")
                 print(f"Columna '{nombre}' agregada a llantas.")
@@ -49,7 +53,7 @@ def main() -> None:
 
         cols = [r[1] for r in con.execute("PRAGMA table_info(llantas)").fetchall()]
         print("Columnas llantas:", cols)
-        print("MIGRACIÓN OK")
+        print("MIGRACIÃ“N OK")
     finally:
         con.close()
 

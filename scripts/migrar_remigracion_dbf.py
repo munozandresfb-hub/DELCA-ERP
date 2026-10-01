@@ -1,18 +1,18 @@
-# -*- coding: utf-8 -*-
-"""Migración v2.8.44 — Re-migración de datos nuevos desde MAE_PROD/MAE_CLIENTE/MAE_MARCA.
+﻿# -*- coding: utf-8 -*-
+"""MigraciÃ³n v2.8.44 â€” Re-migraciÃ³n de datos nuevos desde MAE_PROD/MAE_CLIENTE/MAE_MARCA.
 
-Agrega a DELCA las llantas y clientes que aún no existen (universo completo en
+Agrega a DELCA las llantas y clientes que aÃºn no existen (universo completo en
 los DBF: los registros ya migrados se saltan por TIQUETE2 / NIT).
 
 Reglas (mapeo exacto validado contra la BD):
   - Tiquete = TIQUETE2 (sin la "J"; el impreso en la llanta).
-  - ESTADO: '1'->REENCAUCHADA, '2'->APTA, '4'->REPARADA, '6'/vacío->PENDIENTE.
+  - ESTADO: '1'->REENCAUCHADA, '2'->APTA, '4'->REPARADA, '6'/vacÃ­o->PENDIENTE.
   - UBICACION: C/B/D->CLIENTE, E->PRODUCCION, P->PLANTA.
-  - Combinaciones inválidas R1-R6 -> no migran (CSV "llantas no migradas.csv").
+  - Combinaciones invÃ¡lidas R1-R6 -> no migran (CSV "llantas no migradas.csv").
   - Cliente por NIT (crea los clientes nuevos del MAE_CLIENTE).
-  - Marca/dimensión/diseño resueltos contra catálogos (crea faltantes parseables).
+  - Marca/dimensiÃ³n/diseÃ±o resueltos contra catÃ¡logos (crea faltantes parseables).
   - Costo/precio desde precios_producto (sin cobertura -> precio 1).
-  - Historiales iniciales (estado + ubicación) con la fecha de ingreso real.
+  - Historiales iniciales (estado + ubicaciÃ³n) con la fecha de ingreso real.
 
 Uso: python scripts/migrar_remigracion_dbf.py
 (requiere los DBF nuevos en C:\\Users\\andre\\OneDrive\\Escritorio\\DELCA\\)
@@ -33,6 +33,11 @@ ORIGEN = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 DB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "delca.db")
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backups", "migracion")
 CSV_RECHAZADAS = os.path.join(ORIGEN, "llantas no migradas.csv")
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+from scripts.migration_utils import backup_seguro
 
 MAP_ESTADO = {"1": "REENCAUCHADA", "2": "APTA", "4": "REPARADA", "6": "PENDIENTE", "": "PENDIENTE"}
 MAP_UBICACION = {"C": "CLIENTE", "B": "CLIENTE", "D": "CLIENTE", "E": "PRODUCCION", "P": "PLANTA"}
@@ -83,7 +88,7 @@ def main() -> None:
     os.makedirs(BACKUP_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup = os.path.join(BACKUP_DIR, f"delca_pre_remigracion_{ts}.db")
-    shutil.copy2(DB, backup)
+    backup_seguro(DB, backup)
     print(f"[BACKUP] {backup}")
 
     con = sqlite3.connect(DB)
