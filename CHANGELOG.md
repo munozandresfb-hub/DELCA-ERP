@@ -7,6 +7,16 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.49] — 2026-09-29 — Cambio de Ubicación: el texto de la llanta incluye el número de orden
+
+### Changed
+- **Planta → Cambio de Ubicación**: al ingresar el tiquete, el texto informativo de la llanta ahora muestra también el **número de orden** (con consecutivo): `Marca Dimensión — Orden: N — Estado: X — Ubicación: Y`
+
+### Verification
+- Texto verificado con llanta real (incluye "Orden: 2") ✓ · 199 tests · EXE recompilado
+
+---
+
 ## [2.8.48] — 2026-09-29 — Inspección Final admite REPARADA (último proceso de la cadena)
 
 ### Changed

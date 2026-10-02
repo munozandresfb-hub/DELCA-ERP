@@ -217,12 +217,14 @@ class _UbicacionRapidaDialog(QDialog):
             marca_text = llanta.marca_obj.nombre if llanta.marca_obj else (llanta.marca or "?")
             dimension_text = llanta.dimension_obj.display if llanta.dimension_obj else (llanta.dimension or "?")
             estado = llanta.estado or "PENDIENTE"
+            orden = formatear_orden(llanta.numero_orden, llanta.consecutivo) or "—"
             ubic_actual = "N/A"
             if ultima_ubicacion:
                 ubic_val = str(ultima_ubicacion.ubicacion)
                 ubic_actual = UBICACIONES_DISPLAY.get(ubic_val, ubic_val)
             self.info_label.setText(
-                f"  {marca_text} {dimension_text} — Estado: {estado} — "
+                f"  {marca_text} {dimension_text} — Orden: {orden} — "
+                f"Estado: {estado} — "
                 f"Ubicación: {ubic_actual}"
             )
             self.info_label.setStyleSheet("color: #2e7d32; font-size: 13px;")
