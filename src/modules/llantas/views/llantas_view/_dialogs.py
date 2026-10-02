@@ -1,5 +1,6 @@
-from PySide6.QtCore import QDate, Qt, QTimer
+from PySide6.QtCore import QDate, QEvent, Qt, QTimer
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QCompleter,
     QDateEdit,
@@ -552,6 +553,7 @@ class CambioRapidoDialog(QDialog):
         self.resize(380, 180)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -588,9 +590,6 @@ class CambioRapidoDialog(QDialog):
         layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
-        self.guardar_btn = QPushButton("Cambiar")
-        self.guardar_btn.clicked.connect(self._cambiar_y_cerrar)
-        self.guardar_btn.setEnabled(False)
 
         # Cambio Rápido: aplica la inspección y limpia para la siguiente llanta
         # sin cerrar el recuadro (proceso continuo para el usuario).
@@ -601,15 +600,33 @@ class CambioRapidoDialog(QDialog):
         )
         self.rapido_btn.clicked.connect(self._cambio_rapido_aplicar)
         self.rapido_btn.setEnabled(False)
+        self.rapido_btn.setAutoDefault(False)
 
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.clicked.connect(self.reject)
-        btn_layout.addWidget(self.guardar_btn)
+        cancelar_btn.setAutoDefault(False)
         btn_layout.addWidget(self.rapido_btn)
         btn_layout.addWidget(cancelar_btn)
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def eventFilter(self, obj, event) -> bool:
+        """Enter = Tab: salta al siguiente campo. En un botón, lo activa.
+
+        Mejora la experiencia: el usuario llena las secciones con Enter y, al
+        final del recorrido, llega al botón ⚡ Cambio Rápido (Enter lo activa).
+        Enter nunca cierra el formulario por accidente.
+        """
+        if (
+            event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            if isinstance(QApplication.focusWidget(), QPushButton):
+                return False  # Enter activa el botón con foco (⚡ / Cancelar)
+            self.focusNextChild()
+            return True  # consumido: no cierra ni activa botones por defecto
+        return super().eventFilter(obj, event)
 
     def _cargar_causas(self) -> None:
         """Carga las causas de rechazo del catálogo (código — descripción)."""
@@ -673,11 +690,6 @@ class CambioRapidoDialog(QDialog):
         QMessageBox.warning(self, "Error", msg)
         return False
 
-    def _cambiar_y_cerrar(self) -> None:
-        """Aplica el cambio y cierra el formulario."""
-        if self._aplicar_cambio():
-            self.accept()
-
     def _cambio_rapido_aplicar(self) -> None:
         """Aplica el cambio y limpia el formulario para la siguiente llanta
         (el recuadro permanece abierto — inspección continua)."""
@@ -686,7 +698,6 @@ class CambioRapidoDialog(QDialog):
             self.info_label.setText("")
             self.info_label.setStyleSheet("color: #666;")
             self.estado_combo.setEnabled(False)
-            self.guardar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.causa_combo.setCurrentText("")
             self.causa_combo.setEnabled(False)
@@ -698,7 +709,6 @@ class CambioRapidoDialog(QDialog):
         if not tiquete:
             self.info_label.setText("")
             self.estado_combo.setEnabled(False)
-            self.guardar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.causa_combo.setCurrentText("")
             self.causa_combo.setEnabled(False)
@@ -720,7 +730,6 @@ class CambioRapidoDialog(QDialog):
             self.info_label.setText("Error al buscar la llanta. Consulte el log.")
             self.info_label.setStyleSheet("color: #c62828;")
             self.estado_combo.setEnabled(False)
-            self.guardar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.causa_combo.setEnabled(False)
             return
@@ -734,14 +743,12 @@ class CambioRapidoDialog(QDialog):
             if idx >= 0:
                 self.estado_combo.setCurrentIndex(idx)
             self.estado_combo.setEnabled(True)
-            self.guardar_btn.setEnabled(True)
             self.rapido_btn.setEnabled(True)
             self._actualizar_estado_causa()
         else:
             self.info_label.setText("✗ Llanta no encontrada")
             self.info_label.setStyleSheet("color: #c62828;")
             self.estado_combo.setEnabled(False)
-            self.guardar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.causa_combo.setCurrentText("")
             self.causa_combo.setEnabled(False)

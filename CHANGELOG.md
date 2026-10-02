@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.50] — 2026-09-29 — Formularios ágiles: solo ⚡ Cambio Rápido + Cancelar y Enter = Tab
+
+### Changed
+- **Inspección Inicial, Inspección Final y Cambio de Ubicación**: se eliminó el botón principal (**Cambiar / Aplicar / Mover**) — quedan solo **"⚡ Cambio Rápido"** (aplica + limpia, sigue abierto) y **"Cancelar"** (cierra; no revierte lo ya aplicado)
+- **Enter = Tab**: al presionar Enter en un campo, el foco **salta a la siguiente sección** del formulario (no lo cierra ni activa botones por defecto). Al recorrer las secciones, el foco llega al botón **⚡ Cambio Rápido** (Enter lo activa → aplica + limpia → vuelve al tiquete). Enter en un botón lo activa normalmente
+- Mejor UX de trabajo continuo por tiquete; se eliminan los cierres accidentales con Enter
+
+### Verification
+- Los 3 formularios con solo `[⚡ Cambio Rápido, Cancelar]` ✓ · Enter navega sin cerrar el diálogo ✓ · 199 tests · EXE recompilado
+
+---
+
 ## [2.8.49] — 2026-09-29 — Cambio de Ubicación: el texto de la llanta incluye el número de orden
 
 ### Changed

@@ -1,4 +1,6 @@
+﻿from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QFormLayout,
@@ -50,6 +52,7 @@ class _InspeccionFinalDialog(QDialog):
         self.resize(460, 240)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -83,15 +86,6 @@ class _InspeccionFinalDialog(QDialog):
         layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
-        self.aplicar_btn = QPushButton("Aplicar")
-        self.aplicar_btn.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; font-size: 14px; "
-            "font-weight: bold; padding: 8px 20px; border-radius: 5px; border: none; }"
-            "QPushButton:hover { background-color: #229954; }"
-            "QPushButton:disabled { background-color: #bdc3c7; }"
-        )
-        self.aplicar_btn.clicked.connect(self._aplicar_y_cerrar)
-        self.aplicar_btn.setEnabled(False)
 
         # Cambio Rápido: aplica el veredicto y limpia para la siguiente llanta
         # sin cerrar el recuadro (inspección continua).
@@ -103,6 +97,7 @@ class _InspeccionFinalDialog(QDialog):
         )
         self.rapido_btn.clicked.connect(self._cambio_rapido_aplicar)
         self.rapido_btn.setEnabled(False)
+        self.rapido_btn.setAutoDefault(False)
 
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.setStyleSheet(
@@ -111,14 +106,26 @@ class _InspeccionFinalDialog(QDialog):
             "QPushButton:hover { background-color: #7f8c8d; }"
         )
         cancelar_btn.clicked.connect(self.reject)
+        cancelar_btn.setAutoDefault(False)
         btn_layout.addStretch()
-        btn_layout.addWidget(self.aplicar_btn)
         btn_layout.addWidget(self.rapido_btn)
         btn_layout.addWidget(cancelar_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def eventFilter(self, obj, event) -> bool:
+        """Enter = Tab: salta al siguiente campo. En un botón, lo activa."""
+        if (
+            event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            if isinstance(QApplication.focusWidget(), QPushButton):
+                return False  # Enter activa el botón con foco (⚡ / Cancelar)
+            self.focusNextChild()
+            return True  # consumido: no cierra ni activa botones por defecto
+        return super().eventFilter(obj, event)
 
     def _aplicar_operacion(self) -> bool:
         """Aplica el veredicto de inspección final. True si fue OK."""
@@ -134,11 +141,6 @@ class _InspeccionFinalDialog(QDialog):
         QMessageBox.warning(self, "Error", msg)
         return False
 
-    def _aplicar_y_cerrar(self) -> None:
-        """Aplica el veredicto y cierra el formulario."""
-        if self._aplicar_operacion():
-            self.accept()
-
     def _cambio_rapido_aplicar(self) -> None:
         """Aplica el veredicto y limpia el formulario para la siguiente llanta
         (el recuadro permanece abierto — inspección continua)."""
@@ -147,7 +149,6 @@ class _InspeccionFinalDialog(QDialog):
             self.info_label.setText("")
             self.info_label.setStyleSheet("color: #666; font-size: 13px;")
             self.veredicto_combo.setEnabled(False)
-            self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
             self._llanta_encontrada = None
@@ -159,7 +160,6 @@ class _InspeccionFinalDialog(QDialog):
             self.info_label.setText("")
             self.veredicto_combo.clear()
             self.veredicto_combo.setEnabled(False)
-            self.aplicar_btn.setEnabled(False)
             self.nota_rep.setText("")
             self._llanta_encontrada = None
             return
@@ -181,7 +181,6 @@ class _InspeccionFinalDialog(QDialog):
             self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
             self.veredicto_combo.clear()
             self.veredicto_combo.setEnabled(False)
-            self.aplicar_btn.setEnabled(False)
             return
         self._llanta_encontrada = llanta
         if not llanta:
@@ -189,7 +188,6 @@ class _InspeccionFinalDialog(QDialog):
             self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
             self.veredicto_combo.clear()
             self.veredicto_combo.setEnabled(False)
-            self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self.nota_rep.setText("")
             return
@@ -221,7 +219,6 @@ class _InspeccionFinalDialog(QDialog):
             self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
             self.veredicto_combo.clear()
             self.veredicto_combo.setEnabled(False)
-            self.aplicar_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             return
 
@@ -247,7 +244,6 @@ class _InspeccionFinalDialog(QDialog):
             self.veredicto_combo.setCurrentIndex(0)
 
         self.veredicto_combo.setEnabled(True)
-        self.aplicar_btn.setEnabled(True)
         self.rapido_btn.setEnabled(True)
 
     @property
@@ -432,3 +428,4 @@ class ProduccionView(QWidget):
             self.table.setItem(row, 8, QTableWidgetItem(fecha))
 
         self._actualizar_paginacion()
+

@@ -1,7 +1,8 @@
 from typing import cast
 
-from PySide6.QtCore import QDate
+from PySide6.QtCore import QDate, QEvent, Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDateEdit,
     QDialog,
@@ -54,6 +55,7 @@ class _UbicacionRapidaDialog(QDialog):
         self.resize(420, 200)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -103,15 +105,6 @@ class _UbicacionRapidaDialog(QDialog):
         layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
-        self.mover_btn = QPushButton("Mover")
-        self.mover_btn.setStyleSheet(
-            "QPushButton { background-color: #3498db; color: white; font-size: 14px; "
-            "font-weight: bold; padding: 8px 20px; border-radius: 5px; border: none; }"
-            "QPushButton:hover { background-color: #2980b9; }"
-            "QPushButton:disabled { background-color: #bdc3c7; }"
-        )
-        self.mover_btn.clicked.connect(self._aplicar_y_cerrar)
-        self.mover_btn.setEnabled(False)
 
         # Cambio Rápido: aplica el movimiento y limpia para la siguiente llanta
         # sin cerrar el recuadro (cambio de ubicación continuo).
@@ -123,6 +116,7 @@ class _UbicacionRapidaDialog(QDialog):
         )
         self.rapido_btn.clicked.connect(self._cambio_rapido_aplicar)
         self.rapido_btn.setEnabled(False)
+        self.rapido_btn.setAutoDefault(False)
 
         cancelar_btn = QPushButton("Cancelar")
         cancelar_btn.setStyleSheet(
@@ -131,14 +125,26 @@ class _UbicacionRapidaDialog(QDialog):
             "QPushButton:hover { background-color: #7f8c8d; }"
         )
         cancelar_btn.clicked.connect(self.reject)
+        cancelar_btn.setAutoDefault(False)
         btn_layout.addStretch()
-        btn_layout.addWidget(self.mover_btn)
         btn_layout.addWidget(self.rapido_btn)
         btn_layout.addWidget(cancelar_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
+
+    def eventFilter(self, obj, event) -> bool:
+        """Enter = Tab: salta al siguiente campo. En un botón, lo activa."""
+        if (
+            event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            if isinstance(QApplication.focusWidget(), QPushButton):
+                return False  # Enter activa el botón con foco (⚡ / Cancelar)
+            self.focusNextChild()
+            return True  # consumido: no cierra ni activa botones por defecto
+        return super().eventFilter(obj, event)
 
     def _aplicar_operacion(self) -> bool:
         """Aplica el cambio de ubicación. True si fue OK."""
@@ -157,11 +163,6 @@ class _UbicacionRapidaDialog(QDialog):
         QMessageBox.warning(self, "Error", msg)
         return False
 
-    def _aplicar_y_cerrar(self) -> None:
-        """Aplica el movimiento y cierra el formulario."""
-        if self._aplicar_operacion():
-            self.accept()
-
     def _cambio_rapido_aplicar(self) -> None:
         """Aplica el movimiento y limpia el formulario para la siguiente llanta
         (el recuadro permanece abierto — cambio continuo).
@@ -174,7 +175,6 @@ class _UbicacionRapidaDialog(QDialog):
             self.info_label.setText("")
             self.info_label.setStyleSheet("color: #666; font-size: 13px;")
             self.ubicacion_combo.setEnabled(False)
-            self.mover_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             self._llanta_encontrada = None
             self.tiquete_input.setFocus()
@@ -184,7 +184,6 @@ class _UbicacionRapidaDialog(QDialog):
         if not tiquete:
             self.info_label.setText("")
             self.ubicacion_combo.setEnabled(False)
-            self.mover_btn.setEnabled(False)
             self._llanta_encontrada = None
             return
 
@@ -209,7 +208,6 @@ class _UbicacionRapidaDialog(QDialog):
             self.info_label.setText("Error al buscar la llanta. Consulte el log.")
             self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
             self.ubicacion_combo.setEnabled(False)
-            self.mover_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
             return
         self._llanta_encontrada = llanta
@@ -236,13 +234,11 @@ class _UbicacionRapidaDialog(QDialog):
             if idx >= 0:
                 self.ubicacion_combo.setCurrentIndex(idx)
             self.ubicacion_combo.setEnabled(True)
-            self.mover_btn.setEnabled(True)
             self.rapido_btn.setEnabled(True)
         else:
             self.info_label.setText("  Llanta no encontrada")
             self.info_label.setStyleSheet("color: #c62828; font-size: 13px;")
             self.ubicacion_combo.setEnabled(False)
-            self.mover_btn.setEnabled(False)
             self.rapido_btn.setEnabled(False)
 
     @property
