@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.52] — 2026-09-29 — Fix: Enter activa el botón ⚡ Cambio Rápido (y cualquier botón con foco)
+
+### Fixed
+- **Enter sobre un botón** ahora lo **activa** (⚡ Cambio Rápido, Guardar, etc.). Antes, `setAutoDefault(False)` (puesto para que Enter en un campo no dispare botones) también impedía activarlos con Enter estando sobre ellos
+- El mixin `EnterTabMixin` se instala a **nivel de aplicación** (captura los eventos de los campos y botones del formulario) y activa explícitamente el botón con foco (`click()`) al presionar Enter
+- Enter en un **campo** sigue navegando a la siguiente sección (no activa botones) — sin cambios en el resto de los formularios
+
+### Verification
+- Enter sobre ⚡ activa el botón en los 3 formularios (Inspección Inicial/Final, Cambio de Ubicación) ✓ · Enter en campo navega sin activar ✓ · 199 tests · EXE recompilado
+
+---
+
 ## [2.8.51] — 2026-09-29 — Enter = Tab en todos los formularios de ingreso (mixin reutilizable)
 
 ### Changed

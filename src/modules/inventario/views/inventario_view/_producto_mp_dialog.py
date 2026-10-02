@@ -1,4 +1,4 @@
-"""Diálogo para crear productos (materia prima o consumible) en el inventario."""
+﻿"""Diálogo para crear productos (materia prima o consumible) en el inventario."""
 
 from decimal import Decimal
 
@@ -132,7 +132,7 @@ class _CrearProductoDialog(EnterTabMixin, QDialog):
         layout.addRow(btn_box)
 
         self.setLayout(layout)
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def _cambiar_tipo(self, id_boton: int) -> None:
         """Actualiza la categoría activa según el botón de tipo seleccionado."""

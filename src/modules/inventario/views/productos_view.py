@@ -1,4 +1,4 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -40,7 +40,7 @@ class ProductoFormDialog(EnterTabMixin, QDialog):
         )
         self.resize(500, 450)
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
         if producto:
             self._cargar_datos(producto)
 
@@ -157,7 +157,7 @@ class MovimientoDialog(EnterTabMixin, QDialog):
         self.setWindowTitle(f"Movimiento - {producto.nombre}")
         self.resize(400, 300)
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -494,3 +494,4 @@ class ProductosView(QWidget):
             QMessageBox.information(self, "Éxito", msg)
         else:
             QMessageBox.warning(self, "Error", msg)
+

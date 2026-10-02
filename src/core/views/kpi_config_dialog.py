@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -18,7 +18,7 @@ class KpiConfigDialog(EnterTabMixin, QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.setWindowTitle("Configurar Punto de Equilibrio (KPI)")
         self.setMinimumWidth(400)
         self._build_ui()
@@ -84,3 +84,4 @@ class KpiConfigDialog(EnterTabMixin, QDialog):
             self.accept()
         else:
             QMessageBox.warning(self, "Error", msg)
+

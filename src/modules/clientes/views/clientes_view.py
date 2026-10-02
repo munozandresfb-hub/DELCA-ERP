@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -35,7 +35,7 @@ class ClienteFormDialog(EnterTabMixin, QDialog):
         )
         self.resize(450, 400)
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
         if cliente:
             self._cargar_datos(cliente)
 
@@ -403,3 +403,4 @@ class ClientesView(QWidget):
             QMessageBox.information(self, "Éxito", msg)
         else:
             QMessageBox.warning(self, "Error", msg)
+

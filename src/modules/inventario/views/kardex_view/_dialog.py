@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from decimal import Decimal
 from PySide6.QtCore import QDate
@@ -126,7 +126,7 @@ class _MovimientoFormDialog(EnterTabMixin, QDialog):
         # Cargar productos al final (referencia_input ya existe para el autocompletado)
         self.producto_combo.currentIndexChanged.connect(self._on_producto_cambiado)
         self._cargar_productos()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def _titulo_para_tipo(self) -> str:
         titulos = {
@@ -483,7 +483,7 @@ class _EditarMovimientoDialog(EnterTabMixin, QDialog):
         self.setWindowTitle(f"Editar producto del documento — {mov.get('sku', '')}")
         self.resize(420, 300)
         layout = QFormLayout()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
         # Producto (solo lectura)
         producto_lbl = QLabel(f"{mov.get('producto', '')} ({mov.get('sku', '')})")

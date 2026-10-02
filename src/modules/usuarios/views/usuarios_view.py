@@ -1,4 +1,4 @@
-"""User management view — CRUD for usuarios with RBAC role assignment."""
+﻿"""User management view — CRUD for usuarios with RBAC role assignment."""
 
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (
@@ -35,7 +35,7 @@ class PasswordResetDialog(EnterTabMixin, QDialog):
         self.resize(380, 200)
         self.new_password = None
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self):
         layout = QVBoxLayout()
@@ -117,7 +117,7 @@ class UsuarioFormDialog(EnterTabMixin, QDialog):
         self.resize(400, 300)
         self._roles = UsuarioService.get_roles()
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
         if usuario:
             self._cargar_datos(usuario)
 
@@ -563,3 +563,4 @@ class UsuariosView(QWidget):
                 )
         else:
             QMessageBox.warning(self, "Error", msg)
+

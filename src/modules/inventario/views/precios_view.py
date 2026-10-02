@@ -1,4 +1,4 @@
-"""Standalone CRUD dialog for PrecioProducto (costo + 3 precios por diseño+dimensión).
+﻿"""Standalone CRUD dialog for PrecioProducto (costo + 3 precios por diseño+dimensión).
 
 Accessible from facturación toolbar. Reuses PrecioProductoService.
 """
@@ -33,7 +33,7 @@ class _PrecioProductoFormDialog(EnterTabMixin, QDialog):
 
     def __init__(self, parent: QWidget | None = None, precio_id: int | None = None) -> None:
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self._precio_id = precio_id
         self.setWindowTitle("Editar Precio de Producto" if precio_id else "Nuevo Precio de Producto")
         self.resize(350, 300)
@@ -295,3 +295,4 @@ class PreciosDisenoDialog(QDialog):
             self._cargar_datos()
         else:
             QMessageBox.warning(self, "Error de importación", msg)
+

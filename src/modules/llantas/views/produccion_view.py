@@ -53,7 +53,7 @@ class _InspeccionFinalDialog(EnterTabMixin, QDialog):
         self.resize(460, 240)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -417,4 +417,5 @@ class ProduccionView(QWidget):
             self.table.setItem(row, 8, QTableWidgetItem(fecha))
 
         self._actualizar_paginacion()
+
 

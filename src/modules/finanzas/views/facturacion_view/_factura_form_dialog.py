@@ -1,4 +1,4 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 import logging
 
 from PySide6.QtWidgets import (
@@ -58,7 +58,7 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
         except Exception:
             self._idx_precios = {}
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

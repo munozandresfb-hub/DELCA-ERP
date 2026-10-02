@@ -1,4 +1,4 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -24,7 +24,7 @@ class PagoDialog(EnterTabMixin, QDialog):
         self, factura: Factura, parent: QWidget | None = None
     ) -> None:
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.factura = factura
         self.setWindowTitle(f"Registrar Pago - {factura.numero}")
         self.resize(400, 250)

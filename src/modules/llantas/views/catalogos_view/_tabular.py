@@ -1,4 +1,4 @@
-from PySide6.QtCore import QRegularExpression, Qt
+﻿from PySide6.QtCore import QRegularExpression, Qt
 from PySide6.QtGui import QIntValidator, QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QComboBox,
@@ -94,7 +94,7 @@ from src.core.widgets.enter_tab_mixin import EnterTabMixin
 class _MarcaForm(EnterTabMixin, QDialog):
     def __init__(self, parent=None, nombre: str = "", siglas: str = ""):
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.setWindowTitle("Marca")
         self.resize(350, 160)
         layout = QFormLayout(self)
@@ -129,7 +129,7 @@ class _DimensionForm(EnterTabMixin, QDialog):
         nueva: bool = False,
     ):
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.setWindowTitle("Dimension")
         self.resize(350, 200)
         layout = QFormLayout(self)
@@ -191,7 +191,7 @@ class _DimensionForm(EnterTabMixin, QDialog):
 class _DisenoForm(EnterTabMixin, QDialog):
     def __init__(self, parent=None, nombre: str = "", tipo: str = "MIXTO"):
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.setWindowTitle("Diseño de Banda")
         self.resize(350, 140)
         layout = QFormLayout(self)
@@ -226,7 +226,7 @@ class _DisenoForm(EnterTabMixin, QDialog):
 class _CausaForm(EnterTabMixin, QDialog):
     def __init__(self, parent=None, codigo: str = "", descripcion: str = ""):
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.setWindowTitle("Causa de Rechazo")
         self.resize(400, 200)
         layout = QFormLayout(self)

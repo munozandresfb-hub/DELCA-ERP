@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 
@@ -59,7 +59,7 @@ class RuleFormDialog(EnterTabMixin, QDialog):
                 id, nombre, tipo, nivel, activa, config_json.
         """
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self._regla_data = regla_data
         self._editing = regla_data is not None
         self._param_spins: dict[str, QSpinBox] = {}
@@ -206,3 +206,4 @@ class RuleFormDialog(EnterTabMixin, QDialog):
             self.nombre_input.setFocus()
             return
         self.accept()
+

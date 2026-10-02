@@ -1,4 +1,4 @@
-from PySide6.QtCore import QDate, QEvent, Qt, QTimer
+﻿from PySide6.QtCore import QDate, QEvent, Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -48,7 +48,7 @@ class LlantaFormDialog(EnterTabMixin, QDialog):
         self._clientes_info: dict[int, dict] = {}
         self._tiquete_duplicado = False
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
         if llanta:
             self._cargar_llanta(llanta)
 
@@ -555,7 +555,7 @@ class CambioRapidoDialog(EnterTabMixin, QDialog):
         self.resize(380, 180)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QLineEdit,
@@ -25,7 +25,7 @@ class PasswordChangeDialog(EnterTabMixin, QDialog):
         self.resize(380, 220)
         self.new_password = None
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self):
         layout = QVBoxLayout()
@@ -185,3 +185,4 @@ class LoginWindow(QWidget):
         # Abre maximizada: aprovecha toda la pantalla (opción elegida por el usuario)
         self.main_window.showMaximized()
         self.close()
+

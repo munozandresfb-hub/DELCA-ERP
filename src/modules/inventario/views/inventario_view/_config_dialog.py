@@ -1,4 +1,4 @@
-"""Diálogos de configuración: precios de producto y precios por cliente."""
+﻿"""Diálogos de configuración: precios de producto y precios por cliente."""
 
 from decimal import Decimal
 
@@ -32,7 +32,7 @@ class ConfiguracionInventarioDialog(EnterTabMixin, QDialog):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self.setWindowTitle("Precios y Configuración")
         self.resize(900, 600)
         layout = QVBoxLayout()
@@ -183,7 +183,7 @@ class _PrecioProductoFormDialog(EnterTabMixin, QDialog):
 
     def __init__(self, parent: QWidget | None = None, precio_id: int | None = None) -> None:
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self._precio_id = precio_id
         self.setWindowTitle("Editar Precio de Producto" if precio_id else "Nuevo Precio de Producto")
         self.resize(350, 300)
@@ -256,7 +256,7 @@ class _PrecioClienteFormDialog(EnterTabMixin, QDialog):
 
     def __init__(self, parent: QWidget | None = None, precio_id: int | None = None) -> None:
         super().__init__(parent)
-        self.installEventFilter(self)
+        self.install_enter_tab()
         self._precio_id = precio_id
         self.setWindowTitle("Editar Precio por Cliente" if precio_id else "Nuevo Precio por Cliente")
         self.resize(400, 250)

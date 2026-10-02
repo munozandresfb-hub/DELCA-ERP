@@ -1,4 +1,4 @@
-from typing import cast
+﻿from typing import cast
 
 from PySide6.QtCore import QDate, QEvent, Qt
 from PySide6.QtWidgets import (
@@ -56,7 +56,7 @@ class _UbicacionRapidaDialog(EnterTabMixin, QDialog):
         self.resize(420, 200)
         self._llanta_encontrada: Llanta | None = None
         self.setup_ui()
-        self.installEventFilter(self)
+        self.install_enter_tab()
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()
@@ -505,3 +505,4 @@ class PlantaView(QWidget):
         dialog = _UbicacionRapidaDialog(self)
         dialog.exec()
         self._cargar_datos()
+
