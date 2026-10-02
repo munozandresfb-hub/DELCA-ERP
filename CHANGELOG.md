@@ -7,6 +7,20 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.53] — 2026-10-02 — Unificación de dimensiones con sufijo (U, C) a su base sin sufijo
+
+### Changed
+- **310 llantas** reasignadas de dimensiones con sufijo a su base sin sufijo (mismo ancho/perfil/rin):
+  - `295/80R22.5U` → `295/80R22.5` (204) · `215/75R16C` → `215/75R16` (40) · `215/75R17.5U` → `215/75R17.5` (50) · `295/75R22.5U` → `295/75R22.5` (2) · `7.5R16U` → `7.5R16` (14)
+- Se conservan **todas** las características de la llanta (diseño, estado, ubicación, DOT, orden, cliente, tiquete, costo y precio) — solo cambia la dimensión
+- **Precios del catálogo**: los de la base se conservan; los del sufijo sin equivalente por diseño se **mueven** a la base (VFS → 215/75R16); los duplicados se eliminan. Las dimensiones con sufijo quedan eliminadas (sin referencias)
+- Script reproducible: `scripts/unificar_dimensiones_sufijo.py` (backup + aplica) · Backup: `backups/migracion/delca_pre_unificar_sufijos_*.db`
+
+### Verification
+- 0 dimensiones con sufijo restantes ✓ · integridad `ok` · precios base completos (VFS incluido) ✓ · 199 tests · EXE recompilado
+
+---
+
 ## [2.8.52] — 2026-09-29 — Fix: Enter activa el botón ⚡ Cambio Rápido (y cualquier botón con foco)
 
 ### Fixed
