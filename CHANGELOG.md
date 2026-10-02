@@ -7,6 +7,17 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.48] — 2026-09-29 — Inspección Final admite REPARADA (último proceso de la cadena)
+
+### Changed
+- **Producción → Inspección Final**: ahora admiten inspección final las llantas en **APTA, REENCAUCHADA, REPARADA y REPROCESO** (REPARADA se agrega — la inspección final es el último proceso de la cadena productiva)
+- **REPARADA** admite re-inspección → veredictos **REPROCESO / RECHAZADA** (igual que REENCAUCHADA)
+
+### Verification
+- Llanta REPARADA (tiquete 48, diseño REP) admitida con veredictos `[RECHAZADA, REPROCESO]` ✓ · 199 tests (3 nuevos) · EXE recompilado
+
+---
+
 ## [2.8.47] — 2026-09-29 — Módulo Llantas: búsqueda por número de orden + Limpiar regenera + columna Marca
 
 ### Changed

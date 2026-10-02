@@ -42,15 +42,15 @@ UBICACIONES_DISPLAY: dict[str, str] = {
 #                                              (inspección final: 4 veredictos)
 #   REPROCESO → REENCAUCHADA | REPARADA | RECHAZADA (inspección final repetida)
 #   REENCAUCHADA → REPROCESO | RECHAZADA       (re-inspección final de terminada)
+#   REPARADA   → REPROCESO | RECHAZADA        (re-inspección final de reparada)
 #   RECHAZADA → APTA                          (corrección de inspección inicial)
-#   REPARADA → terminal (solo cambia de ubicación)
 TRANSICIONES_VALIDAS: dict[str, set[str]] = {
     "PENDIENTE": {"APTA", "RECHAZADA"},
     "APTA": {"REENCAUCHADA", "REPARADA", "RECHAZADA", "REPROCESO"},
     "REPROCESO": {"REENCAUCHADA", "REPARADA", "RECHAZADA"},
     "REENCAUCHADA": {"REPROCESO", "RECHAZADA"},
+    "REPARADA": {"REPROCESO", "RECHAZADA"},
     "RECHAZADA": {"APTA"},
-    "REPARADA": set(),
 }
 
 # ── Veredictos de inspección final (opciones fijas en la UI) ──────
@@ -62,10 +62,11 @@ VEREDICTOS_INSPECCION_FINAL = (
 )
 
 # ── Estados admitidos en Inspección Final (producción) ────────────
-# La inspección final solo admite llantas con diseño de banda REP y en
-# alguno de estos estados (APTA: primera inspección; REENCAUCHADA/REPROCESO:
-# re-inspección). "REP" es el diseño (DISENO_REPARADA), no un estado.
-ESTADOS_INSPECCION_FINAL = ("APTA", "REENCAUCHADA", "REPROCESO")
+# La inspección final es el ÚLTIMO proceso de la cadena productiva: pasan por
+# ella APTA (primera inspección), REENCAUCHADA/REPARADA/REPROCESO
+# (re-inspección de terminadas o en reproceso). "REP" es el diseño
+# (DISENO_REPARADA), no un estado.
+ESTADOS_INSPECCION_FINAL = ("APTA", "REENCAUCHADA", "REPARADA", "REPROCESO")
 
 # ── Ubicaciones de cambio manual en Planta (opciones fijas en la UI) ──
 # El cambio de ubicación manual en el módulo Planta ofrece siempre estas

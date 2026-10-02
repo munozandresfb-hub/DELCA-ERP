@@ -113,10 +113,6 @@ class _LlantasReportView:
         self._rep_busqueda.setPlaceholderText("🔍 Buscar tiquete, marca o dimensión...")
         filters3.addWidget(self._rep_busqueda)
 
-        self._rep_btn_generar = QPushButton("🔍 Generar Reporte")
-        self._rep_btn_generar.clicked.connect(self._refresh_reporte_llantas)
-        filters3.addWidget(self._rep_btn_generar)
-
         btn_visualizar_rep = QPushButton("👁️ Visualizar")
         btn_visualizar_rep.clicked.connect(self._refresh_reporte_llantas)
         filters3.addWidget(btn_visualizar_rep)

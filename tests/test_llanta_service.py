@@ -324,6 +324,32 @@ class TestAplicarVeredicto:
         assert llanta_actual.estado == "REENCAUCHADA"
         assert llanta_actual.ubicacion_actual == "PLANTA"
 
+    def test_veredicto_reparada_re_inspeccion(self):
+        # REPARADA (terminada) admite re-inspección final → REPROCESO
+        llanta = _crear_llanta()
+        ok, _ = LlantaService.crear_diseno("REP", "MIXTO")
+        disenos = LlantaService.listar_disenos()
+        diseno_rep = next(d for d in disenos if d.nombre == "REP")
+        llanta.diseno_id = diseno_rep.id
+        LlantaService.aplicar_veredicto(llanta.id, "APTA")
+        LlantaService.aplicar_veredicto(llanta.id, "REPARADA")
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "REPROCESO")
+        assert ok
+        assert "PRODUCCION" in msg
+
+    def test_veredicto_reparada_a_rechazada(self):
+        # REPARADA re-inspección → RECHAZADA (con causa opcional)
+        llanta = _crear_llanta()
+        ok, _ = LlantaService.crear_diseno("REP2", "MIXTO")
+        disenos = LlantaService.listar_disenos()
+        diseno_rep = next(d for d in disenos if d.nombre == "REP2")
+        llanta.diseno_id = diseno_rep.id
+        LlantaService.aplicar_veredicto(llanta.id, "APTA")
+        LlantaService.aplicar_veredicto(llanta.id, "REPARADA")
+        ok, msg = LlantaService.aplicar_veredicto(llanta.id, "RECHAZADA")
+        assert ok
+        assert "PLANTA" in msg
+
 
 class TestReglaReparadaREP:
     """Regla R5: Reparada solo con diseño de banda REP."""
@@ -570,9 +596,9 @@ class TestMatriz:
         assert TRANSICIONES_VALIDAS["REPROCESO"] == {
             "REENCAUCHADA", "REPARADA", "RECHAZADA",
         }
-        # Re-inspección final de llantas reencauchadas → REPROCESO | RECHAZADA
+        # Re-inspección final de llantas terminadas → REPROCESO | RECHAZADA
         assert TRANSICIONES_VALIDAS["REENCAUCHADA"] == {"REPROCESO", "RECHAZADA"}
-        assert TRANSICIONES_VALIDAS["REPARADA"] == set()
+        assert TRANSICIONES_VALIDAS["REPARADA"] == {"REPROCESO", "RECHAZADA"}
         # Corrección de inspección inicial: RECHAZADA puede pasar a APTA
         assert TRANSICIONES_VALIDAS["RECHAZADA"] == {"APTA"}
 

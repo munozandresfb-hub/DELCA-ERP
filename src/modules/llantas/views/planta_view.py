@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -289,19 +290,6 @@ class PlantaView(QWidget):
 
         # ── Filter row ─────────────────────────────────────────────────
         filter_row = QHBoxLayout()
-        filter_row.addWidget(QLabel("Ubicación:"))
-
-        self.ubicacion_filter = QComboBox()
-        self.ubicacion_filter.addItem("Todas", "")
-        for u in UBICACIONES_PLANTA:
-            display = UBICACIONES_DISPLAY.get(u, u)
-            self.ubicacion_filter.addItem(display, u)
-        self.ubicacion_filter.currentIndexChanged.connect(self._filtrar)
-        self.ubicacion_filter.setStyleSheet(
-            "QComboBox { font-size: 14px; padding: 4px 8px; border: 1px solid #ccc; "
-            "border-radius: 4px; min-width: 200px; }"
-        )
-        filter_row.addWidget(self.ubicacion_filter)
         filter_row.addStretch()
 
         refresh_btn = QPushButton("Actualizar")
@@ -317,17 +305,6 @@ class PlantaView(QWidget):
 
         # ── Move controls ──────────────────────────────────────────────
         move_row = QHBoxLayout()
-        move_row.addWidget(QLabel("Mover a:"))
-
-        self.ubicacion_combo = QComboBox()
-        for u in UBICACIONES_PLANTA:
-            display = UBICACIONES_DISPLAY.get(u, u)
-            self.ubicacion_combo.addItem(display, u)
-        self.ubicacion_combo.setStyleSheet(
-            "QComboBox { font-size: 14px; padding: 4px 8px; border: 1px solid #ccc; "
-            "border-radius: 4px; min-width: 200px; }"
-        )
-        move_row.addWidget(self.ubicacion_combo)
 
         mover_btn = QPushButton("Mover")
         mover_btn.setStyleSheet(
@@ -413,30 +390,6 @@ class PlantaView(QWidget):
             f"Mostrando {desde}–{hasta} de {vm.total} llantas "
             f"(página {vm.pagina + 1})"
         )
-
-    def _filtrar(self) -> None:
-        self.viewmodel.cargar_llantas()
-        ubicacion = self.ubicacion_filter.currentData()
-        if ubicacion:
-            # Filtrar por ubicación SIN cargar todo: busca solo en la página
-            # actual por defecto (el filtro de estado/ubicación completo se
-            # puede afinar con la búsqueda del módulo Llantas).
-            ids_pagina = {l.id for l in self.viewmodel.llantas}
-            with get_session() as session:
-                ids_con_ubicacion = (
-                    session.query(UbicacionLlanta.llanta_id)
-                    .filter(
-                        UbicacionLlanta.ubicacion == ubicacion,
-                        UbicacionLlanta.llanta_id.in_(ids_pagina),
-                    )
-                    .distinct()
-                    .all()
-                )
-                ids = {r[0] for r in ids_con_ubicacion}
-            llantas = [l for l in self.viewmodel.llantas if l.id in ids]
-        else:
-            llantas = self.viewmodel.llantas
-        self._poblar_tabla(llantas)
 
     def _poblar_tabla(
         self, llantas: list | None = None
@@ -534,7 +487,20 @@ class PlantaView(QWidget):
                 return
             llanta_id = llanta.id
 
-        ubicacion = self.ubicacion_combo.currentData()
+        # Selección del destino en un mini-diálogo (misma lógica de
+        # mover_ubicacion; solo cambia el origen del valor).
+        opciones = {UBICACIONES_DISPLAY.get(u, u): u for u in UBICACIONES_PLANTA}
+        display, ok = QInputDialog.getItem(
+            self,
+            "Mover a",
+            "Seleccione la ubicación de destino:",
+            list(opciones.keys()),
+            0,
+            False,
+        )
+        if not ok:
+            return
+        ubicacion = opciones[display]
 
         ok, msg = self.viewmodel.mover_ubicacion(llanta_id, ubicacion)
         if ok:
