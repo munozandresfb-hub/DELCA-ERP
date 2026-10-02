@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.database.engine import get_session
 from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.finanzas.services.factura_service import FacturaService
@@ -33,7 +34,7 @@ from src.modules.llantas.services.llanta_service._core import formatear_tiquete
 logger = logging.getLogger("delca.views")
 
 
-class FacturaFormDialog(QDialog):
+class FacturaFormDialog(EnterTabMixin, QDialog):
     """Dialog for creating a new invoice from billed tires.
 
     One or more tires can be added; each line pre-fills its price from the
@@ -53,12 +54,11 @@ class FacturaFormDialog(QDialog):
         # Índice de precios del catálogo (rápido) — las llantas del cliente se
         # cargan bajo demanda en el diálogo de selección (formulario ágil).
         try:
-            with get_session() as s:
-                self._idx_precios: dict[tuple[int, int], dict] = indice_precios(s)
-        except Exception as e:
-            logger.error("Error cargando índice de precios: %s", e, exc_info=True)
+            self._idx_precios: dict[tuple[int, int], dict] = indice_precios(get_session().__enter__())
+        except Exception:
             self._idx_precios = {}
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

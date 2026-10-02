@@ -13,16 +13,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.finanzas.models.factura_model import Factura
 
 
-class PagoDialog(QDialog):
+class PagoDialog(EnterTabMixin, QDialog):
     """Dialog for registering a payment against an invoice."""
 
     def __init__(
         self, factura: Factura, parent: QWidget | None = None
     ) -> None:
         super().__init__(parent)
+        self.installEventFilter(self)
         self.factura = factura
         self.setWindowTitle(f"Registrar Pago - {factura.numero}")
         self.resize(400, 250)

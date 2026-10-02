@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.database.engine import get_session
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.models.ubicacion_llanta_model import UbicacionLlanta
@@ -41,7 +42,7 @@ from sqlalchemy import func as sa_func
 import logging
 
 logger = logging.getLogger("delca.views")
-class _UbicacionRapidaDialog(QDialog):
+class _UbicacionRapidaDialog(EnterTabMixin, QDialog):
     """Dialog to quickly change tire location by entering code.
 
     Ofrece siempre las opciones fijas de cambio manual: Cliente y Planta.
@@ -133,18 +134,6 @@ class _UbicacionRapidaDialog(QDialog):
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
-
-    def eventFilter(self, obj, event) -> bool:
-        """Enter = Tab: salta al siguiente campo. En un botón, lo activa."""
-        if (
-            event.type() == QEvent.Type.KeyPress
-            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
-        ):
-            if isinstance(QApplication.focusWidget(), QPushButton):
-                return False  # Enter activa el botón con foco (⚡ / Cancelar)
-            self.focusNextChild()
-            return True  # consumido: no cierra ni activa botones por defecto
-        return super().eventFilter(obj, event)
 
     def _aplicar_operacion(self) -> bool:
         """Aplica el cambio de ubicación. True si fue OK."""

@@ -9,14 +9,16 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.core.services.kpi_service import KpiService
 
 
-class KpiConfigDialog(QDialog):
+class KpiConfigDialog(EnterTabMixin, QDialog):
     """Admin dialog to configure break-even (punto de equilibrio) values."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.installEventFilter(self)
         self.setWindowTitle("Configurar Punto de Equilibrio (KPI)")
         self.setMinimumWidth(400)
         self._build_ui()

@@ -20,7 +20,10 @@ from PySide6.QtWidgets import (
 )
 
 
-class RuleFormDialog(QDialog):
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
+
+
+class RuleFormDialog(EnterTabMixin, QDialog):
     """Dialog for creating or editing an automation rule.
 
     Shows dynamic parameter fields based on the selected rule type.
@@ -56,6 +59,7 @@ class RuleFormDialog(QDialog):
                 id, nombre, tipo, nivel, activa, config_json.
         """
         super().__init__(parent)
+        self.installEventFilter(self)
         self._regla_data = regla_data
         self._editing = regla_data is not None
         self._param_spins: dict[str, QSpinBox] = {}

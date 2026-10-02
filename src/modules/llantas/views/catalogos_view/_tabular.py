@@ -88,9 +88,13 @@ class _TablaCatalogo(QWidget):
         return item.data(256) if item else None
 
 
-class _MarcaForm(QDialog):
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
+
+
+class _MarcaForm(EnterTabMixin, QDialog):
     def __init__(self, parent=None, nombre: str = "", siglas: str = ""):
         super().__init__(parent)
+        self.installEventFilter(self)
         self.setWindowTitle("Marca")
         self.resize(350, 160)
         layout = QFormLayout(self)
@@ -115,7 +119,7 @@ class _MarcaForm(QDialog):
         return self.input_siglas.text().strip()
 
 
-class _DimensionForm(QDialog):
+class _DimensionForm(EnterTabMixin, QDialog):
     def __init__(
         self,
         parent=None,
@@ -125,6 +129,7 @@ class _DimensionForm(QDialog):
         nueva: bool = False,
     ):
         super().__init__(parent)
+        self.installEventFilter(self)
         self.setWindowTitle("Dimension")
         self.resize(350, 200)
         layout = QFormLayout(self)
@@ -183,9 +188,10 @@ class _DimensionForm(QDialog):
         return float(text) if "." in text else int(text)
 
 
-class _DisenoForm(QDialog):
+class _DisenoForm(EnterTabMixin, QDialog):
     def __init__(self, parent=None, nombre: str = "", tipo: str = "MIXTO"):
         super().__init__(parent)
+        self.installEventFilter(self)
         self.setWindowTitle("Diseño de Banda")
         self.resize(350, 140)
         layout = QFormLayout(self)
@@ -217,9 +223,10 @@ class _DisenoForm(QDialog):
         return self.tipo_combo.currentData()
 
 
-class _CausaForm(QDialog):
+class _CausaForm(EnterTabMixin, QDialog):
     def __init__(self, parent=None, codigo: str = "", descripcion: str = ""):
         super().__init__(parent)
+        self.installEventFilter(self)
         self.setWindowTitle("Causa de Rechazo")
         self.resize(400, 200)
         layout = QFormLayout(self)

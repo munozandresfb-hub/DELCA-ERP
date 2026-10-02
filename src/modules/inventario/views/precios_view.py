@@ -23,15 +23,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.inventario.services.precio_producto_service import PrecioProductoService
 from src.modules.llantas.services.llanta_service import LlantaService
 
 
-class _PrecioProductoFormDialog(QDialog):
+class _PrecioProductoFormDialog(EnterTabMixin, QDialog):
     """Form for creating/editing a single PrecioProducto entry."""
 
     def __init__(self, parent: QWidget | None = None, precio_id: int | None = None) -> None:
         super().__init__(parent)
+        self.installEventFilter(self)
         self._precio_id = precio_id
         self.setWindowTitle("Editar Precio de Producto" if precio_id else "Nuevo Precio de Producto")
         self.resize(350, 300)

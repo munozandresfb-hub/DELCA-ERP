@@ -18,13 +18,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.usuarios.services.usuario_service import UsuarioService
 
 
 import logging
 
 logger = logging.getLogger("delca.views")
-class PasswordResetDialog(QDialog):
+class PasswordResetDialog(EnterTabMixin, QDialog):
     """Dialog to reset a user's password."""
 
     def __init__(self, username: str, parent=None):
@@ -34,6 +35,7 @@ class PasswordResetDialog(QDialog):
         self.resize(380, 200)
         self.new_password = None
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self):
         layout = QVBoxLayout()
@@ -99,7 +101,7 @@ class PasswordResetDialog(QDialog):
         self.accept()
 
 
-class UsuarioFormDialog(QDialog):
+class UsuarioFormDialog(EnterTabMixin, QDialog):
     """Dialog for creating or editing a user."""
 
     def __init__(
@@ -115,6 +117,7 @@ class UsuarioFormDialog(QDialog):
         self.resize(400, 300)
         self._roles = UsuarioService.get_roles()
         self.setup_ui()
+        self.installEventFilter(self)
         if usuario:
             self._cargar_datos(usuario)
 

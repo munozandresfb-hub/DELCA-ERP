@@ -11,10 +11,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.usuarios.viewmodels.login_viewmodel import LoginViewModel
 
 
-class PasswordChangeDialog(QDialog):
+class PasswordChangeDialog(EnterTabMixin, QDialog):
     """Dialog to force the user to change an expired password."""
 
     def __init__(self, parent=None):
@@ -24,6 +25,7 @@ class PasswordChangeDialog(QDialog):
         self.resize(380, 220)
         self.new_password = None
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self):
         layout = QVBoxLayout()

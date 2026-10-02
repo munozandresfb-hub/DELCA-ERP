@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.clientes.models.cliente_model import Cliente
 from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.clientes.viewmodels.cliente_viewmodel import ClienteViewModel
@@ -21,7 +22,7 @@ from src.modules.clientes.viewmodels.cliente_viewmodel import ClienteViewModel
 import logging
 
 logger = logging.getLogger("delca.views")
-class ClienteFormDialog(QDialog):
+class ClienteFormDialog(EnterTabMixin, QDialog):
     """Dialog for creating or editing a client."""
 
     def __init__(
@@ -34,6 +35,7 @@ class ClienteFormDialog(QDialog):
         )
         self.resize(450, 400)
         self.setup_ui()
+        self.installEventFilter(self)
         if cliente:
             self._cargar_datos(cliente)
 

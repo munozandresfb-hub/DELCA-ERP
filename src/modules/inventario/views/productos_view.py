@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.inventario.models.producto_model import Producto
 from src.modules.inventario.services.producto_service import ProductoService
 
@@ -24,7 +25,7 @@ from src.modules.inventario.services.producto_service import ProductoService
 import logging
 
 logger = logging.getLogger("delca.views")
-class ProductoFormDialog(QDialog):
+class ProductoFormDialog(EnterTabMixin, QDialog):
     """Dialog for creating or editing a product."""
 
     def __init__(
@@ -39,6 +40,7 @@ class ProductoFormDialog(QDialog):
         )
         self.resize(500, 450)
         self.setup_ui()
+        self.installEventFilter(self)
         if producto:
             self._cargar_datos(producto)
 
@@ -144,7 +146,7 @@ class ProductoFormDialog(QDialog):
             return Decimal("0")
 
 
-class MovimientoDialog(QDialog):
+class MovimientoDialog(EnterTabMixin, QDialog):
     """Dialog for registering an inventory movement."""
 
     def __init__(
@@ -155,6 +157,7 @@ class MovimientoDialog(QDialog):
         self.setWindowTitle(f"Movimiento - {producto.nombre}")
         self.resize(400, 300)
         self.setup_ui()
+        self.installEventFilter(self)
 
     def setup_ui(self) -> None:
         layout = QVBoxLayout()

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.clientes.services.cliente_service import ClienteService
 from src.modules.inventario.services.inventario_config_service import (
     InventarioConfigService,
@@ -26,11 +27,12 @@ from src.modules.inventario.views.inventario_view._widgets import _CrudTableWidg
 from src.modules.llantas.services.llanta_service import LlantaService
 
 
-class ConfiguracionInventarioDialog(QDialog):
+class ConfiguracionInventarioDialog(EnterTabMixin, QDialog):
     """Configuration dialog for precios de producto and precios por cliente."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.installEventFilter(self)
         self.setWindowTitle("Precios y Configuración")
         self.resize(900, 600)
         layout = QVBoxLayout()
@@ -176,11 +178,12 @@ class ConfiguracionInventarioDialog(QDialog):
 
 # ── Form dialogs for config ─────────────────────────────────────────
 
-class _PrecioProductoFormDialog(QDialog):
+class _PrecioProductoFormDialog(EnterTabMixin, QDialog):
     """Form for editing a master price entry (costo + 3 pricing tiers per design+dimension)."""
 
     def __init__(self, parent: QWidget | None = None, precio_id: int | None = None) -> None:
         super().__init__(parent)
+        self.installEventFilter(self)
         self._precio_id = precio_id
         self.setWindowTitle("Editar Precio de Producto" if precio_id else "Nuevo Precio de Producto")
         self.resize(350, 300)
@@ -248,11 +251,12 @@ class _PrecioProductoFormDialog(QDialog):
         self.accept()
 
 
-class _PrecioClienteFormDialog(QDialog):
+class _PrecioClienteFormDialog(EnterTabMixin, QDialog):
     """Form for editing a per-client price override."""
 
     def __init__(self, parent: QWidget | None = None, precio_id: int | None = None) -> None:
         super().__init__(parent)
+        self.installEventFilter(self)
         self._precio_id = precio_id
         self.setWindowTitle("Editar Precio por Cliente" if precio_id else "Nuevo Precio por Cliente")
         self.resize(400, 250)

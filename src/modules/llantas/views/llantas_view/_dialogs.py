@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 import logging
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.database.engine import get_session
 from src.modules.clientes.repositories.cliente_repository import ClienteRepository
 from src.modules.llantas.models.llanta_model import Llanta
@@ -29,7 +30,7 @@ from src.modules.llantas.services.llanta_service import ESTADOS_PROCESO, LlantaS
 logger = logging.getLogger("delca.views")
 
 
-class LlantaFormDialog(QDialog):
+class LlantaFormDialog(EnterTabMixin, QDialog):
     """Dialog for registering a new tire or editing an existing one.
 
     Modo edición (llanta != None): carga los datos de la llanta y BLOQUEA el
@@ -47,6 +48,7 @@ class LlantaFormDialog(QDialog):
         self._clientes_info: dict[int, dict] = {}
         self._tiquete_duplicado = False
         self.setup_ui()
+        self.installEventFilter(self)
         if llanta:
             self._cargar_llanta(llanta)
 
@@ -544,7 +546,7 @@ class HistorialDialog(QDialog):
         self.setLayout(layout)
 
 
-class CambioRapidoDialog(QDialog):
+class CambioRapidoDialog(EnterTabMixin, QDialog):
     """Dialog for quick state change by entering tire code directly."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -610,23 +612,6 @@ class CambioRapidoDialog(QDialog):
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
-
-    def eventFilter(self, obj, event) -> bool:
-        """Enter = Tab: salta al siguiente campo. En un botón, lo activa.
-
-        Mejora la experiencia: el usuario llena las secciones con Enter y, al
-        final del recorrido, llega al botón ⚡ Cambio Rápido (Enter lo activa).
-        Enter nunca cierra el formulario por accidente.
-        """
-        if (
-            event.type() == QEvent.Type.KeyPress
-            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
-        ):
-            if isinstance(QApplication.focusWidget(), QPushButton):
-                return False  # Enter activa el botón con foco (⚡ / Cancelar)
-            self.focusNextChild()
-            return True  # consumido: no cierra ni activa botones por defecto
-        return super().eventFilter(obj, event)
 
     def _cargar_causas(self) -> None:
         """Carga las causas de rechazo del catálogo (código — descripción)."""

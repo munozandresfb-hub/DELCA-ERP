@@ -20,10 +20,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.inventario.services.producto_service import ProductoService
 
 
-class _MovimientoFormDialog(QDialog):
+class _MovimientoFormDialog(EnterTabMixin, QDialog):
     """Form to register a single inventory movement (ENTRADA/SALIDA/AJUSTE).
 
     Cada movimiento registra Cantidad Und (stock) y Cantidad KG (stock_kg).
@@ -125,6 +126,7 @@ class _MovimientoFormDialog(QDialog):
         # Cargar productos al final (referencia_input ya existe para el autocompletado)
         self.producto_combo.currentIndexChanged.connect(self._on_producto_cambiado)
         self._cargar_productos()
+        self.installEventFilter(self)
 
     def _titulo_para_tipo(self) -> str:
         titulos = {
@@ -472,7 +474,7 @@ class _DetalleDocumentoDialog(QDialog):
             self._cargar(self._documento_id)
 
 
-class _EditarMovimientoDialog(QDialog):
+class _EditarMovimientoDialog(EnterTabMixin, QDialog):
     """Permite editar o eliminar un producto (movimiento) dentro de un documento."""
 
     def __init__(self, mov: dict, parent: QWidget | None = None) -> None:
@@ -481,6 +483,7 @@ class _EditarMovimientoDialog(QDialog):
         self.setWindowTitle(f"Editar producto del documento — {mov.get('sku', '')}")
         self.resize(420, 300)
         layout = QFormLayout()
+        self.installEventFilter(self)
 
         # Producto (solo lectura)
         producto_lbl = QLabel(f"{mov.get('producto', '')} ({mov.get('sku', '')})")

@@ -7,6 +7,19 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.51] — 2026-09-29 — Enter = Tab en todos los formularios de ingreso (mixin reutilizable)
+
+### Changed
+- **Enter = Tab** aplicado a ~21 formularios de ingreso de datos: Cliente, Llanta, Factura, Producto, Movimientos MP (Ingreso/Salida/Ajuste), Editar movimiento, Precios (producto y cliente), Usuarios, Reset/Cambio de contraseña, Reglas de automatización, Configuración de inventario/KPIs, Catálogos (marca/dimensión/diseño/causa) y Registrar Pago
+- **Mixin reutilizable** `src/core/widgets/enter_tab_mixin.py` (un solo código): Enter en un campo salta a la siguiente sección; Enter en un botón lo activa; Enter nunca cierra el formulario por accidente
+- Los 3 formularios de v2.8.50 (Inspección Inicial/Final, Cambio de Ubicación) refactorizados al mixin común
+- Los formularios de solo lectura/selección (Historial, Abonos, Documentos, KPIs, Picker, Búsqueda Avanzada) quedan fuera a propósito
+
+### Verification
+- Enter=Tab verificado (no cierra) en Cliente, Llanta, Factura, Producto, Catálogo, Pago ✓ · 199 tests · EXE recompilado
+
+---
+
 ## [2.8.50] — 2026-09-29 — Formularios ágiles: solo ⚡ Cambio Rápido + Cancelar y Enter = Tab
 
 ### Changed

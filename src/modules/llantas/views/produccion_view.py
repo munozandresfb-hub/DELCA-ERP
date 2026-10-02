@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.database.engine import get_session
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
@@ -38,7 +39,7 @@ from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
 import logging
 
 logger = logging.getLogger("delca.views")
-class _InspeccionFinalDialog(QDialog):
+class _InspeccionFinalDialog(EnterTabMixin, QDialog):
     """Dialog to apply final inspection quickly by entering the ticket number.
 
     Muestra la llanta encontrada y permite aplicar un veredicto de
@@ -114,18 +115,6 @@ class _InspeccionFinalDialog(QDialog):
         layout.addLayout(btn_layout)
 
         self.setLayout(layout)
-
-    def eventFilter(self, obj, event) -> bool:
-        """Enter = Tab: salta al siguiente campo. En un botón, lo activa."""
-        if (
-            event.type() == QEvent.Type.KeyPress
-            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
-        ):
-            if isinstance(QApplication.focusWidget(), QPushButton):
-                return False  # Enter activa el botón con foco (⚡ / Cancelar)
-            self.focusNextChild()
-            return True  # consumido: no cierra ni activa botones por defecto
-        return super().eventFilter(obj, event)
 
     def _aplicar_operacion(self) -> bool:
         """Aplica el veredicto de inspección final. True si fue OK."""

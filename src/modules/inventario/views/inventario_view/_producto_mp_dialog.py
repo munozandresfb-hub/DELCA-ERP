@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.core.widgets.enter_tab_mixin import EnterTabMixin
 from src.modules.inventario.services.producto_service import ProductoService
 
 # Estilo de los botones tipo pestaña (consistente con el QTabWidget de la vista)
@@ -38,7 +39,7 @@ QPushButton:checked {{
 """
 
 
-class _CrearProductoDialog(QDialog):
+class _CrearProductoDialog(EnterTabMixin, QDialog):
     """Rápido formulario para crear productos de materia prima o consumible.
 
     Permite seleccionar el tipo de producto con un click sobre el recuadro
@@ -131,6 +132,7 @@ class _CrearProductoDialog(QDialog):
         layout.addRow(btn_box)
 
         self.setLayout(layout)
+        self.installEventFilter(self)
 
     def _cambiar_tipo(self, id_boton: int) -> None:
         """Actualiza la categoría activa según el botón de tipo seleccionado."""
