@@ -14,6 +14,7 @@ class LlantaViewModel:
         self._filtro_cliente: int | None = None
         self._filtro_dimension: int | None = None
         self._filtro_diseno: int | None = None
+        self._filtro_marca: int | None = None
         self._filtro_ubicacion: str | None = None
         self._pagina: int = 0
         self._total: int = 0
@@ -61,6 +62,7 @@ class LlantaViewModel:
             or self._filtro_cliente is not None
             or self._filtro_dimension is not None
             or self._filtro_diseno is not None
+            or self._filtro_marca is not None
             or self._filtro_ubicacion
         ):
             self._llantas, self._total = LlantaService.buscar(
@@ -69,6 +71,7 @@ class LlantaViewModel:
                 cliente_id=self._filtro_cliente,
                 dimension_id=self._filtro_dimension,
                 diseno_id=self._filtro_diseno,
+                marca_id=self._filtro_marca,
                 ubicacion=self._filtro_ubicacion,
                 limite=self.PAGE_SIZE,
                 offset=offset,
@@ -95,6 +98,7 @@ class LlantaViewModel:
         cliente_id: int | None = None,
         dimension_id: int | None = None,
         diseno_id: int | None = None,
+        marca_id: int | None = None,
         estado: str | None = None,
         ubicacion: str | None = None,
     ) -> list[Llanta]:
@@ -102,6 +106,7 @@ class LlantaViewModel:
         self._filtro_cliente = cliente_id
         self._filtro_dimension = dimension_id
         self._filtro_diseno = diseno_id
+        self._filtro_marca = marca_id
         self._filtro_estado = estado
         self._filtro_ubicacion = ubicacion
         self._pagina = 0
@@ -113,6 +118,7 @@ class LlantaViewModel:
         self._filtro_cliente = None
         self._filtro_dimension = None
         self._filtro_diseno = None
+        self._filtro_marca = None
         self._filtro_estado = None
         self._filtro_ubicacion = None
         self._pagina = 0

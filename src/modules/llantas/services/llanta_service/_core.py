@@ -67,6 +67,7 @@ class _GestionLlantasMixin:
         cliente_id: int | None = None,
         dimension_id: int | None = None,
         diseno_id: int | None = None,
+        marca_id: int | None = None,
         ubicacion: str | None = None,
         limite: int | None = None,
         offset: int = 0,
@@ -74,7 +75,7 @@ class _GestionLlantasMixin:
         """Búsqueda con filtros combinables y paginación opcional.
 
         Acepta múltiples criterios a la vez (AND): término, estado, cliente,
-        dimensión, diseño y ubicación. Devuelve (llantas, total_registros).
+        dimensión, diseño, marca y ubicación. Devuelve (llantas, total).
         """
         with get_session() as session:
             query = session.query(Llanta)
@@ -104,6 +105,9 @@ class _GestionLlantasMixin:
 
             if diseno_id is not None:
                 query = query.filter(Llanta.diseno_id == diseno_id)
+
+            if marca_id is not None:
+                query = query.filter(Llanta.marca_id == marca_id)
 
             if ubicacion:
                 query = query.filter(Llanta.ubicacion_actual == ubicacion)

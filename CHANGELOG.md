@@ -7,6 +7,17 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.54] — 2026-10-02 — Búsqueda Avanzada: filtro por Marca (del casco)
+
+### Added
+- **Búsqueda Avanzada de Llantas**: nueva sección **"Marca"** (combo con todas las marcas del catálogo) — ahora se puede filtrar por **marca del casco**, combinable con los demás criterios (cliente, dimensión, diseño, estado, ubicación)
+- `LlantaService.buscar` ampliado con `marca_id` · `viewmodel.buscar_avanzada` y `limpiar_filtros_avanzados` incluyen la marca
+
+### Verification
+- Combo con 476 marcas ✓ · filtro por marca (ACENDA → 2 llantas) y combinado con estado ✓ · "Limpiar" incluye la marca ✓ · 200 tests (1 nuevo) · EXE recompilado
+
+---
+
 ## [2.8.53] — 2026-10-02 — Unificación de dimensiones con sufijo (U, C) a su base sin sufijo
 
 ### Changed

@@ -74,6 +74,14 @@ class BusquedaAvanzadaDialog(QDialog):
             self.diseno_combo.addItem(d.nombre, d.id)
         form.addRow("Diseño:", self.diseno_combo)
 
+        # Marca (del casco)
+        self.marca_combo = QComboBox()
+        self.marca_combo.setStyleSheet(estilo)
+        self.marca_combo.addItem("Todas las marcas", None)
+        for m in LlantaService.listar_marcas():
+            self.marca_combo.addItem(m.nombre, m.id)
+        form.addRow("Marca:", self.marca_combo)
+
         # Estado
         self.estado_combo = QComboBox()
         self.estado_combo.setStyleSheet(estilo)
@@ -117,6 +125,7 @@ class BusquedaAvanzadaDialog(QDialog):
             self.cliente_combo,
             self.dimension_combo,
             self.diseno_combo,
+            self.marca_combo,
             self.estado_combo,
             self.ubicacion_combo,
         ):
@@ -129,6 +138,7 @@ class BusquedaAvanzadaDialog(QDialog):
             "cliente_id": self.cliente_combo.currentData(),
             "dimension_id": self.dimension_combo.currentData(),
             "diseno_id": self.diseno_combo.currentData(),
+            "marca_id": self.marca_combo.currentData(),
             "estado": self.estado_combo.currentData(),
             "ubicacion": self.ubicacion_combo.currentData(),
         }

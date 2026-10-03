@@ -562,6 +562,16 @@ class TestBuscarAvanzada:
         res, total = LlantaService.buscar(ubicacion="CLIENTE")
         assert total == 0
 
+    def test_buscar_por_marca(self):
+        ok, _ = LlantaService.crear_marca("MICHELIN", "MCH")
+        assert ok
+        marca = LlantaService.listar_marcas()[0]
+        _crear_llanta(tiquete="TQ-M1", marca_id=marca.id)
+        _crear_llanta(tiquete="TQ-M2")
+        res, total = LlantaService.buscar(marca_id=marca.id)
+        assert total == 1
+        assert res[0].tiquete == "TQ-M1"
+
     def test_buscar_por_numero_orden(self):
         llanta = _crear_llanta(tiquete="TQ-ORD-1", numero_orden="7777", consecutivo="3")
         _crear_llanta(tiquete="TQ-ORD-2", numero_orden="8888", consecutivo="1")
