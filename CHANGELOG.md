@@ -7,6 +7,21 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.55] — 2026-10-03 — Inventario: nueva base real (conteo físico en planta) — Materia Prima + Consumibles
+
+### Changed
+- **Nueva base de inventario** desde `DELCA INVENTARIO. MIGRAR.xlsx` (conteo físico real en planta):
+  - **Materia Prima (81)**: UPSERT por código — stock/stock_kg fijados al conteo (rollos + kg), costo, mínimo y unidad actualizados
+  - **Consumibles (47)**: productos **creados** con nombre (y dimensión), unidad de salida (CAJAS), stock = Inventario Actual, stock_kg calculado (kg/caja × inventario) y mínimo — **código y costo quedan pendientes** (los completa el usuario en el sistema)
+  - **Ajuste de inventario**: 59 movimientos **AJUSTE** en el Kardex (fija stock al conteo, con diferencia y referencia `INVENTARIO_MANUAL`) — no suma, ajusta a la nueva base
+- Productos existentes **no listados** en el Excel (41) quedan sin tocar (se reportan)
+- Script reproducible: `scripts/actualizar_inventario_manual.py` (dry-run + backup) · Backup: `backups/migracion/delca_pre_inventario_manual_*.db`
+
+### Verification
+- Productos: 118 MATERIA_PRIMA + 47 CONSUMIBLE · movimientos AJUSTE 59 · integridad `ok` · 200 tests · EXE recompilado
+
+---
+
 ## [2.8.54] — 2026-10-02 — Búsqueda Avanzada: filtro por Marca (del casco)
 
 ### Added
