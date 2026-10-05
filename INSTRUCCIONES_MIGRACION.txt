@@ -5,22 +5,29 @@
 Esta carpeta (Programacion DELCA v2) esta lista para copiarse a otro
 computador. Al copiarla completa, TODO funciona en el nuevo PC.
 
+Existe tambien un paquete comprimido listo:
+    "DELCA ERP - PAQUETE MIGRACION.zip"   (en la carpeta DELCA)
+que contiene TODO lo necesario (codigo, base de datos, ejecutable,
+assets, scripts) SIN el entorno .venv (se recrea solo si se va a
+desarrollar). Se recomienda usarlo para el traslado.
+
 ----------------------------------------------------------
  PASOS EN EL NUEVO COMPUTADOR
 ----------------------------------------------------------
-1. Copiar la carpeta COMPLETA "Programacion DELCA v2"
-   (USB, disco, OneDrive, o git clone + delca.db) a cualquier
-   ubicacion del nuevo PC. No importa la ruta: el sistema es
-   PORTABLE (no usa rutas fijas).
+1. Llevar el paquete al nuevo PC (USB, disco, OneDrive) y
+   DESCOMPRIMIRLO en cualquier ubicacion (ej. C:\DELCA\).
 
-2. Ejecutar (doble clic) el archivo:
+   (Alternativa: copiar la carpeta COMPLETA "Programacion DELCA v2"
+   directamente. No importa la ruta: el sistema es PORTABLE).
+
+2. Abrir la carpeta descomprimida y ejecutar (doble clic):
        instalar_en_este_pc.bat
-   Esto crea en el ESCRITORIO del nuevo PC el acceso directo
-   "DELCA Iniciar 2" con el LOGO OFICIAL de DELCA, apuntando
-   al ejecutable compilado:  dist\DELCA ERP.exe
+   Esto crea en el ESCRITORIO el acceso directo "DELCA Iniciar 2"
+   con el LOGO OFICIAL de DELCA, apuntando a:  dist\DELCA ERP.exe
 
 3. Usar el acceso directo del escritorio para abrir DELCA ERP.
    (Tambien se puede abrir directamente: dist\DELCA ERP.exe)
+   -> Listo: se sigue trabajando con los mismos datos.
 
 ----------------------------------------------------------
  COMO FUNCIONA
@@ -39,8 +46,9 @@ computador. Al copiarla completa, TODO funciona en el nuevo PC.
 ----------------------------------------------------------
 - .venv: NO es necesario en el nuevo PC si se usa el ejecutable
   (dist\DELCA ERP.exe). Si se quiere ejecutar desde el codigo
-  fuente, crear el entorno:  python -m venv .venv  y luego
-  .venv\Scripts\pip install -r requirements.txt
+  fuente / hacer ajustes, crear el entorno:
+      python -m venv .venv
+      .venv\Scripts\pip install -r requirements.txt
 
 - Scripts de migracion (scripts\*.py): las rutas de archivos
   legacy (DBF/CSV) estan en variables de entorno DELCA_ARCHIVO_*;
@@ -54,10 +62,25 @@ computador. Al copiarla completa, TODO funciona en el nuevo PC.
   puede copiarse si se desea conservar los anteriores.
 
 ----------------------------------------------------------
- VERIFICACION RAPIDA (opcional) despues de copiar:
+ VERIFICACION RAPIDA (opcional) despues de descomprimir:
    1. dist\DELCA ERP.exe existe?        -> si
    2. delca.db existe (raiz)?           -> si
    3. assets\delca.ico existe?          -> si
    4. data\impresion_config.json?       -> si
    Si todo es "si", la migracion esta lista.
+
+----------------------------------------------------------
+ PRUEBA DE FUNCIONALIDAD COMPLETA (recomendado)
+----------------------------------------------------------
+Existe un verificador autonomo (no necesita Python):
+
+    "VERIFICAR DELCA ERP.exe"
+
+1. Copiarlo a la carpeta donde esta delca.db (o a dist\).
+2. Ejecutarlo con doble clic (abre una ventana con el reporte).
+3. Verifica automaticamente: componentes, integridad de la BD, reglas de
+   negocio y funcionalidad de los servicios (llantas, clientes,
+   facturacion, cartera, inventario, reportes, usuarios).
+4. Si el resumen final dice "TODO FUNCIONA CORRECTAMENTE", la migracion
+   quedo operativa al 100%.
 ==========================================================
