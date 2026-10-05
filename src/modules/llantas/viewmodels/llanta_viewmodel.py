@@ -224,3 +224,10 @@ class LlantaViewModel:
 
     def obtener_por_id(self, llanta_id: int) -> Llanta | None:
         return LlantaService.obtener_por_id(llanta_id)
+
+    def eliminar(self, llanta_id: int) -> tuple[bool, str]:
+        """Elimina una llanta (solo ADMIN). Recarga la lista si tuvo éxito."""
+        resultado = LlantaService.eliminar(llanta_id)
+        if resultado[0]:
+            self.cargar_llantas()
+        return resultado

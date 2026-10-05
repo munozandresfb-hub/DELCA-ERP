@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.56] — 2026-10-05 — Módulo Llantas: botón "🗑 Eliminar" (solo ADMIN)
+
+### Added
+- **Módulo Llantas → botón "🗑 Eliminar"**: elimina el tiquete (llanta) seleccionado y su historial (estados/ubicaciones). Disponible **ÚNICAMENTE para el rol ADMIN** (permiso `llantas.eliminar`; el botón no aparece para GERENCIA/OPERADOR)
+- Confirmación previa (acción irreversible) · **no permite eliminar llantas vinculadas a una factura** (integridad) · registra la eliminación en **auditoría**
+- `LlantaService.eliminar(id)` + `viewmodel.eliminar(id)`; MainWindow pasa el usuario a `LlantasView`
+
+### Verification
+- Botón visible con ADMIN (True) y oculto con OPERADOR (False) ✓ · elimina llanta + historial ✓ · rechaza llantas facturadas ✓ · 200 tests · EXE recompilado
+
+---
+
 ## [2.8.55] — 2026-10-03 — Inventario: nueva base real (conteo físico en planta) — Materia Prima + Consumibles
 
 ### Changed

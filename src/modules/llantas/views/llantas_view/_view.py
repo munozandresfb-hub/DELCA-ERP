@@ -24,6 +24,7 @@ from src.modules.llantas.services.llanta_service._core import (
 )
 from src.modules.llantas.services.tiquete_printer import TiquetePrinter
 from src.modules.llantas.viewmodels.llanta_viewmodel import LlantaViewModel
+from src.modules.usuarios.services.permiso_service import tiene_permiso_por_usuario
 from src.modules.llantas.views.llantas_view._busqueda_avanzada_dialog import (
     BusquedaAvanzadaDialog,
 )
@@ -51,8 +52,9 @@ class LlantasView(QWidget):
         "Fecha de Ingreso",
     ]
 
-    def __init__(self) -> None:
+    def __init__(self, user=None) -> None:
         super().__init__()
+        self.user = user
         self.viewmodel = LlantaViewModel()
         self.setup_ui()
         self._cargar_datos()
@@ -121,6 +123,18 @@ class LlantasView(QWidget):
         )
         catalogos_btn.clicked.connect(self._busqueda_avanzada)
         row2.addWidget(catalogos_btn)
+
+        # Eliminar llanta: SOLO para ADMIN (permiso llantas.eliminar)
+        if self.user is not None and tiene_permiso_por_usuario(
+            self.user, "llantas.eliminar"
+        ):
+            eliminar_btn = QPushButton("🗑 Eliminar")
+            eliminar_btn.setStyleSheet(
+                "QPushButton { background: #c0392b; color: white; font-weight: bold; "
+                "padding: 6px 14px; border-radius: 4px; border: none; }"
+            )
+            eliminar_btn.clicked.connect(self._eliminar_llanta)
+            row2.addWidget(eliminar_btn)
 
         layout.addLayout(row2)
 
@@ -290,6 +304,32 @@ class LlantasView(QWidget):
                         QMessageBox.information(self, "Impresión", msg_imp)
                     else:
                         QMessageBox.warning(self, "Impresión", msg_imp)
+        else:
+            QMessageBox.warning(self, "Error", msg)
+
+    def _eliminar_llanta(self) -> None:
+        """Elimina la llanta (tiquete) seleccionada. Solo ADMIN."""
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self.viewmodel.llantas):
+            QMessageBox.information(
+                self, "Seleccionar", "Seleccione una llanta de la tabla"
+            )
+            return
+        llanta = self.viewmodel.llantas[row]
+        confirm = QMessageBox.question(
+            self,
+            "Confirmar eliminación",
+            f"¿Eliminar la llanta con tiquete {formatear_tiquete(llanta.tiquete)}?\n\n"
+            "Esta acción es IRREVERSIBLE y borra su historial de estados y "
+            "ubicaciones.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        ok, msg = self.viewmodel.eliminar(llanta.id)
+        if ok:
+            self._poblar_tabla()
+            QMessageBox.information(self, "Éxito", msg)
         else:
             QMessageBox.warning(self, "Error", msg)
 

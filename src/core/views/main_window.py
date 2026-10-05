@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self._sidebar_items: list[tuple[str, str, Callable]] = [
             ("Dashboard", "dashboard.ver", lambda: DashboardView(self.user)),
             ("Clientes", "clientes.ver", lambda: ClientesView(self.user)),
-            ("Llantas", "llantas.ver", lambda: LlantasView()),
+            ("Llantas", "llantas.ver", lambda: LlantasView(self.user)),
             ("Producción", "produccion.ver", lambda: ProduccionView()),
             ("Planta", "planta.ver", lambda: PlantaView()),
             ("Catálogos", "llantas.ver", lambda: CatalogosPage()),

@@ -360,6 +360,55 @@ class _GestionLlantasMixin:
             return True, f"Estado cambiado a '{nuevo_estado}'"
 
     @staticmethod
+    def eliminar(llanta_id: int) -> tuple[bool, str]:
+        """Elimina una llanta (tiquete) y su historial.
+
+        Solo debe invocarse desde la sesión de ADMIN (la UI lo restringe con el
+        permiso ``llantas.eliminar``). No permite eliminar llantas vinculadas a
+        una factura (integridad referencial). Registra la eliminación en auditoría.
+        """
+        from src.core.services.audit_service import registrar_crud
+        from src.core.services.session_service import get_session_manager
+
+        with get_session() as session:
+            llanta = LlantaRepository.get_by_id(session, llanta_id)
+            if not llanta:
+                return False, "Llanta no encontrada"
+            tiquete = llanta.tiquete
+
+            # No eliminar si está vinculada a una factura (integridad)
+            from src.modules.finanzas.models.factura_llanta_model import (
+                FacturaLlanta,
+            )
+
+            vinculada = (
+                session.query(FacturaLlanta)
+                .filter(FacturaLlanta.llanta_id == llanta_id)
+                .first()
+            )
+            if vinculada:
+                return False, (
+                    f"No se puede eliminar: la llanta '{tiquete}' está vinculada "
+                    "a una factura. Anule o edite la factura primero."
+                )
+
+            # Auditoría (solo si hay usuario en sesión)
+            uid = get_session_manager().get_user_id()
+            if uid is not None:
+                registrar_crud(
+                    usuario_id=uid,
+                    entidad="llanta",
+                    accion="DELETE",
+                    objeto_id=llanta_id,
+                    cambios={"tiquete": tiquete},
+                    session=session,
+                )
+
+            # El cascade del modelo borra historial_estados / historial_ubicaciones
+            session.delete(llanta)
+            return True, f"Llanta '{tiquete}' eliminada"
+
+    @staticmethod
     def mover_ubicacion(
         llanta_id: int,
         ubicacion: str,
