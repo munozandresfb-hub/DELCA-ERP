@@ -52,12 +52,17 @@ class LlantasPickerDialog(QDialog):
     ]
 
     def __init__(
-        self, cliente_id: int, parent: QWidget | None = None
+        self, cliente_id: int | None = None, parent: QWidget | None = None
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Llantas a facturar")
-        self.resize(820, 480)
         self._cliente_id = cliente_id
+        self._todas = cliente_id is None
+        self.setWindowTitle(
+            "Otras llantas (todos los clientes)"
+            if self._todas
+            else "Llantas del cliente"
+        )
+        self.resize(820, 480)
         self._llantas: list[Llanta] = []
         self._idx_precios: dict = {}
         self.setup_ui()
@@ -74,7 +79,9 @@ class LlantasPickerDialog(QDialog):
             self._idx_precios = {}
 
         info = QLabel(
-            "Seleccione las llantas del cliente pendientes de facturación:"
+            "Todas las llantas pendientes de facturación (de cualquier cliente):"
+            if self._todas
+            else "Seleccione las llantas del cliente pendientes de facturación:"
         )
         info.setStyleSheet("font-size: 13px; color: #7f8c8d; padding: 4px 0;")
         layout.addWidget(info)

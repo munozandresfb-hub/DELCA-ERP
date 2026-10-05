@@ -29,7 +29,10 @@ from src.modules.finanzas.views.facturacion_view._llantas_picker_dialog import (
 )
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.services.costo_precio import costo_precio, indice_precios
-from src.modules.llantas.services.llanta_service._core import formatear_tiquete
+from src.modules.llantas.services.llanta_service._core import (
+    formatear_orden,
+    formatear_tiquete,
+)
 
 logger = logging.getLogger("delca.views")
 
@@ -95,6 +98,17 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
         self.seleccionar_btn.setEnabled(False)
         picker_row.addWidget(self.seleccionar_btn)
 
+        # Otras llantas: carga TODAS las llantas facturables (de cualquier
+        # cliente) — útil para facturar llantas de DELCA o de otro cliente.
+        self.otras_btn = QPushButton("🌐 Otras llantas")
+        self.otras_btn.setStyleSheet(
+            "QPushButton { background-color: #8e44ad; color: white; font-weight: bold; "
+            "padding: 6px 14px; border-radius: 4px; border: none; }"
+            "QPushButton:hover { background-color: #7d3c98; }"
+        )
+        self.otras_btn.clicked.connect(self._seleccionar_otras_llantas)
+        picker_row.addWidget(self.otras_btn)
+
         llanta_nueva_btn = QPushButton("Llanta nueva")
         llanta_nueva_btn.setStyleSheet(
             "QPushButton { background-color: #27ae60; color: white; font-weight: bold; "
@@ -105,26 +119,21 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
         picker_row.addWidget(llanta_nueva_btn)
         form.addRow(picker_row)
 
-        # Items table: Tipo | Tiquete | Dimensión | Diseño | Precio | Acción
+# Items table: Tipo | Tiquete | Orden | Dimensión | Diseño | Precio | Acción
         self.items_table = QTableWidget()
-        self.items_table.setColumnCount(6)
+        self.items_table.setColumnCount(7)
         self.items_table.setHorizontalHeaderLabels(
-            ["Tipo", "Tiquete", "Dimensión", "Diseño", "Precio", ""]
+            ["Tipo", "Tiquete", "Orden", "Dimensión", "Diseño", "Precio", ""]
         )
         self.items_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
         )
-        self.items_table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )
-        self.items_table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
-        )
-        self.items_table.horizontalHeader().setSectionResizeMode(
-            3, QHeaderView.ResizeMode.Stretch
-        )
-        self.items_table.setColumnWidth(4, 130)
-        self.items_table.setColumnWidth(5, 60)
+        for _c in (1, 2, 3, 4):
+            self.items_table.horizontalHeader().setSectionResizeMode(
+                _c, QHeaderView.ResizeMode.Stretch
+            )
+        self.items_table.setColumnWidth(5, 130)
+        self.items_table.setColumnWidth(6, 60)
         self.items_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
@@ -206,6 +215,15 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
                 self, "Validación", "Seleccione primero el cliente"
             )
             return
+        self._abrir_picker(cliente_id)
+
+    def _seleccionar_otras_llantas(self) -> None:
+        """Abre la ventana emergente con TODAS las llantas facturables (de
+        cualquier cliente) — para facturar llantas de DELCA o de otro cliente."""
+        self._abrir_picker(None)
+
+    def _abrir_picker(self, cliente_id) -> None:
+        """Abre el picker de llantas (None = todas las de cualquier cliente)."""
         dialog = LlantasPickerDialog(cliente_id, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
@@ -225,6 +243,9 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
                 "llanta_id": llanta.id,
                 "descripcion": None,
                 "tiquete": formatear_tiquete(llanta.tiquete),
+                "orden": formatear_orden(
+                    llanta.numero_orden, llanta.consecutivo
+                ) or "—",
                 "dimension": (
                     llanta.dimension_obj.display
                     if llanta.dimension_obj
@@ -291,6 +312,7 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
                 "llanta_id": None,
                 "descripcion": descripcion,
                 "tiquete": "—",
+                "orden": "—",
                 "dimension": "—",
                 "diseno": "—",
                 "precio": precio_spin.value(),
@@ -303,8 +325,9 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
         for row, it in enumerate(self._items):
             self.items_table.setItem(row, 0, QTableWidgetItem(it["tipo"]))
             self.items_table.setItem(row, 1, QTableWidgetItem(it["tiquete"]))
-            self.items_table.setItem(row, 2, QTableWidgetItem(it["dimension"]))
-            self.items_table.setItem(row, 3, QTableWidgetItem(it["diseno"]))
+            self.items_table.setItem(row, 2, QTableWidgetItem(it.get("orden", "—")))
+            self.items_table.setItem(row, 3, QTableWidgetItem(it["dimension"]))
+            self.items_table.setItem(row, 4, QTableWidgetItem(it["diseno"]))
             precio_spin = QDoubleSpinBox()
             precio_spin.setRange(0, 9999999)
             precio_spin.setPrefix("$ ")
@@ -313,7 +336,7 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
             precio_spin.valueChanged.connect(
                 lambda value, r=row: self._on_precio_cambiado(r, value)
             )
-            self.items_table.setCellWidget(row, 4, precio_spin)
+            self.items_table.setCellWidget(row, 5, precio_spin)
             quitar_btn = QPushButton("✕")
             quitar_btn.setToolTip("Quitar llanta")
             quitar_btn.setStyleSheet(
@@ -322,7 +345,7 @@ class FacturaFormDialog(EnterTabMixin, QDialog):
             quitar_btn.clicked.connect(
                 lambda _=False, r=row: self._quitar_llanta(r)
             )
-            self.items_table.setCellWidget(row, 5, quitar_btn)
+            self.items_table.setCellWidget(row, 6, quitar_btn)
         self._recalcular_total()
 
     def _on_precio_cambiado(self, row: int, value: float) -> None:

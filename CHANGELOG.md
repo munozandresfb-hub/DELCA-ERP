@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.57] — 2026-10-05 — Nueva Factura: botón "Otras llantas" + columna Orden
+
+### Added
+- **Nueva Factura → "🌐 Otras llantas"**: nuevo botón en la sección "Llantas a facturar" que abre el picker con **TODAS las llantas facturables de cualquier cliente** (para facturar llantas de DELCA o de otro cliente por necesidad del servicio). El botón "➕ Seleccionar llantas del cliente" sigue cargando solo las del cliente elegido. La misma factura puede combinar llantas del cliente + de otro cliente + llantas nuevas
+- El picker muestra la columna **Cliente** de cada llanta (para identificar de quién es al usar "Otras llantas")
+- **Columna "Orden"** agregada a la tabla de items del formulario (junto a "Tiquete") — tiquete y número de orden quedan visibles en la factura
+
+### Verification
+- "Otras llantas" trae 24,905 llantas de 100 clientes ✓ · picker del cliente filtra ✓ · columna Orden presente ✓ · 200 tests · EXE recompilado
+
+---
+
 ## [2.8.56] — 2026-10-05 — Módulo Llantas: botón "🗑 Eliminar" (solo ADMIN)
 
 ### Added
