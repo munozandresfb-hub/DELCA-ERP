@@ -250,28 +250,33 @@ class LlantasView(QWidget):
 
     def _nueva_llanta(self) -> None:
         dialog = LlantaFormDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
+        aceptado = dialog.exec() == QDialog.DialogCode.Accepted
 
-        data = dialog.get_data()
-        tiquete_creado = data.get("tiquete")
-        ok, msg = self.viewmodel.crear(**data)
+        if aceptado:
+            data = dialog.get_data()
+            tiquete_creado = data.get("tiquete")
+            # Si el formulario quedó limpio (el usuario usó "🖨 Imprimir" y no
+            # llenó otra llanta), no hay nada que crear al cerrar.
+            if tiquete_creado:
+                ok, msg = self.viewmodel.crear(**data)
+                if ok:
+                    QMessageBox.information(self, "Éxito", msg)
+                    # Si el usuario pidió imprimir desde el formulario, imprime el
+                    # tiquete de la llanta recién creada (criterios intactos).
+                    if getattr(dialog, "imprimir", False):
+                        llanta_nueva = self.viewmodel.obtener_por_tiquete(tiquete_creado)
+                        if llanta_nueva:
+                            ok_imp, msg_imp = TiquetePrinter.print_tiquete(llanta_nueva, self)
+                            if ok_imp:
+                                QMessageBox.information(self, "Impresión", msg_imp)
+                            else:
+                                QMessageBox.warning(self, "Impresión", msg_imp)
+                else:
+                    QMessageBox.warning(self, "Error", msg)
 
-        if ok:
-            self._poblar_tabla()
-            QMessageBox.information(self, "Éxito", msg)
-            # Si el usuario pidió imprimir desde el formulario, imprime el
-            # tiquete de la llanta recién creada (criterios de impresión intactos).
-            if getattr(dialog, "imprimir", False) and tiquete_creado:
-                llanta_nueva = self.viewmodel.obtener_por_tiquete(tiquete_creado)
-                if llanta_nueva:
-                    ok_imp, msg_imp = TiquetePrinter.print_tiquete(llanta_nueva, self)
-                    if ok_imp:
-                        QMessageBox.information(self, "Impresión", msg_imp)
-                    else:
-                        QMessageBox.warning(self, "Impresión", msg_imp)
-        else:
-            QMessageBox.warning(self, "Error", msg)
+        # Siempre recargar: el botón "🖨 Imprimir" pudo crear llantas sin cerrar
+        # el formulario (trabajo continuo).
+        self._cargar_datos()
 
     def _editar_llanta(self) -> None:
         """Edita la llanta seleccionada (cliente, diseño, orden...).

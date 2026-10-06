@@ -26,6 +26,7 @@ from src.modules.clientes.repositories.cliente_repository import ClienteReposito
 from src.modules.llantas.models.llanta_model import Llanta
 from src.modules.llantas.repositories.llanta_repository import LlantaRepository
 from src.modules.llantas.services.llanta_service import ESTADOS_PROCESO, LlantaService
+from src.modules.llantas.services.tiquete_printer import TiquetePrinter
 
 logger = logging.getLogger("delca.views")
 
@@ -250,9 +251,48 @@ class LlantaFormDialog(EnterTabMixin, QDialog):
         self.setLayout(layout)
 
     def _guardar_y_imprimir(self) -> None:
-        """Guarda la llanta y marca que se debe imprimir al terminar."""
-        self._imprimir = True
-        self._guardar()
+        """Modo edición: marca imprimir (la vista edita e imprime y cierra).
+
+        Modo registro: crea la llanta, imprime el tiquete y LIMPIA el formulario
+        para la siguiente llanta, SIN cerrar el recuadro (trabajo continuo).
+        """
+        if self._llanta:
+            self._imprimir = True
+            self._guardar()
+            return
+        # Registro: crear + imprimir + limpiar (el recuadro permanece abierto)
+        if not self._validar():
+            return
+        data = self.get_data()
+        ok, resultado = LlantaService.crear(**data)
+        if not ok or not isinstance(resultado, Llanta):
+            QMessageBox.warning(self, "Error", str(resultado))
+            return
+        ok_imp, msg_imp = TiquetePrinter.print_tiquete(resultado, self)
+        if ok_imp:
+            QMessageBox.information(self, "Impresión", msg_imp)
+        else:
+            QMessageBox.warning(self, "Impresión", msg_imp)
+        self._limpiar_para_siguiente()
+
+    def _limpiar_para_siguiente(self) -> None:
+        """Limpia el formulario para registrar otra llanta (sin cerrar)."""
+        self.tiquete_input.clear()
+        self.tiquete_error_label.hide()
+        self._tiquete_duplicado = False
+        self.numero_orden_input.clear()
+        self.consecutivo_input.clear()
+        self.cliente_input.clear()
+        self._on_cliente_edited("")
+        self.marca_combo.setCurrentIndex(0)
+        self.dimension_combo.setCurrentIndex(0)
+        self.diseno_combo.setCurrentIndex(0)
+        self.dot_input.clear()
+        self.asesor_input.clear()
+        self.observaciones_input.clear()
+        self.precio_venta_combo.setCurrentText("")
+        self.fecha_ingreso_edit.setDate(QDate.currentDate())
+        self.tiquete_input.setFocus()
 
     @property
     def imprimir(self) -> bool:
@@ -444,11 +484,16 @@ class LlantaFormDialog(EnterTabMixin, QDialog):
     # ── Validation & save ──────────────────────────────────────────
 
     def _guardar(self) -> None:
+        if self._validar():
+            self.accept()
+
+    def _validar(self) -> bool:
+        """Valida el formulario de registro. True si puede guardarse."""
         tiquete = self.tiquete_input.text().strip()
         if not tiquete:
             QMessageBox.warning(self, "Validación", "El Tiquete es obligatorio")
             self.tiquete_input.setFocus()
-            return
+            return False
         if self._tiquete_duplicado:
             QMessageBox.warning(
                 self,
@@ -456,20 +501,20 @@ class LlantaFormDialog(EnterTabMixin, QDialog):
                 f"El tiquete '{tiquete}' ya está asignado a otra llanta",
             )
             self.tiquete_input.setFocus()
-            return
+            return False
         if not self.marca_combo.currentData():
             QMessageBox.warning(self, "Validación", "Debe seleccionar una marca")
             self.marca_combo.setFocus()
-            return
+            return False
         if not self.dimension_combo.currentData():
             QMessageBox.warning(self, "Validación", "Debe seleccionar una dimensión")
             self.dimension_combo.setFocus()
-            return
+            return False
         if not self.cliente_input.text().strip():
             QMessageBox.warning(self, "Validación", "Debe seleccionar un cliente")
             self.cliente_input.setFocus()
-            return
-        self.accept()
+            return False
+        return True
 
     def get_data(self) -> dict:
         cliente_texto = self.cliente_input.text().strip()

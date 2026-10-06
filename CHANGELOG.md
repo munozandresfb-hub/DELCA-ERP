@@ -7,6 +7,18 @@ y [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.8.58] — 2026-10-05 — Registrar Llanta: "🖨 Imprimir" no cierra el formulario (trabajo continuo)
+
+### Changed
+- **Registrar Llanta → botón "🖨 Imprimir"**: ahora **crea la llanta, imprime el tiquete y limpia el formulario SIN cerrarlo** — queda abierto para registrar la siguiente llanta (trabajo continuo). Antes cerraba el formulario
+- En **modo edición** se mantiene el comportamiento anterior (guarda la edición + imprime tiquete)
+- Al cerrar el formulario, la tabla del módulo Llantas se **recarga siempre** (refleja las llantas creadas durante la sesión de impresión)
+
+### Verification
+- Crea la llanta en BD ✓ · imprime ✓ · limpia el formulario (tiquete/cliente/marca) ✓ · no cierra el diálogo ✓ · 200 tests · EXE recompilado
+
+---
+
 ## [2.8.57] — 2026-10-05 — Nueva Factura: botón "Otras llantas" + columna Orden
 
 ### Added
